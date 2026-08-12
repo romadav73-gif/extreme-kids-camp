@@ -1,0 +1,77 @@
+ontent = open;
+    $('#navAlert').textContent = alerts;
+  }
+
+  function setPage(next) {
+    const allowed = ['today','tasks','numbers','rhythm','report','meetings','plans','guide','archive','settings'];
+    page = allowed.includes(next) ? next : 'today';
+    location.hash = page;
+    closeMore(); render();
+  }
+
+  function pageHead(kicker, title, subtitle, actions = '') {
+    return `<header class="page-head"><div><div class="eyebrow">${esc(kicker)}</div><h1>${esc(title)}</h1><p>${esc(subtitle)}</p></div><div class="page-actions">${actions}</div></header>`;
+  }
+
+  function todayPage() {
+    const s = stats();
+    const open = state.tasks.filter((t) => t.status !== 'done' && t.due <= date).sort((a,b) => a.due.localeCompare(b.due)).slice(0,6);
+    const overdue = state.tasks.filter((t) => t.status !== 'done' && t.due < date).length;
+    const alerts = [];
+    if (num(s.day.metrics.unanswered)) alerts.push(`${s.day.metrics.unanswered} лид(а) без ответа`);
+    if (num(s.day.metrics.unpaidClients)) alerts.push(`${s.day.metrics.unpaidClients} неоплаченных клиент(а)`);
+    if (overdue) alerts.push(`${overdue} просроченных задач`);
+    const next = nextRhythm(s.day);
+    const readinessText = s.readiness >= 85 ? 'Система под контролем' : s.readiness >= 55 ? 'Нужно закрыть отклонения' : 'Нужен управленческий фокус';
+    return pageHead('ОПЕРАЦИОННЫЙ ЦЕНТР', prettyDate(date), 'Один экран: что происходит в клубе, где отклонение и какой следующий шаг.', `<button class="button primary compact" data-act="newTask">+ Задача</button><button class="button ghost compact" data-page="report">Собрать отчёт</button>`) + `
+      <section class="card hero-card">
+        <div class="hero-main">
+          <div>
+            <div class="eyebrow">ГОТОВНОСТЬ ДНЯ</div>
+            <div class="hero-title">${esc(readinessText)} <span>· ${s.readiness}%</span></div>
+            <div class="hero-copy">Сначала безопасность и родители. Затем деньги, которые можно получить сегодня. После — команда, просрочки и улучшение одного процесса.</div>
+            <div class="readiness-row"><div class="readiness-ring" style="--p:${s.readiness}"><strong>${s.readiness}</strong></div><div class="readiness-copy"><b>${next ? `Следующая точка — ${next[0]}` : 'Основные точки дня пройдены'}</b><span>${next ? esc(next[1]) : 'Закрой отчёт и зафиксируй три результата на завтра.'}</span></div></div>
+            <div class="alert-strip ${alerts.length ? 'warning' : ''}"><i>${alerts.length ? '●' : '●'}</i><div><b>${alerts.length ? 'Есть отклонения, требующие внимания' : 'Критических отклонений не зафиксировано'}</b><small>${alerts.length ? esc(alerts.join(' · ')) : 'Переходи к росту: продажи, качество и улучшение процесса.'}</small></div></div>
+          </div>
+          <div class="kpi-grid">
+            ${kpi('Выручка месяца', money(s.fact), `${pct(s.progress)} от плана`, clamp(s.progress,0,100))}
+            ${kpi('Нужно в день', money(s.need), `Осталось ${money(s.remaining)}`)}
+            ${kpi('Пробная → продажа', pct(s.conversion), `${num(s.day.metrics.sold)} из ${num(s.day.metrics.attended)} сегодня`)}
+            ${kpi('Продления', pct(s.renew), `${num(s.day.metrics.renewDone)} из ${num(s.day.metrics.renewDue)} в работе`)}
+          </div>
+        </div>
+      </section>
+
+      <div class="section-title"><div><h2>Три результата дня</h2><p>Не список из двадцати дел, а то, что должно реально измениться к закрытию.</p></div></div>
+      <section class="priority-list">${s.day.priorities.map((v,i) => `<div class="priority-item"><span>${i+1}</span><textarea data-priority="${i}" placeholder="${['Главный результат дня','Второй результат','Третий результат'][i]}">${esc(v)}</textarea></div>`).join('')}</section>
+
+      <div class="grid grid-2" style="margin-top:14px">
+        <section class="card">
+          <div class="section-title" style="margin:0 0 10px"><div><h2>Задачи в работе</h2><p>Просроченное и назначенное на выбранный день.</p></div><button class="button ghost" data-page="tasks">Все задачи</button></div>
+          <div class="task-list">${open.length ? open.map(taskHtml).join('') : empty('Нет активных задач', 'Если всё закрыто — выбери один процесс для улучшения.')}</div>
+        </section>
+        <section class="card">
+          <div class="section-title" style="margin:0 0 10px"><div><h2>${dayOfWeek(date) === 2 ? 'Собрание администраторов' : 'Контрольная точка'}</h2><p>${dayOfWeek(date) === 2 ? 'Вторник · 45 минут · Софа ведёт встречу' : 'Ритм дня не должен держаться в голове.'}</p></div></div>
+          ${dayOfWeek(date) === 2 ? `<div class="alert-strip"><i>●</i><div><b>Цифры → клиенты → ошибки → решения → задачи</b><small>Открой шаблон, веди встречу прямо в системе и сразу превращай решения в задачи.</small></div></div><button class="button primary" style="width:100%;margin-top:10px" data-act="openAdminMeeting">Открыть собрание</button>` : next ? `<div class="timeline-item current" style="margin-top:8px"><time>${next[0]}</time><div class="timeline-copy"><b>${esc(next[1])}</b><small>${esc(next[2])}</small></div><button class="timeline-toggle" data-rhythm="${next[3]}">✓</button></div><button class="button ghost" style="width:100%;margin-top:10px" data-page="rhythm">Открыть ритм дня</button>` : `<div class="alert-strip"><i>●</i><div><b>Основные точки дня закрыты</b><small>Проверь отчёт, незакрытые задачи и три результата на завтра.</small></div></div><button class="button primary" style="width:100%;margin-top:10px" data-page="report">Перейти к отчёту</button>`}
+        </section>
+      </div>`;
+  }
+
+  function kpi(label, value, small, progress = null) {
+    return `<div class="kpi"><span>${esc(label)}</span><strong>${esc(value)}</strong><small>${esc(small)}</small>${progress === null ? '' : `<div class="mini-progress"><i style="width:${clamp(progress,0,100)}%"></i></div>`}</div>`;
+  }
+
+  function empty(title, text) { return `<div class="empty"><b>${esc(title)}</b>${esc(text)}</div>`; }
+
+  function taskHtml(t) {
+    const overdue = t.status !== 'done' && t.due < date;
+    const p = t.priority || 'medium';
+    return `<article class="task-card ${t.status === 'done' ? 'done' : ''}">
+      <button class="task-check" data-toggle-task="${esc(t.id)}" aria-label="Изменить статус">${t.status === 'done' ? '✓' : ''}</button>
+      <div class="task-main"><b>${esc(t.title)}</b><div class="task-meta"><span class="tag ${p}">${p === 'high' ? 'Высокий' : p === 'low' ? 'Низкий' : 'Средний'}</span><span class="tag">${esc(t.owner)}</span><span class="tag ${overdue ? 'high' : ''}">${overdue ? 'Просрочено · ' : ''}${esc(t.due)}</span><span class="tag">${esc(t.category || 'Операционка')}</span></div>${t.comment ? `<small class="card-sub" style="display:block;margin-top:6px">${esc(t.comment)}</small>` : ''}</div>
+      <div class="task-actions"><button data-edit-task="${esc(t.id)}" title="Редактировать">✎</button><button data-delete-task="${esc(t.id)}" title="Удалить">×</button></div>
+    </article>`;
+  }
+
+  function tasksPage() {
+    const lis
