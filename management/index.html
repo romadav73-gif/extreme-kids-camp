@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#070807">
+  <title>EXTREME KIDS — Управление 3.0</title>
+  <style>
+    :root{color-scheme:dark}*{box-sizing:border-box}html,body{margin:0;min-height:100%;background:#070807;color:#fff;font-family:Montserrat,Arial,sans-serif}body{display:grid;place-items:center;padding:24px;background:radial-gradient(circle at 80% 10%,rgba(254,235,0,.12),transparent 30%),#070807}.loader{width:min(520px,100%);padding:32px;border:1px solid rgba(255,255,255,.1);border-radius:28px;background:rgba(18,20,18,.96);box-shadow:0 30px 100px rgba(0,0,0,.5)}.mark{color:#feeb00;font-size:12px;font-weight:900;letter-spacing:.18em}.loader h1{margin:12px 0 8px;font-size:32px;line-height:1.05}.loader p{margin:0;color:#a8aba4;font-size:14px;line-height:1.6}.bar{height:8px;margin-top:24px;border-radius:999px;background:#252825;overflow:hidden}.bar i{display:block;width:8%;height:100%;border-radius:inherit;background:#feeb00;transition:width .25s}.status{display:flex;justify-content:space-between;gap:12px;margin-top:10px;color:#8c9088;font-size:11px}.error{margin-top:18px;padding:14px;border:1px solid rgba(255,100,110,.35);border-radius:14px;background:rgba(255,100,110,.08);color:#ffabb0;line-height:1.5}.retry{display:none;width:100%;margin-top:14px;padding:13px;border:0;border-radius:13px;background:#feeb00;color:#050505;font-weight:800;cursor:pointer}
+  </style>
+</head>
+<body>
+  <main class="loader">
+    <div class="mark">EXTREME KIDS ТРОПАРЁВО</div>
+    <h1>Управление 3.0</h1>
+    <p>Подключаем рабочую систему и зашифрованную общую базу Романа и Софы.</p>
+    <div class="bar"><i id="bar"></i></div>
+    <div class="status"><span id="status">Загрузка интерфейса…</span><b id="percent">8%</b></div>
+    <div class="error" id="error" hidden></div>
+    <button class="retry" id="retry" onclick="location.reload()">Повторить загрузку</button>
+  </main>
+  <script>
+  (async()=>{
+    const files=["payload-00.txt","payload-01.txt","payload-02.txt","payload-03.txt"];
+    const expected="bc071368dc438e918f0ed1ffe50e7f698aeb38fdd04fc318c8610b255a5e6e62";
+    const bar=document.getElementById("bar"),status=document.getElementById("status"),percent=document.getElementById("percent");
+    const progress=(value,text)=>{bar.style.width=value+"%";percent.textContent=value+"%";status.textContent=text};
+    try{
+      if(typeof DecompressionStream==="undefined") throw new Error("Браузер устарел. Откройте ссылку в актуальном Chrome, Safari или Яндекс Браузере.");
+      const parts=[];
+      for(let index=0;index<files.length;index++){
+        const response=await fetch(files[index],{cache:"no-store"});
+        if(!response.ok) throw new Error(`Не загрузилась часть системы ${index+1}`);
+        parts.push((await response.text()).trim());
+        progress(15+Math.round((index+1)/files.length*45),`Загружено ${index+1} из ${files.length}`);
+      }
+      const binary=atob(parts.join(""));
+      const packed=Uint8Array.from(binary,char=>char.charCodeAt(0));
+      progress(68,"Распаковываем систему…");
+      const stream=new Blob([packed]).stream().pipeThrough(new DecompressionStream("gzip"));
+      const bytes=new Uint8Array(await new Response(stream).arrayBuffer());
+      const digest=new Uint8Array(await crypto.subtle.digest("SHA-256",bytes));
+      const hash=[...digest].map(value=>value.toString(16).padStart(2,"0")).join("");
+      if(hash!==expected) throw new Error("Контрольная проверка файла не пройдена");
+      progress(92,"Запускаем рабочий кабинет…");
+      const html=new TextDecoder().decode(bytes);
+      document.open();document.write(html);document.close();
+    }catch(error){
+      console.error(error);
+      progress(100,"Ошибка загрузки");
+      document.getElementById("error").hidden=false;
+      document.getElementById("error").textContent=error.message||"Не удалось запустить систему";
+      document.getElementById("retry").style.display="block";
+    }
+  })();
+  </script>
+</body>
+</html>
