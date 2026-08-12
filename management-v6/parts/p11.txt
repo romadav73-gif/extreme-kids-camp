@@ -1,0 +1,59 @@
+t = tasksFor();
+    const open = state.tasks.filter((t) => t.status !== 'done').length;
+    const todayCount = state.tasks.filter((t) => t.status !== 'done' && t.due === date).length;
+    const overdue = state.tasks.filter((t) => t.status !== 'done' && t.due < date).length;
+    const done = state.tasks.filter((t) => t.status === 'done').length;
+    return pageHead('РАБОТА КАЖДЫЙ ДЕНЬ', 'Задачи', 'У каждой задачи есть результат, ответственный, срок и понятный следующий шаг.', `<button class="button primary compact" data-act="newTask">+ Новая задача</button>`) + `
+      <div class="task-summary"><div class="summary-chip"><span>Открыто</span><b>${open}</b></div><div class="summary-chip"><span>На сегодня</span><b>${todayCount}</b></div><div class="summary-chip danger"><span>Просрочено</span><b>${overdue}</b></div><div class="summary-chip good"><span>Выполнено</span><b>${done}</b></div></div>
+      <section class="card">
+        <div class="toolbar"><div class="segmented">${[['today','Сегодня'],['overdue','Просрочено'],['all','В работе'],['done','Выполнено']].map(([v,l]) => `<button class="${taskFilter === v ? 'active' : ''}" data-task-filter="${v}">${l}</button>`).join('')}</div><select id="taskOwnerFilter"><option value="all">Все ответственные</option>${state.settings.staff.map((x) => `<option value="${esc(x)}" ${taskOwnerFilter === x ? 'selected' : ''}>${esc(x)}</option>`).join('')}</select></div>
+        <div class="task-list">${list.length ? list.map(taskHtml).join('') : empty('Задач здесь нет', 'Создай задачу или переключи фильтр.')}</div>
+      </section>`;
+  }
+
+  function numbersPage() {
+    const s = stats();
+    return pageHead('ЦИФРЫ КЛУБА', 'Управление по данным', 'Софа должна видеть не просто факт, а отклонение и то, что можно изменить сегодня.', `<button class="button ghost compact" data-act="manualSync">Синхронизировать</button>`) + `
+      <div class="numbers-summary">
+        ${kpi('План месяца', money(s.plan), `${pct(s.progress)} выполнено`, s.progress)}
+        ${kpi('Факт месяца', money(s.fact), `Прогноз ${money(s.forecast)}`)}
+        ${kpi('Осталось до плана', money(s.remaining), `Нужно ${money(s.need)} в день`)}
+        ${kpi('Загрузка', pct(s.day.metrics.occupancy), `Цель ${pct(state.monthPlans[s.mk].occupancyTarget)}`)}
+      </div>
+      <div class="grid grid-2">
+        <section class="card">
+          <h2>Показатели за ${esc(shortDate(date))}</h2>
+          ${Object.entries(METRIC_GROUPS).map(([group,items]) => `<div class="metric-section"><div class="metric-section-head"><h3>${esc(group)}</h3><span>сохраняется автоматически</span></div><div class="metric-grid">${items.map(([id,label,unit]) => `<div class="metric-box"><label>${esc(label)}</label><input type="number" inputmode="decimal" data-metric="${id}" value="${num(s.day.metrics[id])}"><small>${esc(unit)}</small></div>`).join('')}</div></div>`).join('')}
+        </section>
+        <section class="stack">
+          <div class="card"><h2>Выручка по дням</h2><p class="card-sub">Накопление за выбранный месяц. Пустые дни не выдумываются — учитывается только внесённый факт.</p>${monthChart(s.mk)}</div>
+          <div class="card"><h2>Что означает сегодняшняя воронка</h2>
+            <div class="grid grid-2">${kpi('Лиды без ответа', String(num(s.day.metrics.unanswered)), num(s.day.metrics.unanswered) ? 'Сначала закрыть это отклонение' : 'Потерянных лидов не видно')}${kpi('Пробная → продажа', pct(s.conversion), `${num(s.day.metrics.sold)} покупок из ${num(s.day.metrics.attended)} визитов`)}${kpi('Продления', pct(s.renew), `${num(s.day.metrics.renewDone)} из ${num(s.day.metrics.renewDue)}`)}${kpi('Ожидаемые оплаты', money(s.day.metrics.expected), `${num(s.day.metrics.unpaidClients)} клиентов без оплаты`)}</div>
+          </div>
+        </section>
+      </div>`;
+  }
+
+  function monthChart(mk) {
+    const points = Object.entries(state.days).filter(([d]) => monthKey(d) === mk).map(([d,v]) => ({d, value:num(v.metrics?.revenue)})).filter((x) => x.value || x.d === date).sort((a,b) => a.d.localeCompare(b.d));
+    if (points.length < 2) return `<div class="empty" style="margin-top:14px"><b>График появится автоматически</b>Нужно хотя бы два дня с внесённой выручкой.</div>`;
+    const w = 640, h = 160, pad = 12, max = Math.max(...points.map((p) => p.value), 1);
+    const coords = points.map((p,i) => ({...p, x:pad + i * (w - pad*2) / Math.max(1, points.length-1), y:h-pad - p.value/max*(h-pad*2)}));
+    const line = coords.map((p,i) => `${i?'L':'M'}${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(' ');
+    const area = `${line} L${coords.at(-1).x.toFixed(1)},${h-pad} L${coords[0].x.toFixed(1)},${h-pad} Z`;
+    return `<div class="chart-wrap"><svg class="chart-svg" viewBox="0 0 ${w} ${h}" preserveAspectRatio="none"><defs><linearGradient id="areaGrad" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#feeb00" stop-opacity=".22"/><stop offset="1" stop-color="#feeb00" stop-opacity="0"/></linearGradient></defs><line class="chart-grid" x1="${pad}" y1="${h/2}" x2="${w-pad}" y2="${h/2}"/><line class="chart-grid" x1="${pad}" y1="${h-pad}" x2="${w-pad}" y2="${h-pad}"/><path class="chart-area" d="${area}"/><path class="chart-line" d="${line}"/>${coords.map((p) => `<circle class="chart-point" cx="${p.x}" cy="${p.y}" r="4"/>`).join('')}</svg><div class="chart-labels"><span>${esc(points[0].d.slice(8))}</span><span>${money(max)}</span><span>${esc(points.at(-1).d.slice(8))}</span></div></div>`;
+  }
+
+  function rhythmPage() {
+    const d = ensure(date); const next = nextRhythm(d);
+    return pageHead('РИТМ УПРАВЛЕНИЯ', 'День по контрольным точкам', 'Система напоминает, что проверять. Управляющая не должна держать рабочий день в голове.') + `
+      <div class="grid grid-2">
+        <section class="card"><h2>Контрольные точки</h2><div class="timeline">${RHYTHM.map(([time,title,text],i) => `<div class="timeline-item ${d.rhythm[i] ? 'done' : ''} ${next?.[3] === i ? 'current' : ''}"><time>${time}</time><div class="timeline-copy"><b>${esc(title)}</b><small>${esc(text)}</small></div><button class="timeline-toggle" data-rhythm="${i}">${d.rhythm[i] ? '✓' : '○'}</button></div>`).join('')}</div></section>
+        <section class="card"><h2>Ежедневный стандарт</h2>${Object.entries(CHECK_GROUPS).map(([group,items]) => `<div class="check-group"><h3>${esc(group)}</h3>${items.map(([id,title,text]) => `<label class="check-row ${d.checks[id] ? 'done' : ''}"><input type="checkbox" data-check="${id}" ${d.checks[id] ? 'checked' : ''}><span><b>${esc(title)}</b><small>${esc(text)}</small></span></label>`).join('')}</div>`).join('')}</section>
+      </div>`;
+  }
+
+  function nextRhythm(d) {
+    const current = new Intl.DateTimeFormat('en-GB',{timeZone:TZ,hour:'2-digit',minute:'2-digit',hour12:false}).format(new Date());
+    for (let i=0;i<RHYTHM.length;i++) if (!d.rhythm[i] && (date !== currentDate() || RHYTHM[i][0] >= current || i === RHYTHM.length-1)) return [...RHYTHM[i], i];
+    for (let i=0;i<RHYTHM.length;i++) if (!d.rhythm[i]) return [...RHYTHM[i]
