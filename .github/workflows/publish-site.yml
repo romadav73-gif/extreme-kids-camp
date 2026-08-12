@@ -1,0 +1,74 @@
+name: Publish parent camp site
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - site-build.trigger
+
+permissions:
+  contents: write
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Download final self-contained site
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl -L --fail --retry 4 'https://oaisdmntprnortheu.blob.core.windows.net/files/00000000-e604-81f4-81e9-1dc9aa6304e9/raw?se=2026-08-12T20%3A57%3A02Z&sp=r&sv=2026-02-06&sr=b&scid=019ff77f-2eb3-71c9-9a31-4a37a2bd3e82&skoid=5bfb38a5-43fb-4c63-80a1-6ae1e97e2e16&sktid=a48cca56-e6da-484e-a814-9c849652bcb3&skt=2026-08-12T07%3A00%3A33Z&ske=2026-08-13T07%3A00%3A33Z&sks=b&skv=2026-02-06&sig=5O0q7mSklbXNp5PXIWuASH9OUb6Ts/xvEwtoTNWruBc%3D' -o index.html
+          test "$(stat -c%s index.html)" -gt 2500000
+          head -c 15 index.html | grep -qi '<!doctype html>'
+
+      - name: Prepare production HTML
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+
+          path = Path('index.html')
+          text = path.read_text(encoding='utf-8')
+
+          text = text.replace(
+              'Нажмите на день. Меняется фотография наставника, настроение и акцент программы. Все фотографии загружаются отдельными исходными файлами без повторного сжатия.',
+              'Нажмите на день — и увидите наставника, настроение и акцент программы. Вся неделя остаётся одной цельной историей.'
+          )
+          text = re.sub(r'filecite[^]+', '', text)
+          text = text.replace('<html lang="ru">', '<html lang="ru" data-build="parents-original-hq-20260812">', 1)
+
+          fail_safe = '''\n<script id="reveal-failsafe">\nwindow.setTimeout(function(){\n  document.querySelectorAll('.reveal').forEach(function(el){ el.classList.add('show'); });\n}, 1600);\n</script>\n'''
+          text = text.replace('</body>', fail_safe + '</body>', 1)
+          text = text.replace('  </p>', '</p>')
+
+          path.write_text(text, encoding='utf-8')
+
+          assert 'data-build="parents-original-hq-20260812"' in text
+          assert 'Нажмите на день — и увидите наставника' in text
+          assert 'без повторного сжатия' not in text
+          assert 'filecite' not in text
+          assert 'ek-mentor-seven' not in text
+          assert text.count('data:image/') >= 7
+          assert len(text.encode('utf-8')) > 2500000
+          PY
+
+      - name: Commit production site
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add index.html
+          if git diff --cached --quiet; then
+            echo "Site already up to date"
+          else
+            git commit -m "Publish working parent camp site with embedded original photos"
+            git push
+          fi
