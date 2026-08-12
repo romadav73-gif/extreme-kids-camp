@@ -1,0 +1,119 @@
+age="plans"><i>◆</i><span>Планы и рост</span></button>
+        <button data-page="guide"><i>✦</i><span>Система управляющей</span></button>
+        <button data-page="archive"><i>□</i><span>Архив</span></button>
+        <button data-page="settings"><i>⚙</i><span>Настройки</span></button>
+      </nav>
+
+      <div class="sync-panel" id="syncPanel">
+        <div class="sync-state"><span class="sync-dot"></span><b id="syncText">Подключение…</b></div>
+        <small id="syncSub">Общая база Романа и Софы</small>
+      </div>
+    </aside>
+
+    <section class="workspace">
+      <header class="topbar">
+        <div class="mobile-brand">
+          <div class="brand-logo-wrap tiny">
+            <img class="brand-logo" src="https://ek-ui2-logo.vercel.app/logo.webp" alt="" onerror="this.style.display='none';this.nextElementSibling.style.display='grid'">
+            <span class="brand-logo-fallback">EK</span>
+          </div>
+          <div><b>Управление 3.0</b><small id="mobileDateText">—</small></div>
+        </div>
+
+        <div class="date-control">
+          <button class="icon-button" data-act="prevDay" aria-label="Предыдущий день">←</button>
+          <input id="dateInput" type="date" aria-label="Рабочая дата">
+          <button class="icon-button" data-act="nextDay" aria-label="Следующий день">→</button>
+          <button class="button ghost compact" data-act="goToday">Сегодня</button>
+        </div>
+
+        <div class="top-actions">
+          <div class="save-state"><span id="saveDot"></span><b id="savedText">Всё сохранено</b></div>
+          <div class="profile-pill">
+            <span id="avatar">—</span>
+            <div><b id="userName">—</b><small id="userRole">—</small></div>
+          </div>
+          <button class="button primary compact desktop-report" data-page="report">Собрать отчёт</button>
+        </div>
+      </header>
+
+      <main id="content" class="content"></main>
+    </section>
+  </div>
+
+  <nav id="mobileNav" class="mobile-nav hidden">
+    <button class="active" data-page="today"><i>⌂</i><span>Сегодня</span></button>
+    <button data-page="tasks"><i>✓</i><span>Задачи</span></button>
+    <button data-page="numbers"><i>⌁</i><span>Цифры</span></button>
+    <button data-page="report"><i>▤</i><span>Отчёт</span></button>
+    <button data-act="openMore"><i>•••</i><span>Ещё</span></button>
+  </nav>
+
+  <div id="moreSheet" class="sheet-backdrop hidden" aria-hidden="true">
+    <div class="bottom-sheet">
+      <div class="sheet-handle"></div>
+      <div class="sheet-head"><div><span>УПРАВЛЕНИЕ</span><h3>Ещё</h3></div><button class="icon-button" data-act="closeMore">×</button></div>
+      <div class="sheet-grid">
+        <button data-page="rhythm"><i>◷</i><span>Ритм дня</span></button>
+        <button data-page="meetings"><i>◎</i><span>Собрания</span></button>
+        <button data-page="plans"><i>◆</i><span>Планы и рост</span></button>
+        <button data-page="guide"><i>✦</i><span>Система управляющей</span></button>
+        <button data-page="archive"><i>□</i><span>Архив</span></button>
+        <button data-page="settings"><i>⚙</i><span>Настройки</span></button>
+      </div>
+    </div>
+  </div>
+
+  <div id="taskModal" class="modal-backdrop hidden" aria-hidden="true">
+    <div class="modal-card glass-card">
+      <div class="modal-head"><div><div class="eyebrow">ЗАДАЧА</div><h3 id="taskModalTitle">Новая задача</h3></div><button class="icon-button" data-act="closeTaskModal">×</button></div>
+      <form id="taskForm" class="form-grid">
+        <input type="hidden" id="taskId">
+        <div class="field full"><label for="taskTitle">Что должно быть сделано</label><input id="taskTitle" required placeholder="Например: разобрать всех клиентов после пробной"></div>
+        <div class="field"><label for="taskOwner">Ответственный</label><select id="taskOwner"></select></div>
+        <div class="field"><label for="taskDue">Срок</label><input id="taskDue" type="date" required></div>
+        <div class="field"><label for="taskPriority">Приоритет</label><select id="taskPriority"><option value="high">Высокий</option><option value="medium" selected>Средний</option><option value="low">Низкий</option></select></div>
+        <div class="field"><label for="taskCategory">Категория</label><select id="taskCategory"><option>Продажи</option><option>Родители</option><option>Команда</option><option>Качество</option><option>Финансы</option><option>Операционка</option><option>Развитие</option></select></div>
+        <div class="field full"><label for="taskComment">Комментарий / следующий шаг</label><textarea id="taskComment" placeholder="Что проверить, кому написать, какой результат нужен"></textarea></div>
+        <div class="modal-actions full"><button type="button" class="button ghost" data-act="closeTaskModal">Отмена</button><button type="submit" class="button primary">Сохранить задачу</button></div>
+      </form>
+    </div>
+  </div>
+
+  <div id="toast" class="toast" role="status"></div>
+  <noscript><div class="no-js">Для работы системы необходимо включить JavaScript.</div></noscript>
+
+<script>
+(() => {
+  'use strict';
+
+  const TZ = 'Europe/Moscow';
+  const API = '/api';
+  const LS_STATE = 'ek_ops_v6_state';
+  const LS_SESSION = 'ek_ops_v6_session';
+  const LS_TIMER = 'ek_ops_v6_timer';
+  const CHANNEL = 'ek_ops_v6_channel';
+  const APP_VERSION = 6;
+
+  const $ = (s, root = document) => root.querySelector(s);
+  const $$ = (s, root = document) => [...root.querySelectorAll(s)];
+  const num = (v) => Number(v) || 0;
+  const clamp = (v, min, max) => Math.max(min, Math.min(max, v));
+  const esc = (v) => String(v ?? '').replace(/[&<>"']/g, (c) => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[c]));
+  const uid = (p = 'id') => `${p}_${Math.random().toString(36).slice(2, 8)}_${Date.now().toString(36)}`;
+  const nowIso = () => new Date().toISOString();
+  const money = (v) => `${new Intl.NumberFormat('ru-RU', {maximumFractionDigits: 0}).format(num(v))} ₽`;
+  const pct = (v) => `${Math.round(num(v))}%`;
+  const dateFmt = new Intl.DateTimeFormat('ru-RU', {timeZone: TZ, weekday:'long', day:'numeric', month:'long', year:'numeric'});
+  const shortDateFmt = new Intl.DateTimeFormat('ru-RU', {timeZone: TZ, day:'2-digit', month:'long'});
+  const clockFmt = new Intl.DateTimeFormat('ru-RU', {timeZone: TZ, hour:'2-digit', minute:'2-digit', second:'2-digit'});
+  const currentDate = () => new Intl.DateTimeFormat('sv-SE', {timeZone: TZ, year:'numeric', month:'2-digit', day:'2-digit'}).format(new Date());
+  const prettyDate = (d) => dateFmt.format(new Date(`${d}T12:00:00Z`));
+  const shortDate = (d) => shortDateFmt.format(new Date(`${d}T12:00:00Z`));
+  const addDays = (d, amount) => { const x = new Date(`${d}T12:00:00Z`); x.setUTCDate(x.getUTCDate() + amount); return x.toISOString().slice(0, 10); };
+  const monthKey = (d) => d.slice(0, 7);
+  const weekKey = (d) => {
+    const x = new Date(`${d}T12:00:00Z`);
+    const day = x.getUTCDay() || 7;
+    x.setUTCDate(x.getUTCDate() + 4 - day);
+    const yearStar
