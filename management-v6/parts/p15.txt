@@ -1,0 +1,86 @@
+al(); render(); toast(id ? 'Задача обновлена' : 'Задача добавлена');
+  }
+
+  function parseMeetingTasks(text, meetingId) {
+    return String(text || '').split('\n').map((x) => x.trim()).filter(Boolean).map((line) => {
+      const [titleRaw, ownerRaw, dueRaw] = line.split('|').map((x) => x?.trim());
+      return {id:uid('task'), title:titleRaw, owner:ownerRaw || state.club.manager, due:/^\d{4}-\d{2}-\d{2}$/.test(dueRaw || '') ? dueRaw : addDays(meetingDraft.date, 7), status:'todo', priority:'high', category:'Управление', comment:`Из встречи: ${MEETING_TEMPLATES[meetingDraft.type]?.title || 'рабочая встреча'}`, sourceMeeting:meetingId, createdAt:nowIso(), updatedAt:nowIso()};
+    });
+  }
+
+  function saveMeeting() {
+    const meetingId = uid('meet');
+    const m = {id:meetingId, type:meetingDraft.type, title:MEETING_TEMPLATES[meetingDraft.type]?.title || 'Рабочая встреча', date:meetingDraft.date, participants:meetingDraft.participants, duration:meetingDraft.duration, agenda:meetingDraft.agenda.map((x) => ({...x})), notes:meetingDraft.notes, decision:meetingDraft.decision, tasks:parseMeetingTasks(meetingDraft.tasks, meetingId).map((x) => x.title), updatedAt:nowIso()};
+    state.meetings.push(m);
+    const tasks = parseMeetingTasks(meetingDraft.tasks, meetingId); state.tasks.push(...tasks);
+    meetingDraft = makeMeetingDraft(meetingDraft.type); timer = {total:meetingDraft.duration*60,left:meetingDraft.duration*60,running:false,end:null}; saveTimerLocal();
+    persist(); render(); toast(`Протокол сохранён${tasks.length ? ` · создано задач: ${tasks.length}` : ''}`);
+  }
+
+  function pathSet(obj, path, value) {
+    const parts = path.split('.'); let cur = obj;
+    parts.slice(0,-1).forEach((part,i) => { if (cur[part] == null) cur[part] = /^\d+$/.test(parts[i+1]) ? [] : {}; cur = cur[part]; });
+    cur[parts.at(-1)] = value;
+  }
+
+  function saveTimerLocal() { localStorage.setItem(LS_TIMER, JSON.stringify(timer)); }
+  function tickTimer() {
+    $('#sideClock') && ($('#sideClock').textContent = clockFmt.format(new Date()));
+    if (timer.running && timer.end) {
+      timer.left = Math.max(0, Math.ceil((timer.end - Date.now()) / 1000));
+      if (timer.left <= 0) { timer.running = false; timer.end = null; toast('Время встречи завершено'); }
+      saveTimerLocal();
+    }
+    const el = $('#timerValue'); if (el) el.textContent = clock(timer.left);
+  }
+
+  function toast(message) { clearTimeout(toastTimer); const el = $('#toast'); el.textContent = message; el.classList.add('show'); toastTimer = setTimeout(() => el.classList.remove('show'), 2300); }
+
+  function download(name, content, type='application/json') {
+    const url = URL.createObjectURL(new Blob([content], {type})); const a = document.createElement('a'); a.href = url; a.download = name; a.click(); setTimeout(() => URL.revokeObjectURL(url), 1000);
+  }
+
+  // Auth
+  $('#loginForm').addEventListener('submit', async (e) => {
+    e.preventDefault(); const btn = $('#loginBtn'); btn.disabled = true; $('#loginErr').textContent = '';
+    try {
+      await login($('#role').value, $('#code').value);
+      $('#auth').classList.add('hidden'); $('#app').classList.remove('hidden'); $('#mobileNav').classList.remove('hidden');
+      await pullState(true); render(); startPolling(); toast('Общая база подключена');
+    } catch (err) { $('#loginErr').textContent = err.message || 'Не удалось войти'; }
+    finally { btn.disabled = false; }
+  });
+  $$('.role-card').forEach((b) => b.addEventListener('click', () => { $$('.role-card').forEach((x) => x.classList.toggle('active', x === b)); $('#role').value = b.dataset.role; }));
+  $('#togglePassword').addEventListener('click', () => { const inp = $('#code'); inp.type = inp.type === 'password' ? 'text' : 'password'; $('#togglePassword').textContent = inp.type === 'password' ? 'Показать' : 'Скрыть'; });
+  $('#taskForm').addEventListener('submit', (e) => { e.preventDefault(); saveTaskFromForm(); });
+  $('#dateInput').addEventListener('change', (e) => { date = e.target.value || currentDate(); render(); });
+
+  document.addEventListener('click', async (e) => {
+    const pg = e.target.closest('[data-page]'); if (pg) { setPage(pg.dataset.page); return; }
+    const act = e.target.closest('[data-act]');
+    if (act) {
+      const a = act.dataset.act;
+      if (a === 'prevDay') { date = addDays(date,-1); render(); }
+      if (a === 'nextDay') { date = addDays(date,1); render(); }
+      if (a === 'goToday') { date = currentDate(); render(); }
+      if (a === 'newTask') openTaskModal();
+      if (a === 'closeTaskModal') closeTaskModal();
+      if (a === 'openMore') openMore();
+      if (a === 'closeMore') closeMore();
+      if (a === 'copyReport') { try { await navigator.clipboard.writeText(reportText()); toast('Отчёт скопирован'); } catch { toast('Не удалось скопировать автоматически'); } }
+      if (a === 'markReport') { const d = ensure(date); d.report.sentAt = nowIso(); d.checks.close_report = true; d.updatedAt = nowIso(); persist(); render(); toast('Отправка отчёта зафиксирована'); }
+      if (a === 'manualSync') { if (dirty) await pushState(); else await pullState(true); toast(online ? 'Синхронизация завершена' : 'Облако сейчас недоступно'); }
+      if (a === 'openAdminMeeting') { meetingDraft = makeMeetingDraft('admins'); setPage('meetings'); }
+      if (a === 'addAgenda') { const input = $('#agendaInput'); const v = input?.value.trim(); if (v) { meetingDraft.agenda.push({text:v,done:false}); render(); } }
+      if (a === 'saveMeeting') saveMeeting();
+      if (a === 'timerStart') { if (timer.left <= 0 || timer.total !== meetingDraft.duration*60) timer = {total:meetingDraft.duration*60,left:meetingDraft.duration*60,running:false,end:null}; timer.running = true; timer.end = Date.now() + timer.left*1000; saveTimerLocal(); tickTimer(); }
+      if (a === 'timerPause') { tickTimer(); timer.running = false; timer.end = null; saveTimerLocal(); tickTimer(); }
+      if (a === 'timerReset') { timer = {total:meetingDraft.duration*60,left:meetingDraft.duration*60,running:false,end:null}; saveTimerLocal(); tickTimer(); }
+      if (a === 'saveStaff') { state.settings.staff = [...new Set($('#staffInput').value.split(',').map((x) => x.trim()).filter(Boolean))]; persist(); render(); toast('Команда сохранена'); }
+      if (a === 'exportData') download(`EXTREME_KIDS_Управление_${currentDate()}.json`, JSON.stringify(state,null,2));
+      if (a === 'logout') logout();
+      return;
+    }
+    const toggleTask = e.target.closest('[data-toggle-task]'); if (toggleTask) { const t = state.tasks.find((x) => x.id === toggleTask.dataset.toggleTask); if (t) { t.status = t.status === 'done' ? 'todo' : 'done'; t.updatedAt = nowIso(); persist(); render(); } return; }
+    const editTask = e.target.closest('[data-edit-task]'); if (editTask) { const t = state.tasks.find((x) => x.id === editTask.dataset.editTask); if (t) openTaskModal(t); return; }
+    const delTask = e.target.closest('[data-delete-task]'); if (delTask) { if (confirm('Удалить зада
