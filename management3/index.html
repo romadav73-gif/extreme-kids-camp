@@ -10,24 +10,130 @@
 <script>
 (() => {
   'use strict';
+
   const nativeFetch = window.fetch.bind(window);
-  const namespace = 'ek3-7f4b9d2c6a8e41f0b3d5c7e9a1f24680';
-  const storeUrl = `https://mantledb.sh/v2/${namespace}/workspace`;
-  const users = {
-    sofa: { code: 'SOFA-6382', user: { role: 'sofa', name: 'Софа', title: 'Управляющая' } },
-    roman: { code: 'ROMAN-2746', user: { role: 'roman', name: 'Роман', title: 'Собственник' } }
+  const CONFIG_KEY = 'ek3_secure_workspace_v1';
+  const userProfiles = {
+    sofa: {
+      hash: 'dcd5007b599240aa194f2ca915bf1bd2af374fbc68b590514b24cfcc1d09c42f',
+      user: { role: 'sofa', name: 'Софа', title: 'Управляющая' }
+    },
+    roman: {
+      hash: 'adf61b9d72700f4322eaba333d460a8fc22b41d7a9504607bd4ef81918059708',
+      user: { role: 'roman', name: 'Роман', title: 'Собственник' }
+    }
   };
+
+  function fromBase64Url(value) {
+    const normalized = String(value || '').replace(/-/g, '+').replace(/_/g, '/');
+    const padded = normalized + '='.repeat((4 - normalized.length % 4) % 4);
+    return decodeURIComponent(Array.from(atob(padded), c =>
+      '%' + c.charCodeAt(0).toString(16).padStart(2, '0')
+    ).join(''));
+  }
+
+  function loadConfig() {
+    try {
+      if (location.hash.startsWith('#cfg=')) {
+        const parsed = JSON.parse(fromBase64Url(location.hash.slice(5)));
+        if (!parsed || !/^ek3-[a-f0-9]{32}$/.test(parsed.ns) || !/^[a-f0-9]{64}$/.test(parsed.key)) {
+          throw new Error('Некорректная ссылка доступа');
+        }
+        localStorage.setItem(CONFIG_KEY, JSON.stringify(parsed));
+        history.replaceState(null, '', location.pathname + location.search);
+        return parsed;
+      }
+      const saved = JSON.parse(localStorage.getItem(CONFIG_KEY) || 'null');
+      if (!saved || !saved.ns || !saved.key) return null;
+      return saved;
+    } catch (error) {
+      console.error('CONFIG_ERROR', error);
+      return null;
+    }
+  }
+
+  const workspace = loadConfig();
+  const storeUrl = workspace
+    ? `https://mantledb.sh/v2/${workspace.ns}/workspace`
+    : '';
 
   function json(data, status = 200) {
     return new Response(JSON.stringify(data), {
       status,
-      headers: { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' }
+      headers: {
+        'Content-Type': 'application/json; charset=utf-8',
+        'Cache-Control': 'no-store'
+      }
     });
   }
 
+  function bytesToBase64(bytes) {
+    let binary = '';
+    for (let i = 0; i < bytes.length; i += 0x8000) {
+      binary += String.fromCharCode(...bytes.subarray(i, i + 0x8000));
+    }
+    return btoa(binary);
+  }
+
+  function base64ToBytes(value) {
+    const binary = atob(value);
+    return Uint8Array.from(binary, c => c.charCodeAt(0));
+  }
+
+  function hexToBytes(value) {
+    return Uint8Array.from(value.match(/.{1,2}/g) || [], byte => parseInt(byte, 16));
+  }
+
+  async function sha256(value) {
+    const digest = await crypto.subtle.digest(
+      'SHA-256',
+      new TextEncoder().encode(String(value))
+    );
+    return Array.from(new Uint8Array(digest), b => b.toString(16).padStart(2, '0')).join('');
+  }
+
+  let cryptoKeyPromise = null;
+  function getCryptoKey() {
+    if (!workspace) return Promise.reject(new Error('Откройте персональную ссылку доступа'));
+    if (!cryptoKeyPromise) {
+      cryptoKeyPromise = crypto.subtle.importKey(
+        'raw',
+        hexToBytes(workspace.key),
+        { name: 'AES-GCM' },
+        false,
+        ['encrypt', 'decrypt']
+      );
+    }
+    return cryptoKeyPromise;
+  }
+
+  async function encryptState(state) {
+    const iv = crypto.getRandomValues(new Uint8Array(12));
+    const key = await getCryptoKey();
+    const plain = new TextEncoder().encode(JSON.stringify(state));
+    const encrypted = await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, key, plain);
+    return {
+      iv: bytesToBase64(iv),
+      data: bytesToBase64(new Uint8Array(encrypted))
+    };
+  }
+
+  async function decryptState(record) {
+    const key = await getCryptoKey();
+    const plain = await crypto.subtle.decrypt(
+      { name: 'AES-GCM', iv: base64ToBytes(record.iv) },
+      key,
+      base64ToBytes(record.data)
+    );
+    return JSON.parse(new TextDecoder().decode(plain));
+  }
+
   function makeToken(user) {
-    const raw = encodeURIComponent(JSON.stringify(user)).replace(/%([0-9A-F]{2})/g, (_, p) => String.fromCharCode(parseInt(p, 16)));
-    return `ek3.${btoa(raw)}.sync`;
+    const raw = encodeURIComponent(JSON.stringify(user)).replace(
+      /%([0-9A-F]{2})/g,
+      (_, pair) => String.fromCharCode(parseInt(pair, 16))
+    );
+    return `ek3.${btoa(raw)}.secure`;
   }
 
   function userFromToken(value) {
@@ -36,7 +142,10 @@
       const part = token.split('.')[1];
       if (!part) return null;
       const raw = atob(part);
-      const encoded = Array.from(raw, c => '%' + c.charCodeAt(0).toString(16).padStart(2, '0')).join('');
+      const encoded = Array.from(
+        raw,
+        char => '%' + char.charCodeAt(0).toString(16).padStart(2, '0')
+      ).join('');
       const user = JSON.parse(decodeURIComponent(encoded));
       return user && (user.role === 'sofa' || user.role === 'roman') ? user : null;
     } catch {
@@ -44,22 +153,38 @@
     }
   }
 
-  function header(headers, name) {
+  function getHeader(headers, name) {
     if (!headers) return '';
     if (headers instanceof Headers) return headers.get(name) || '';
-    const key = Object.keys(headers).find(k => k.toLowerCase() === name.toLowerCase());
+    const key = Object.keys(headers).find(
+      item => item.toLowerCase() === name.toLowerCase()
+    );
     return key ? headers[key] : '';
   }
 
   async function readWorkspace() {
-    const response = await nativeFetch(`${storeUrl}?t=${Date.now()}`, { cache: 'no-store' });
+    if (!workspace) throw new Error('Откройте персональную ссылку доступа');
+    const response = await nativeFetch(`${storeUrl}?t=${Date.now()}`, {
+      cache: 'no-store'
+    });
     if (response.status === 404) return { exists: false, revision: 0 };
     if (!response.ok) throw new Error(`Хранилище недоступно: ${response.status}`);
+
     const record = await response.json();
-    if (!record || typeof record !== 'object' || !record.state) return { exists: false, revision: 0 };
+    if (!record || typeof record !== 'object' || !record.data || !record.iv) {
+      return { exists: false, revision: 0 };
+    }
+
+    let state;
+    try {
+      state = await decryptState(record);
+    } catch {
+      throw new Error('Не удалось расшифровать общую базу');
+    }
+
     return {
       exists: true,
-      state: record.state,
+      state,
       revision: Number(record.revision) || 0,
       lastEditor: record.lastEditor || null,
       updatedAt: record.updatedAt || null
@@ -67,21 +192,36 @@
   }
 
   async function writeWorkspace(payload, user) {
+    if (!workspace) throw new Error('Откройте персональную ссылку доступа');
+
     let current = { revision: 0 };
-    try { current = await readWorkspace(); } catch {}
+    try {
+      current = await readWorkspace();
+    } catch (error) {
+      if (!/404|не существует/i.test(String(error.message))) throw error;
+    }
+
+    const encrypted = await encryptState(payload.fullState);
     const record = {
+      version: 1,
       revision: (Number(current.revision) || 0) + 1,
-      state: payload.fullState,
+      iv: encrypted.iv,
+      data: encrypted.data,
       lastEditor: user,
-      updatedAt: new Date().toISOString(),
-      deviceId: payload.deviceId || ''
+      updatedAt: new Date().toISOString()
     };
+
     const response = await nativeFetch(storeUrl, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(record)
     });
-    if (!response.ok) throw new Error(`Не удалось сохранить данные: ${response.status}`);
+    if (!response.ok) {
+      if (response.status === 413) {
+        throw new Error('Объём базы превысил бесплатный лимит хранилища');
+      }
+      throw new Error(`Не удалось сохранить данные: ${response.status}`);
+    }
     return record;
   }
 
@@ -92,33 +232,55 @@
 
     if (url.pathname === '/api/session') {
       if (method !== 'POST') return json({ message: 'Только POST' }, 405);
+      if (!workspace) {
+        return json({
+          message: 'На этом устройстве не настроен доступ. Откройте персональную ссылку ещё раз.'
+        }, 401);
+      }
+
       let body = {};
-      try { body = JSON.parse(init.body || '{}'); } catch {}
+      try {
+        body = JSON.parse(init.body || '{}');
+      } catch {}
+
       const role = String(body.role || '').toLowerCase();
       const code = String(body.code || '').trim().toUpperCase();
-      const account = users[role];
-      if (!account || account.code !== code) return json({ message: 'Неверный код доступа' }, 401);
-      return json({ token: makeToken(account.user), user: account.user });
+      const profile = userProfiles[role];
+      const codeHash = await sha256(code);
+
+      if (!profile || codeHash !== profile.hash) {
+        return json({ message: 'Неверный код доступа' }, 401);
+      }
+      return json({ token: makeToken(profile.user), user: profile.user });
     }
 
     if (url.pathname === '/api/state') {
-      const auth = header(init.headers || (input && input.headers), 'Authorization');
+      const auth = getHeader(init.headers || (input && input.headers), 'Authorization');
       const user = userFromToken(auth);
       if (!user) return json({ message: 'Требуется повторный вход' }, 401);
+
       try {
         if (method === 'GET') return json(await readWorkspace());
+
         if (method === 'PUT') {
           let payload = {};
-          try { payload = JSON.parse(init.body || '{}'); } catch {}
-          if (!payload.fullState || typeof payload.fullState !== 'object') return json({ message: 'Некорректные данные' }, 400);
+          try {
+            payload = JSON.parse(init.body || '{}');
+          } catch {}
+
+          if (!payload.fullState || typeof payload.fullState !== 'object') {
+            return json({ message: 'Некорректные данные' }, 400);
+          }
+
           const record = await writeWorkspace(payload, user);
           return json({
-            state: record.state,
+            state: payload.fullState,
             revision: record.revision,
             lastEditor: record.lastEditor,
             updatedAt: record.updatedAt
           });
         }
+
         return json({ message: 'Метод не поддерживается' }, 405);
       } catch (error) {
         return json({ message: error.message || 'Ошибка синхронизации' }, 503);
@@ -127,6 +289,8 @@
 
     return nativeFetch(input, init);
   };
+
+  window.__EK_WORKSPACE_READY__ = Boolean(workspace);
 })();
 </script>
 </head>
