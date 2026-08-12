@@ -1,0 +1,123 @@
+ender();
+      } else if (!result?.exists) {
+        await pushState(true);
+      } else {
+        revision = Math.max(revision, num(result?.revision));
+      }
+      setSyncUi('online', result?.lastEditor?.name ? `Последнее изменение: ${result.lastEditor.name}` : `Общая база · версия ${revision || '—'}`);
+    } catch (err) {
+      if (err.status === 401) return logout('Сессия завершена. Войдите снова.');
+      online = false; setSyncUi('error', 'Нет связи с облаком · данные остаются на устройстве');
+    } finally { busy = false; }
+  }
+
+  async function pushState(first = false, retry = true) {
+    if ((!dirty && !first) || !session?.token) return;
+    if (!navigator.onLine) { online = false; setSyncUi('error', 'Офлайн · изменения сохранены на устройстве'); return; }
+    setSyncUi('saving');
+    try {
+      const result = await api('/state', {method:'PUT', body:JSON.stringify({baseRevision: first ? 0 : revision, fullState:state, deviceId:navigator.userAgent.slice(0,120)})});
+      if (result?.state) state = normalize(result.state);
+      revision = num(result?.revision) || Math.max(1, revision + 1);
+      dirty = false; online = true; saveLocal();
+      setSyncUi('online', result?.lastEditor?.name ? `Сохранено · ${result.lastEditor.name}` : `Общая база · версия ${revision}`);
+      if (bc) bc.postMessage({type:'synced', revision, at:Date.now()});
+    } catch (err) {
+      if ((err.status === 409 || err.status === 412) && retry) {
+        try {
+          const remote = await api('/state');
+          if (remote?.state) {
+            state = mergeStates(normalize(remote.state), state);
+            revision = num(remote.revision);
+            saveLocal(); dirty = true;
+            return pushState(false, false);
+          }
+        } catch {}
+      }
+      if (err.status === 401) return logout('Сессия завершена. Войдите снова.');
+      online = false; setSyncUi('error', 'Не удалось отправить изменения · они сохранены локально');
+    }
+  }
+
+  function newer(a, b) {
+    const ta = Date.parse(a?.updatedAt || a?.meta?.updatedAt || 0) || 0;
+    const tb = Date.parse(b?.updatedAt || b?.meta?.updatedAt || 0) || 0;
+    return tb >= ta ? b : a;
+  }
+
+  function mergeStates(remote, local) {
+    const out = normalize(remote);
+    Object.keys(local.days || {}).forEach((k) => out.days[k] = out.days[k] ? newer(out.days[k], local.days[k]) : local.days[k]);
+    const mergeById = (a, b) => {
+      const map = new Map(a.map((x) => [x.id, x]));
+      b.forEach((x) => { const old = map.get(x.id); map.set(x.id, old ? newer(old, x) : x); });
+      return [...map.values()];
+    };
+    out.tasks = mergeById(out.tasks, local.tasks || []);
+    out.meetings = mergeById(out.meetings, local.meetings || []);
+    out.monthPlans = {...out.monthPlans, ...local.monthPlans};
+    Object.keys(local.plans?.weeks || {}).forEach((k) => out.plans.weeks[k] = out.plans.weeks[k] ? newer(out.plans.weeks[k], local.plans.weeks[k]) : local.plans.weeks[k]);
+    Object.keys(local.plans?.months || {}).forEach((k) => out.plans.months[k] = out.plans.months[k] ? newer(out.plans.months[k], local.plans.months[k]) : local.plans.months[k]);
+    out.settings = {...out.settings, ...local.settings};
+    out.club = {...out.club, ...local.club};
+    out.meta.updatedAt = nowIso();
+    return out;
+  }
+
+  function setSyncUi(mode, sub = '') {
+    const panel = $('#syncPanel'), save = $('.save-state');
+    if (!panel) return;
+    panel.classList.toggle('online', mode === 'online'); panel.classList.toggle('error', mode === 'error');
+    save?.classList.toggle('saving', mode === 'saving'); save?.classList.toggle('error', mode === 'error');
+    $('#syncText').textContent = mode === 'online' ? 'Синхронизировано' : mode === 'saving' ? 'Сохраняем…' : 'Локальный режим';
+    $('#syncSub').textContent = sub || (mode === 'online' ? `Общая база · версия ${revision || '—'}` : mode === 'saving' ? 'Отправляем изменения в облако' : 'Изменения сохранены на устройстве');
+    $('#savedText').textContent = mode === 'saving' ? 'Сохраняем…' : mode === 'error' ? 'Сохранено локально' : 'Всё сохранено';
+  }
+
+  function logout(message = '') {
+    session = null; localStorage.removeItem(LS_SESSION); clearInterval(pollTimer);
+    $('#app')?.classList.add('hidden'); $('#mobileNav')?.classList.add('hidden'); $('#auth')?.classList.remove('hidden');
+    $('#code').value = ''; $('#loginErr').textContent = message; checkHealth();
+  }
+
+  function startPolling() {
+    clearInterval(pollTimer);
+    pollTimer = setInterval(() => { if (document.visibilityState === 'visible' && !dirty) pullState(); }, 12000);
+  }
+
+  function stats(d = date) {
+    const day = ensure(d), mk = monthKey(d), plan = num(state.monthPlans[mk]?.revenuePlan), fact = sumMonth(mk, 'revenue');
+    const daysInMonth = new Date(Number(mk.slice(0,4)), Number(mk.slice(5,7)), 0).getDate();
+    const dateNumber = Number(d.slice(8,10));
+    const remainingDays = Math.max(1, daysInMonth - dateNumber);
+    const remaining = Math.max(0, plan - fact);
+    const need = remaining / remainingDays;
+    const elapsed = Math.max(1, dateNumber);
+    const forecast = fact / elapsed * daysInMonth;
+    const conversion = num(day.metrics.attended) ? num(day.metrics.sold) / num(day.metrics.attended) * 100 : 0;
+    const renew = num(day.metrics.renewDue) ? num(day.metrics.renewDone) / num(day.metrics.renewDue) * 100 : 0;
+    const checkDone = Object.values(day.checks).filter(Boolean).length;
+    const rhythmDone = Object.values(day.rhythm).filter(Boolean).length;
+    const readiness = Math.round((checkDone / Object.keys(day.checks).length * .7 + rhythmDone / RHYTHM.length * .3) * 100);
+    const progress = plan ? fact / plan * 100 : 0;
+    return {day,mk,plan,fact,remaining,need,forecast,conversion,renew,readiness,progress,daysInMonth,dateNumber};
+  }
+
+  function sumMonth(mk, key) { return Object.entries(state.days).filter(([d]) => monthKey(d) === mk).reduce((sum,[,v]) => sum + num(v.metrics?.[key]), 0); }
+  function tasksFor(filter = taskFilter) {
+    let list = state.tasks.slice();
+    if (taskOwnerFilter !== 'all') list = list.filter((t) => t.owner === taskOwnerFilter);
+    if (filter === 'today') list = list.filter((t) => t.status !== 'done' && t.due <= date);
+    if (filter === 'overdue') list = list.filter((t) => t.status !== 'done' && t.due < date);
+    if (filter === 'done') list = list.filter((t) => t.status === 'done');
+    if (filter === 'all') list = list.filter((t) => t.status !== 'done');
+    return list.sort((a,b) => (a.status === b.status ? (a.due || '').localeCompare(b.due || '') : a.status === 'done' ? 1 : -1));
+  }
+
+  function updateBadges() {
+    if (!$('#navTasks')) return;
+    const d = ensure(date);
+    const open = state.tasks.filter((t) => t.status !== 'done' && t.due <= date).length;
+    const overdue = state.tasks.filter((t) => t.status !== 'done' && t.due < date).length;
+    const alerts = num(d.metrics.unanswered) + (num(d.metrics.unpaidClients) > 0 ? 1 : 0) + (overdue ? 1 : 0);
+    $('#navTasks').textC
