@@ -1,0 +1,35 @@
+инятые решения</label><textarea data-meeting-field="decision" placeholder="Что решили и почему">${esc(meetingDraft.decision)}</textarea></div>
+            <div class="field full"><label>Задачи после встречи</label><textarea data-meeting-field="tasks" placeholder="По одной задаче с новой строки. Можно: задача | ответственный | 2026-08-20">${esc(meetingDraft.tasks)}</textarea></div>
+          </div>
+          <button class="button primary" style="width:100%;margin-top:12px" data-act="saveMeeting">Сохранить протокол и создать задачи</button>
+        </section>
+        <section class="stack">
+          <div class="card meeting-timer"><div class="eyebrow">ТАЙМЕР ВСТРЕЧИ</div><strong id="timerValue">${clock(timer.left)}</strong><p>Шаблон рассчитан на ${meetingDraft.duration} минут.</p><div class="timer-actions"><button class="button primary compact" data-act="timerStart">Старт</button><button class="button ghost compact" data-act="timerPause">Пауза</button><button class="button ghost compact" data-act="timerReset">Сброс</button></div></div>
+          <div class="card"><h2>Последние протоколы</h2><div class="meeting-history">${history.length ? history.map((m) => `<div class="history-card"><h3>${esc(m.title)}</h3><small>${esc(m.date)} · ${esc(m.participants || '')}</small>${m.decision ? `<p><b>Решение:</b> ${esc(m.decision)}</p>` : ''}<div class="task-meta"><span class="tag">${m.tasks?.length || 0} задач</span></div></div>`).join('') : empty('Протоколов пока нет','Проведи первую встречу прямо в системе.')}</div></div>
+        </section>
+      </div>`;
+  }
+
+  function clock(seconds) { const s = Math.max(0, num(seconds)); return `${String(Math.floor(s/60)).padStart(2,'0')}:${String(s%60).padStart(2,'0')}`; }
+
+  function plansPage() {
+    const wk = weekKey(date), mk = monthKey(date), w = state.plans.weeks[wk], m = state.plans.months[mk];
+    return pageHead('ПЛАНЫ И РОСТ', 'Не тушить — улучшать', 'Управляющая отвечает не только за отсутствие проблем, но и за улучшение работы клуба каждую неделю.') + `
+      <div class="grid grid-2">
+        <section class="card"><div class="eyebrow">НЕДЕЛЯ · ${esc(wk)}</div><h2 style="margin-top:8px">Три результата недели</h2><div class="plan-goals">${w.results.map((v,i) => `<div class="goal-row"><span>${i+1}</span><input data-week="results.${i}" value="${esc(v)}" placeholder="Результат недели ${i+1}"></div>`).join('')}</div><div class="form-grid" style="margin-top:12px"><div class="field"><label>Главный риск</label><textarea data-week="risk">${esc(w.risk)}</textarea></div><div class="field"><label>Команда</label><textarea data-week="team">${esc(w.team)}</textarea></div><div class="field"><label>Родители / сервис</label><textarea data-week="parents">${esc(w.parents)}</textarea></div><div class="field"><label>Улучшение одного процесса</label><textarea data-week="improvement">${esc(w.improvement)}</textarea></div><div class="field full"><label>Решение недели</label><textarea data-week="decision">${esc(w.decision)}</textarea></div></div></section>
+        <section class="card"><div class="eyebrow">МЕСЯЦ · ${esc(mk)}</div><h2 style="margin-top:8px">Цели месяца</h2><div class="plan-goals">${m.goals.map((v,i) => `<div class="goal-row"><span>${i+1}</span><input data-month="goals.${i}" value="${esc(v)}" placeholder="Цель месяца ${i+1}"></div>`).join('')}</div><div class="form-grid" style="margin-top:12px"><div class="field"><label>Главный фокус</label><textarea data-month="focus">${esc(m.focus)}</textarea></div><div class="field"><label>Управленческий эксперимент</label><textarea data-month="experiment">${esc(m.experiment)}</textarea></div><div class="field full"><label>Вывод месяца</label><textarea data-month="conclusion">${esc(m.conclusion)}</textarea></div></div></section>
+      </div>
+      <div class="section-title"><div><h2>Пять контуров управления</h2><p>Если один контур провален — клуб начинает зависеть от ручного вмешательства.</p></div></div>
+      <section class="contours"><div class="contour"><i>₽</i><b>Финансы</b><p>Выручка, обязательства, резервы, точка безубыточности.</p></div><div class="contour"><i>↗</i><b>Продажи</b><p>Лиды, пробные, конверсия, продления, длинные форматы.</p></div><div class="contour"><i>♡</i><b>Сервис</b><p>Скорость ответа, родители, обратная связь, жалобы.</p></div><div class="contour"><i>◎</i><b>Команда</b><p>Задачи, дисциплина, обучение, ответственность.</p></div><div class="contour"><i>✓</i><b>Качество</b><p>Безопасность, тренировки, чистота и инциденты.</p></div></section>`;
+  }
+
+  function guidePage() {
+    return pageHead('СИСТЕМА УПРАВЛЯЮЩЕЙ', 'Софа управляет клубом, а не ресепшеном', 'Если непонятно, что делать дальше — этот раздел возвращает к роли, приоритетам и полномочиям.') + `
+      <section class="guide-columns">
+        <div class="guide-card"><span class="guide-number">1</span><h3>Не делать всё самой</h3><ul><li>Поставить задачу.</li><li>Назначить ответственного.</li><li>Дать ресурс и срок.</li><li>Проверить результат.</li><li>Разобрать повторную ошибку.</li></ul></div>
+        <div class="guide-card"><span class="guide-number">2</span><h3>Знать цифры</h3><ul><li>План и факт месяца.</li><li>Лиды и пробные.</li><li>Конверсия.</li><li>Продления.</li><li>Ожидаемые оплаты.</li><li>Загрузка групп.</li></ul></div>
+        <div class="guide-card"><span class="guide-number">3</span><h3>Быть в клубе</h3><ul><li>Общаться с родителями.</li><li>Видеть тренировки.</li><li>Слышать администраторов.</li><li>Ловить проблемы до жалобы.</li><li>Улучшать один процесс в неделю.</li></ul></div>
+      </section>
+      <div class="grid grid-2" style="margin-top:13px">
+        <section class="card"><h2>Порядок приоритетов</h2><div class="decision-table"><div class="decision-row"><b>1. Безопасность</b><span>Травма, ребёнок без присмотра, неисправность, угроза безопасности — немедленно.</span></div><div class="decision-row"><b>2. Родители</b><span>Жалоба, конфликт, возврат, риск негативного отзыва или ухода — быстро признать обращение и довести до решения.</span></div><div class="decision-row"><b>3. Деньги сегодня</b><span>Лиды, пробные, продления, неоплаты, обещанные платежи.</span></div><div class="decision-row"><b>4. Команда</b><span>Смена, задачи, замены, просрочки и дисциплина.</span></div><div class="decision-row"><b>5. Улучшение</b><span>Когда срочное закрыто — улучшить один процесс, а не ждать следующую проблему.</span></div></div></section>
+        <section class="card"><h2>Когда подключать Романа</h2><div class="decision-table"><div class="decision-row"><b>Софа решает сама</b><span>Ежедневные задачи, CRM, стандартные вопросы родителей, контроль пробных и продлений, чистота, обучение и организация смен.</span></div><div class="decision-row"><b>Согласовать</b><span>Новые цены, нестандартная скидка, значимая компенсация, зарплата, найм/увольнение, новый постоянный расход.</span></div><div class="decision-row"><b>Подключить сразу</b><span>Серьёзная травма, юридическая претензия, кассовая недостача, конфликт с ТЦ/УК, кру
