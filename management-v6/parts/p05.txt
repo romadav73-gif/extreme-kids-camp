@@ -1,0 +1,106 @@
+uto minmax(0,1fr) auto;padding:10px}.task-actions button:nth-child(2){display:none}.task-summary,.numbers-summary{grid-template-columns:repeat(2,minmax(0,1fr))}.metric-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:7px}.metric-box{padding:9px}.form-grid{grid-template-columns:1fr}.full{grid-column:auto}.timeline:before{left:28px}.timeline-item{grid-template-columns:54px minmax(0,1fr) auto;gap:9px;padding:11px}.report-preview{min-height:380px}.meeting-templates{grid-template-columns:repeat(2,minmax(0,1fr))}.meeting-timer strong{font-size:48px}.decision-row{grid-template-columns:1fr;gap:5px}.toolbar{align-items:stretch}.segmented{width:100%;overflow:auto}.segmented button{white-space:nowrap;flex:1}.toolbar select{width:100%}.chart-wrap{height:210px}.chart-svg{height:160px}
+  .mobile-nav{position:fixed;display:grid;grid-template-columns:repeat(5,1fr);left:8px;right:8px;bottom:calc(8px + env(safe-area-inset-bottom));z-index:70;border:1px solid var(--line);border-radius:18px;padding:6px;background:rgba(14,16,12,.93);backdrop-filter:blur(22px);box-shadow:0 14px 50px rgba(0,0,0,.38)}.mobile-nav button{border:0;background:transparent;color:#7f847a;border-radius:12px;padding:7px 3px;display:flex;flex-direction:column;align-items:center;gap:4px}.mobile-nav button i{font-style:normal;font-size:13px;height:16px;display:grid;place-items:center}.mobile-nav button span{font-size:7px;font-weight:800}.mobile-nav button.active{background:rgba(254,235,0,.09);color:var(--yellow)}.toast{left:12px;right:12px;bottom:calc(82px + env(safe-area-inset-bottom));max-width:none}.sheet-backdrop{padding:0}.modal-backdrop{align-items:end;padding:0}.modal-card{width:100%;max-height:88dvh;border-radius:24px 24px 0 0;padding:18px 14px calc(18px + env(safe-area-inset-bottom))}.modal-actions{position:sticky;bottom:0;background:#11130f;padding-top:9px}
+}
+@media(max-width:390px){.auth-copy h1{font-size:43px}.auth-copy-main{margin-top:34px}.auth-card{margin-top:6px}.role-switch{gap:7px}.role-card{grid-template-columns:auto 1fr;padding:9px}.role-card i{display:none}.kpi-grid,.metric-grid{grid-template-columns:1fr 1fr}.kpi strong{font-size:18px}.task-summary,.numbers-summary{grid-template-columns:1fr 1fr}.meeting-templates{grid-template-columns:1fr}.mobile-nav button span{font-size:6.5px}}
+@media(prefers-reduced-motion:reduce){*,*:before,*:after{animation-duration:.001ms!important;animation-iteration-count:1!important;scroll-behavior:auto!important;transition-duration:.001ms!important}}
+
+</style>
+</head>
+<body data-build="EK-OPS-V6-20260813">
+  <div class="ambient" aria-hidden="true">
+    <div class="ambient-orb orb-a"></div>
+    <div class="ambient-orb orb-b"></div>
+    <div class="ambient-grid"></div>
+    <div class="ambient-noise"></div>
+  </div>
+
+  <section id="auth" class="auth-shell">
+    <div class="auth-stage">
+      <div class="auth-copy">
+        <div class="brand-line">
+          <div class="brand-logo-wrap">
+            <img class="brand-logo" src="https://ek-ui2-logo.vercel.app/logo.webp" alt="EXTREME KIDS" onerror="this.style.display='none';this.nextElementSibling.style.display='grid'">
+            <span class="brand-logo-fallback">EK</span>
+          </div>
+          <div class="brand-meta">
+            <b>EXTREME KIDS</b>
+            <span>ТРОПАРЁВО · УПРАВЛЕНИЕ 3.0</span>
+          </div>
+        </div>
+        <div class="auth-copy-main">
+          <div class="eyebrow">ОПЕРАЦИОННАЯ СИСТЕМА КЛУБА</div>
+          <h1>Клуб работает<br><span>по системе.</span></h1>
+          <p>Один центр для ежедневной работы управляющей: цифры, задачи, родители, команда, собрания и итог собственнику.</p>
+          <div class="auth-pills">
+            <span><i></i>Общая база</span>
+            <span><i></i>Синхронизация</span>
+            <span><i></i>Телефон + компьютер</span>
+          </div>
+        </div>
+        <div class="auth-foot">EXTREME KIDS Тропарёво · Москва</div>
+      </div>
+
+      <div class="auth-card glass-card">
+        <div class="auth-card-top">
+          <div>
+            <div class="eyebrow">ЗАЩИЩЁННЫЙ ВХОД</div>
+            <h2>Войти в систему</h2>
+          </div>
+          <div class="cloud-indicator" id="authCloud"><span></span><b>Проверяем облако</b></div>
+        </div>
+        <p class="muted">Выберите роль. Роман и Софа работают с одной общей базой.</p>
+        <div class="role-switch" id="roleSwitch">
+          <button type="button" class="role-card active" data-role="sofa">
+            <span class="role-avatar">С</span>
+            <span><b>Софа</b><small>Управляющая</small></span>
+            <i>✓</i>
+          </button>
+          <button type="button" class="role-card" data-role="roman">
+            <span class="role-avatar">Р</span>
+            <span><b>Роман</b><small>Собственник</small></span>
+            <i>✓</i>
+          </button>
+        </div>
+        <form id="loginForm" class="auth-form" autocomplete="on">
+          <input type="hidden" id="role" value="sofa">
+          <label for="code">Личный код доступа</label>
+          <div class="password-field">
+            <input id="code" type="password" autocomplete="current-password" placeholder="Введите код" required>
+            <button type="button" id="togglePassword" aria-label="Показать пароль">Показать</button>
+          </div>
+          <div id="loginErr" class="form-error" role="alert"></div>
+          <button id="loginBtn" class="button primary button-xl" type="submit">
+            <span>Открыть управление</span><i>↗</i>
+          </button>
+        </form>
+        <div class="auth-security"><span>●</span> Код не хранится в браузере. Авторизация проверяется сервером.</div>
+      </div>
+    </div>
+  </section>
+
+  <div id="app" class="app-shell hidden">
+    <aside class="sidebar">
+      <div class="side-brand">
+        <div class="brand-logo-wrap small">
+          <img class="brand-logo" src="https://ek-ui2-logo.vercel.app/logo.webp" alt="" onerror="this.style.display='none';this.nextElementSibling.style.display='grid'">
+          <span class="brand-logo-fallback">EK</span>
+        </div>
+        <div><b>Управление 3.0</b><span>EXTREME KIDS Тропарёво</span></div>
+      </div>
+
+      <div class="side-day glass-soft">
+        <span>РАБОЧИЙ ДЕНЬ · МОСКВА</span>
+        <b id="sideDate">—</b>
+        <small id="sideClock">—</small>
+      </div>
+
+      <nav class="side-nav" id="sideNav">
+        <div class="nav-caption">ОПЕРАЦИОНКА</div>
+        <button class="active" data-page="today"><i>⌂</i><span>Сегодня</span><em id="navAlert">0</em></button>
+        <button data-page="tasks"><i>✓</i><span>Задачи</span><em id="navTasks">0</em></button>
+        <button data-page="numbers"><i>⌁</i><span>Цифры клуба</span></button>
+        <button data-page="rhythm"><i>◷</i><span>Ритм дня</span></button>
+        <button data-page="report"><i>▤</i><span>Ежедневный отчёт</span></button>
+        <div class="nav-caption">УПРАВЛЕНИЕ</div>
+        <button data-page="meetings"><i>◎</i><span>Собрания</span></button>
+        <button data-p
