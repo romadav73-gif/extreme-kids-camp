@@ -1,0 +1,5 @@
+557cf39ddd7302ca0e1f6de4f9417d251ee37d1351126993b4d0d8ee847166cc  public-assets/vanya.jpg
+2f3c7e0c749e7985741b5750c9dccfd9ae83831d5dbd2f31dafc07b9ff889680  public-assets/stas.jpg
+0d0ea7dafd1b510c9d10a8a19385cde260893ca831e165dd5b85e6e73650de8f  public-assets/tasya.jpg
+aa89d90ca32e676289dd86d3acc17dc1d5f9f43453dbea37b13d242e391b6884  public-assets/pair.jpg
+5d74583f36455f7607404bd6aa9bc123f5f92f43b28e3283a6a9c6d42a0aa0af  public-assets/logo.jpg
