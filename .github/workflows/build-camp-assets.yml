@@ -18,21 +18,28 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Decode original mentor photos
+      - name: Download original images without recompression
         shell: bash
         run: |
           set -euo pipefail
           mkdir -p public-assets
-          for name in vanya stas tasya pair; do
-            cat assets-original-b64/$name/*.txt | tr -d '\r\n' | base64 --decode > public-assets/$name.jpg
-          done
-          test "$(stat -c%s public-assets/vanya.jpg)" = "238423"
-          test "$(stat -c%s public-assets/stas.jpg)" = "217857"
-          test "$(stat -c%s public-assets/tasya.jpg)" = "216344"
-          test "$(stat -c%s public-assets/pair.jpg)" = "255955"
-          sha256sum public-assets/*.jpg > public-assets/SHA256SUMS.txt
+          curl -L --fail --retry 4 'https://oaisdmntprnortheu.blob.core.windows.net/files/00000000-6858-81f4-a50d-f05e116c1564/raw?se=2026-08-12T20%3A44%3A09Z&sp=r&sv=2026-02-06&sr=b&scid=019ff77f-2eb3-71c9-9a31-4a37a2bd3e82&skoid=5bfb38a5-43fb-4c63-80a1-6ae1e97e2e16&sktid=a48cca56-e6da-484e-a814-9c849652bcb3&skt=2026-08-12T05%3A10%3A56Z&ske=2026-08-13T05%3A10%3A56Z&sks=b&skv=2026-02-06&sig=SYksTw0y3pPPLBu2WHZ4enzkeV6j1qfYiYdX6%2B5TlkA%3D' -o public-assets/vanya.jpg
+          curl -L --fail --retry 4 'https://oaisdmntprnortheu.blob.core.windows.net/files/00000000-4ab8-81f4-a36e-4142d3251ea5/raw?se=2026-08-12T20%3A44%3A09Z&sp=r&sv=2026-02-06&sr=b&scid=019ff77f-2eb3-71c9-9a31-4a37a2bd3e82&skoid=5bfb38a5-43fb-4c63-80a1-6ae1e97e2e16&sktid=a48cca56-e6da-484e-a814-9c849652bcb3&skt=2026-08-12T06%3A43%3A42Z&ske=2026-08-13T06%3A43%3A42Z&sks=b&skv=2026-02-06&sig=x9%2BDNgzIcdcGF8axNEzwrt1zyaVDwh7Xq6UQPP1zVFY%3D' -o public-assets/stas.jpg
+          curl -L --fail --retry 4 'https://oaisdmntprpolandcentral.blob.core.windows.net/files/00000000-cd7c-820a-b0e8-09e54d127af4/raw?se=2026-08-12T20%3A44%3A09Z&sp=r&sv=2026-02-06&sr=b&scid=019ff77f-2eb3-71c9-9a31-4a37a2bd3e82&skoid=5bfb38a5-43fb-4c63-80a1-6ae1e97e2e16&sktid=a48cca56-e6da-484e-a814-9c849652bcb3&skt=2026-08-12T05%3A25%3A36Z&ske=2026-08-13T05%3A25%3A36Z&sks=b&skv=2026-02-06&sig=Pd5sQfn8lhS6EH%2B%2BwAjAZV4Qyv%2BGLMPfV3RURi/Z0Ww%3D' -o public-assets/tasya.jpg
+          curl -L --fail --retry 4 'https://oaisdmntprnortheu.blob.core.windows.net/files/00000000-c8ac-81f4-9a5b-864a4e6f187b/raw?se=2026-08-12T20%3A44%3A09Z&sp=r&sv=2026-02-06&sr=b&scid=019ff77f-2eb3-71c9-9a31-4a37a2bd3e82&skoid=5bfb38a5-43fb-4c63-80a1-6ae1e97e2e16&sktid=a48cca56-e6da-484e-a814-9c849652bcb3&skt=2026-08-12T18%3A26%3A06Z&ske=2026-08-13T18%3A26%3A06Z&sks=b&skv=2026-02-06&sig=fbRmd0mxqKVD3vARUakPNQQi/ya%2By5V3LySjI0HQQgs%3D' -o public-assets/pair.jpg
+          curl -L --fail --retry 4 'https://oaisdmntpritalynorth.blob.core.windows.net/files/00000000-5300-8246-99f4-51fef4eabb6d/raw?se=2026-08-12T20%3A44%3A09Z&sp=r&sv=2026-02-06&sr=b&scid=019ff77f-2eb3-71c9-9a31-4a37a2bd3e82&skoid=5bfb38a5-43fb-4c63-80a1-6ae1e97e2e16&sktid=a48cca56-e6da-484e-a814-9c849652bcb3&skt=2026-08-12T18%3A18%3A11Z&ske=2026-08-13T18%3A18%3A11Z&sks=b&skv=2026-02-06&sig=b2Ph240ihC7pNiC75GvroRdNjgOtXgEgJ/8YMt/zkUk%3D' -o public-assets/logo.jpg
+          cat > /tmp/checksums <<'EOF'
+          557cf39ddd7302ca0e1f6de4f9417d251ee37d1351126993b4d0d8ee847166cc  public-assets/vanya.jpg
+          2f3c7e0c749e7985741b5750c9dccfd9ae83831d5dbd2f31dafc07b9ff889680  public-assets/stas.jpg
+          0d0ea7dafd1b510c9d10a8a19385cde260893ca831e165dd5b85e6e73650de8f  public-assets/tasya.jpg
+          aa89d90ca32e676289dd86d3acc17dc1d5f9f43453dbea37b13d242e391b6884  public-assets/pair.jpg
+          5d74583f36455f7607404bd6aa9bc123f5f92f43b28e3283a6a9c6d42a0aa0af  public-assets/logo.jpg
+          EOF
+          sed -i 's/^          //' /tmp/checksums
+          sha256sum -c /tmp/checksums
+          cp /tmp/checksums public-assets/SHA256SUMS.txt
 
-      - name: Commit decoded assets
+      - name: Commit exact original assets
         shell: bash
         run: |
           set -euo pipefail
@@ -42,6 +49,6 @@ jobs:
           if git diff --cached --quiet; then
             echo "Assets already up to date"
           else
-            git commit -m "Build original mentor photos"
+            git commit -m "Publish original camp mentor photos"
             git push
           fi
