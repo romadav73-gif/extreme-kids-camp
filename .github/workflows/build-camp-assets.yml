@@ -1,0 +1,47 @@
+name: Build original camp photos
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - asset-build.trigger
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Decode original mentor photos
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p public-assets
+          for name in vanya stas tasya pair; do
+            cat assets-original-b64/$name/*.txt | tr -d '\r\n' | base64 --decode > public-assets/$name.jpg
+          done
+          test "$(stat -c%s public-assets/vanya.jpg)" = "238423"
+          test "$(stat -c%s public-assets/stas.jpg)" = "217857"
+          test "$(stat -c%s public-assets/tasya.jpg)" = "216344"
+          test "$(stat -c%s public-assets/pair.jpg)" = "255955"
+          sha256sum public-assets/*.jpg > public-assets/SHA256SUMS.txt
+
+      - name: Commit decoded assets
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add public-assets
+          if git diff --cached --quiet; then
+            echo "Assets already up to date"
+          else
+            git commit -m "Build original mentor photos"
+            git push
+          fi
