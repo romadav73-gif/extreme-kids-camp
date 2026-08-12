@@ -1,0 +1,57 @@
+, i];
+    return null;
+  }
+
+  function reportText() {
+    const s = stats(); const d = s.day;
+    const taskDone = state.tasks.filter((t) => t.status === 'done' && t.updatedAt?.slice(0,10) === date).length;
+    const overdue = state.tasks.filter((t) => t.status !== 'done' && t.due < date).length;
+    return `EXTREME KIDS ТРОПАРЁВО — ИТОГ ДНЯ\n${prettyDate(date)}\n\nЦИФРЫ\n• Выручка за день: ${money(d.metrics.revenue)}\n• Выручка за месяц: ${money(s.fact)} / план ${money(s.plan)} (${pct(s.progress)})\n• До плана осталось: ${money(s.remaining)}\n• Необходимый темп: ${money(s.need)} в день\n• Прогноз месяца: ${money(s.forecast)}\n\nПРОДАЖИ И ВОРОНКА\n• Групповые: ${num(d.metrics.groupCount)} на ${money(d.metrics.groupAmount)}\n• Индивидуальные: ${num(d.metrics.individualCount)} на ${money(d.metrics.individualAmount)}\n• Аня: ${num(d.metrics.anyaSalesCount)} продаж / ${money(d.metrics.anyaSalesAmount)}\n• Адель: ${num(d.metrics.adelSalesCount)} продаж / ${money(d.metrics.adelSalesAmount)}\n• Новые лиды: ${num(d.metrics.leads)}, без ответа: ${num(d.metrics.unanswered)}\n• Пробные: записано ${num(d.metrics.booked)}, подтверждено ${num(d.metrics.confirmed)}, пришло ${num(d.metrics.attended)}, купило ${num(d.metrics.sold)}\n• Конверсия пробной в продажу: ${pct(s.conversion)}\n• Продления: ${num(d.metrics.renewDone)} из ${num(d.metrics.renewDue)}\n• Неоплачено: ${num(d.metrics.unpaidClients)} клиентов / ${money(d.metrics.unpaidAmount)}\n• Ожидаемые оплаты: ${money(d.metrics.expected)}\n\nУПРАВЛЕНИЕ\n• Выполнено задач сегодня: ${taskDone}\n• Просрочено задач: ${overdue}\n• Чистота: ${pct(d.metrics.cleanliness)}\n• Загрузка групп: ${pct(d.metrics.occupancy)}\n\nНеоплаченные клиенты / следующий шаг:\n${d.notes.unpaidNext || '—'}\n\nЧто решено Софой без подключения Романа:\n${d.notes.solved || '—'}\n\nПроблемы родителей / жалобы:\n${d.notes.parents || '—'}\n\nКоманда / дисциплина:\n${d.notes.team || '—'}\n\nИнциденты:\n${d.notes.incidents || '—'}\n\nРиски:\n${d.notes.risks || '—'}\n\nТребует решения Романа:\n${d.notes.owner || '—'}\n\nТРИ РЕЗУЛЬТАТА НА ЗАВТРА\n1. ${d.report.tomorrow[0] || '—'}\n2. ${d.report.tomorrow[1] || '—'}\n3. ${d.report.tomorrow[2] || '—'}${d.notes.tomorrowComment ? `\n\nКомментарий:\n${d.notes.tomorrowComment}` : ''}`;
+  }
+
+  function reportPage() {
+    const d = ensure(date); const sent = d.report.sentAt;
+    return pageHead('ЕЖЕДНЕВНЫЙ ОТЧЁТ', 'Итог собственнику', 'Цифры собираются автоматически. Софа добавляет только то, что невозможно понять из цифр.', `<button class="button ghost compact" data-act="copyReport">Скопировать</button><button class="button primary compact" data-act="markReport">${sent ? 'Обновить отметку' : 'Зафиксировать отправку'}</button>`) + `
+      <div class="grid grid-2">
+        <section class="card">
+          <div class="report-status ${sent ? 'sent' : ''}"><i>●</i><b>${sent ? 'Отчёт зафиксирован' : 'Отчёт ещё не зафиксирован'}</b><span>${sent ? new Date(sent).toLocaleString('ru-RU') : 'до 21:30'}</span></div>
+          <div class="form-grid">
+            ${noteField('Неоплаченные клиенты / следующий шаг','unpaidNext',d.notes.unpaidNext)}
+            ${noteField('Что решено самостоятельно','solved',d.notes.solved)}
+            ${noteField('Родители / жалобы','parents',d.notes.parents)}
+            ${noteField('Команда / дисциплина','team',d.notes.team)}
+            ${noteField('Инциденты','incidents',d.notes.incidents)}
+            ${noteField('Риски','risks',d.notes.risks)}
+            <div class="field full"><label>Что требует решения Романа</label><textarea data-note="owner" placeholder="Только вопросы, которые нельзя решить в полномочиях управляющей">${esc(d.notes.owner)}</textarea></div>
+            <div class="field full"><label>Три результата на завтра</label><div class="plan-goals">${d.report.tomorrow.map((v,i) => `<div class="goal-row"><span>${i+1}</span><input data-tomorrow="${i}" value="${esc(v)}" placeholder="Результат ${i+1}"></div>`).join('')}</div></div>
+            <div class="field full"><label>Дополнительный комментарий</label><textarea data-note="tomorrowComment" placeholder="Необязательно">${esc(d.notes.tomorrowComment)}</textarea></div>
+          </div>
+        </section>
+        <section class="card"><div class="section-title" style="margin:0 0 10px"><div><h2>Готовый текст</h2><p>Можно сразу отправить Роману.</p></div><button class="button ghost" data-act="copyReport">Копировать</button></div><pre id="reportPreview" class="report-preview">${esc(reportText())}</pre></section>
+      </div>`;
+  }
+
+  function noteField(label, key, value) { return `<div class="field"><label>${esc(label)}</label><textarea data-note="${key}" placeholder="Если ничего нет — можно оставить пустым">${esc(value)}</textarea></div>`; }
+
+  function makeMeetingDraft(type) {
+    const t = MEETING_TEMPLATES[type] || MEETING_TEMPLATES.admins;
+    return {type, date:date || currentDate(), participants:t.participants, duration:t.duration, agenda:t.agenda.map((text) => ({text,done:false})), notes:'', decision:'', tasks:''};
+  }
+
+  function meetingsPage() {
+    const t = MEETING_TEMPLATES[meetingDraft.type] || MEETING_TEMPLATES.admins;
+    const history = state.meetings.slice().sort((a,b) => b.date.localeCompare(a.date)).slice(0,6);
+    return pageHead('СОБРАНИЯ', 'Решения превращаются в задачи', 'Не просто поговорить. Зафиксировать факты, принять решение, назначить ответственного и срок.') + `
+      <div class="meeting-templates">${Object.entries(MEETING_TEMPLATES).map(([id,x]) => `<button class="meeting-template ${meetingDraft.type === id ? 'active' : ''}" data-meeting-type="${id}"><b>${esc(x.title)}</b><span>${x.duration} минут · ${esc(x.description)}</span></button>`).join('')}</div>
+      <div class="grid grid-2">
+        <section class="card">
+          <div class="form-grid">
+            <div class="field"><label>Дата</label><input type="date" data-meeting-field="date" value="${esc(meetingDraft.date)}"></div>
+            <div class="field"><label>Участники</label><input data-meeting-field="participants" value="${esc(meetingDraft.participants)}"></div>
+          </div>
+          <div class="section-title" style="margin:18px 0 8px"><div><h2>Повестка</h2><p>${esc(t.description)}</p></div></div>
+          <div class="agenda-list">${meetingDraft.agenda.map((a,i) => `<div class="agenda-row ${a.done ? 'done' : ''}"><input type="checkbox" data-agenda-toggle="${i}" ${a.done ? 'checked' : ''}><span>${esc(a.text)}</span><button data-agenda-delete="${i}">×</button></div>`).join('')}</div>
+          <div class="agenda-add"><input id="agendaInput" placeholder="Добавить пункт"><button class="button ghost compact" data-act="addAgenda">Добавить</button></div>
+          <div class="form-grid" style="margin-top:14px">
+            <div class="field full"><label>Факты / заметки</label><textarea data-meeting-field="notes" placeholder="Коротко фиксируй факты, цифры и причины">${esc(meetingDraft.notes)}</textarea></div>
+            <div class="field full"><label>Пр
