@@ -1,0 +1,139 @@
+lub, ...(x.club || {})},
+      monthPlans:x.monthPlans && typeof x.monthPlans === 'object' ? x.monthPlans : {},
+      days:x.days && typeof x.days === 'object' ? x.days : {},
+      tasks:Array.isArray(x.tasks) ? x.tasks : [],
+      meetings:Array.isArray(x.meetings) ? x.meetings : [],
+      plans:{weeks:x.plans?.weeks || {}, months:x.plans?.months || {}},
+      settings:{...b.settings, ...(x.settings || {}), staff:Array.isArray(x.settings?.staff) ? x.settings.staff : b.settings.staff},
+      meta:{...b.meta, ...(x.meta || {})}
+    };
+    Object.keys(s.days).forEach((d) => normalizeDay(s.days[d]));
+    s.tasks = s.tasks.map((t) => ({
+      id:t.id || uid('task'), title:t.title || 'Без названия', owner:t.owner || s.club.manager, due:t.due || currentDate(),
+      status:t.status === 'done' ? 'done' : 'todo', priority:t.priority || 'medium', category:t.category || 'Операционка',
+      comment:t.comment || '', sys:t.sys || null, sourceMeeting:t.sourceMeeting || null,
+      createdAt:t.createdAt || s.meta.updatedAt || nowIso(), updatedAt:t.updatedAt || s.meta.updatedAt || nowIso()
+    }));
+    s.meetings = s.meetings.map((m) => ({
+      ...m, id:m.id || uid('meet'), type:m.type || 'admins', title:m.title || MEETING_TEMPLATES[m.type]?.title || 'Рабочая встреча',
+      date:m.date || currentDate(), participants:m.participants || '', agenda:Array.isArray(m.agenda) ? m.agenda : [], notes:m.notes || '',
+      decision:m.decision || '', tasks:Array.isArray(m.tasks) ? m.tasks : [], updatedAt:m.updatedAt || s.meta.updatedAt || nowIso()
+    }));
+    return s;
+  }
+
+  function normalizeDay(day) {
+    const b = dayBase();
+    day.priorities = Array.isArray(day.priorities) ? [...day.priorities.slice(0,3), '', '', ''].slice(0,3) : b.priorities;
+    day.checks = {...b.checks, ...(day.checks || {})};
+    day.rhythm = {...b.rhythm, ...(day.rhythm || {})};
+    day.metrics = {...b.metrics, ...(day.metrics || {})};
+    day.notes = {...b.notes, ...(day.notes || {})};
+    day.report = {...b.report, ...(day.report || {}), tomorrow:Array.isArray(day.report?.tomorrow) ? [...day.report.tomorrow.slice(0,3),'','',''].slice(0,3) : b.report.tomorrow};
+    day.updatedAt = day.updatedAt || nowIso();
+    return day;
+  }
+
+  let state = normalize(safeJson(localStorage.getItem(LS_STATE)));
+  let session = safeJson(localStorage.getItem(LS_SESSION));
+  let date = currentDate();
+  let page = location.hash.replace('#','') || 'today';
+  let revision = 0;
+  let dirty = false;
+  let busy = false;
+  let online = navigator.onLine;
+  let saveTimer = null;
+  let pollTimer = null;
+  let toastTimer = null;
+  let taskFilter = 'today';
+  let taskOwnerFilter = 'all';
+  let meetingDraft = makeMeetingDraft('admins');
+  let timer = safeJson(localStorage.getItem(LS_TIMER)) || {total:2700,left:2700,running:false,end:null};
+  const bc = 'BroadcastChannel' in window ? new BroadcastChannel(CHANNEL) : null;
+
+  function safeJson(value) { try { return value ? JSON.parse(value) : null; } catch { return null; } }
+  function stamp() { state.meta.updatedAt = nowIso(); }
+  function ensure(d) {
+    const mk = monthKey(d), wk = weekKey(d);
+    if (!state.monthPlans[mk]) state.monthPlans[mk] = {revenuePlan:2500000, occupancyTarget:75, updatedAt:nowIso()};
+    if (!state.plans.weeks[wk]) state.plans.weeks[wk] = {results:['','',''], risk:'', team:'', parents:'', improvement:'', decision:'', updatedAt:nowIso()};
+    if (!state.plans.months[mk]) state.plans.months[mk] = {goals:['','',''], focus:'', experiment:'', conclusion:'', updatedAt:nowIso()};
+    if (!state.days[d]) state.days[d] = dayBase();
+    normalizeDay(state.days[d]);
+    ensureRecurring(d);
+    return state.days[d];
+  }
+
+  function ensureRecurring(d) {
+    const wd = dayOfWeek(d);
+    const recurring = [['daily', 'Ежедневный отчёт до 21:30', 'high', 'Отчёт']];
+    if (wd === 1) recurring.push(['week', 'Встреча Романа и Софы — 60 минут', 'medium', 'Управление']);
+    if (wd === 2) recurring.push(['admins', 'Собрание администраторов — 45 минут', 'high', 'Команда']);
+    if (wd === 3) recurring.push(['sales', 'Разбор воронки продаж — 20 минут', 'medium', 'Продажи']);
+    if (wd === 5) recurring.push(['quality', 'Контроль качества и дисциплины — 30 минут', 'medium', 'Качество']);
+    recurring.forEach(([kind,title,priority,category]) => {
+      const sys = `${d}:${kind}`;
+      if (!state.tasks.some((t) => t.sys === sys)) {
+        state.tasks.push({id:uid('task'), sys, title, owner:state.club.manager, due:d, status:'todo', priority, category, comment:'', createdAt:nowIso(), updatedAt:nowIso()});
+      }
+    });
+  }
+
+  function saveLocal() {
+    stamp();
+    localStorage.setItem(LS_STATE, JSON.stringify(state));
+  }
+
+  function persist({renderNow=false} = {}) {
+    saveLocal(); dirty = true; setSyncUi('saving'); updateBadges();
+    if (bc) bc.postMessage({type:'local-change', at:Date.now()});
+    clearTimeout(saveTimer); saveTimer = setTimeout(pushState, 700);
+    if (renderNow) render();
+  }
+
+  async function api(path, options = {}) {
+    const headers = {'Content-Type':'application/json', ...(options.headers || {})};
+    if (session?.token) headers.Authorization = `Bearer ${session.token}`;
+    const response = await fetch(`${API}${path}`, {...options, headers, cache:'no-store'});
+    const text = await response.text();
+    let data = null; try { data = text ? JSON.parse(text) : {}; } catch { data = {message:text}; }
+    if (!response.ok) {
+      const err = new Error(data?.message || `Ошибка сервера ${response.status}`);
+      err.status = response.status; err.data = data; throw err;
+    }
+    return data;
+  }
+
+  async function checkHealth() {
+    const el = $('#authCloud');
+    try {
+      const h = await api('/health');
+      online = Boolean(h?.ok);
+      if (el) { el.classList.toggle('online', online); el.classList.toggle('error', !online); $('b', el).textContent = online ? 'Облако подключено' : 'Облако недоступно'; }
+      return h;
+    } catch {
+      online = false;
+      if (el) { el.classList.remove('online'); el.classList.add('error'); $('b', el).textContent = navigator.onLine ? 'Нет связи с сервером' : 'Нет интернета'; }
+      return null;
+    }
+  }
+
+  async function login(role, code) {
+    const result = await api('/session', {method:'POST', body:JSON.stringify({role, code:String(code || '').trim().toUpperCase()})});
+    if (!result?.token || !result?.user) throw new Error('Сервер не вернул рабочую сессию');
+    session = result;
+    localStorage.setItem(LS_SESSION, JSON.stringify(session));
+    return result;
+  }
+
+  async function pullState(force = false) {
+    if (!session?.token || busy || (!force && dirty)) return;
+    busy = true;
+    try {
+      const result = await api('/state');
+      online = true;
+      if (result?.exists && result?.state && (force || num(result.revision) > revision)) {
+        state = normalize(result.state);
+        revision = num(result.revision);
+        ensure(date); saveLocal();
+        if (force || document.visibilityState === 'visible') r
