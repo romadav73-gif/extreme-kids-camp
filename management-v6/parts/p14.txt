@@ -1,0 +1,64 @@
+пный возврат, публичный репутационный риск.</span></div></div></section>
+      </div>
+      <div class="section-title"><div><h2>Стандарты сервиса</h2><p>Короткие нормы, которые Софа контролирует у всей команды.</p></div></div>
+      <section class="contours"><div class="contour"><i>10</i><b>Ответ</b><p>До 10 минут в рабочее время.</p></div><div class="contour"><i>2ч</i><b>Пробная</b><p>Подтверждение за день и за 2 часа.</p></div><div class="contour"><i>↗</i><b>После пробной</b><p>Обратная связь и предложение в тот же день.</p></div><div class="contour"><i>24</i><b>Жалоба</b><p>Признать быстро, решение — до 24 часов.</p></div><div class="contour"><i>4</i><b>Прогресс</b><p>Обратная связь не реже одного раза в 4 занятия.</p></div></section>`;
+  }
+
+  function archivePage() {
+    const dates = Object.keys(state.days).sort().reverse();
+    return pageHead('АРХИВ', 'История работы клуба', 'Каждый день остаётся в системе: цифры, готовность, задачи и статус отчёта.') + `<section class="archive-grid">${dates.length ? dates.map((d) => { const s = stats(d); const sent = Boolean(s.day.report.sentAt); return `<button class="archive-card" data-open-date="${d}"><span>${sent ? 'ОТЧЁТ ЗАКРЫТ' : 'ЧЕРНОВИК'}</span><b>${esc(prettyDate(d))}</b><small>Выручка ${money(s.day.metrics.revenue)} · готовность ${s.readiness}% · ${sent ? 'отчёт зафиксирован' : 'отчёт не зафиксирован'}</small><div class="mini-progress"><i style="width:${s.readiness}%"></i></div></button>`; }).join('') : empty('Архив пока пуст','После первого рабочего дня история появится здесь.')}</section>`;
+  }
+
+  function settingsPage() {
+    const mk = monthKey(date), p = state.monthPlans[mk];
+    return pageHead('НАСТРОЙКИ', 'Система и синхронизация', 'Проверь облако, план месяца, состав команды и сделай резервную копию.', `<button class="button danger compact" data-act="logout">Выйти</button>`) + `
+      <div class="grid grid-2">
+        <section class="card"><h2>Общая база</h2><div class="grid grid-3"><div class="status-box ${online ? 'good' : 'warn'}"><span>Статус</span><b>${online ? 'Подключена' : 'Локально'}</b><small>${online ? 'Изменения передаются между устройствами.' : 'Изменения не потеряются и отправятся после восстановления связи.'}</small></div><div class="status-box"><span>Версия базы</span><b>${revision || '—'}</b><small>Серверная ревизия общей рабочей базы.</small></div><div class="status-box"><span>Пользователь</span><b>${esc(session?.user?.name || '—')}</b><small>${esc(session?.user?.title || '')}</small></div></div><div class="settings-actions"><button class="button primary compact" data-act="manualSync">Синхронизировать</button><button class="button ghost compact" data-act="exportData">Резервная копия</button><label class="button ghost compact" style="cursor:pointer">Восстановить<input id="importData" type="file" accept="application/json" hidden></label></div></section>
+        <section class="card"><h2>Параметры клуба</h2><div class="form-grid"><div class="field full"><label>Название клуба</label><input data-setting="club.name" value="${esc(state.club.name)}"></div><div class="field"><label>Управляющая</label><input data-setting="club.manager" value="${esc(state.club.manager)}"></div><div class="field"><label>План выручки месяца</label><input type="number" data-setting="month.revenuePlan" value="${num(p.revenuePlan)}"></div><div class="field"><label>Целевая загрузка, %</label><input type="number" data-setting="month.occupancyTarget" value="${num(p.occupancyTarget)}"></div><div class="field full"><label>Команда — через запятую</label><textarea id="staffInput">${esc(state.settings.staff.join(', '))}</textarea></div></div><button class="button primary compact" style="margin-top:10px" data-act="saveStaff">Сохранить команду</button></section>
+      </div>
+      <section class="card" style="margin-top:13px"><h2>Как работает сохранение</h2><p>Каждое изменение сначала записывается на устройство, затем автоматически отправляется в общую облачную базу. Если два устройства изменили данные одновременно, система загружает последнюю серверную версию, объединяет изменения и повторяет сохранение. При отсутствии интернета можно продолжать работу; после восстановления связи данные отправятся автоматически.</p></section>`;
+  }
+
+  const PAGES = {today:todayPage,tasks:tasksPage,numbers:numbersPage,rhythm:rhythmPage,report:reportPage,meetings:meetingsPage,plans:plansPage,guide:guidePage,archive:archivePage,settings:settingsPage};
+
+  function render() {
+    ensure(date);
+    const content = $('#content'); if (!content) return;
+    $('#dateInput').value = date;
+    $('#sideDate').textContent = prettyDate(date);
+    $('#mobileDateText').textContent = shortDate(date);
+    $('#avatar').textContent = (session?.user?.name || '—').slice(0,1).toUpperCase();
+    $('#userName').textContent = session?.user?.name || '—';
+    $('#userRole').textContent = session?.user?.title || '—';
+    content.innerHTML = (PAGES[page] || PAGES.today)();
+    $$('[data-page]').forEach((el) => el.classList.toggle('active', el.dataset.page === page));
+    updateBadges(); tickTimer();
+    if (page === 'report') refreshReportPreview();
+  }
+
+  function refreshReportPreview() { const p = $('#reportPreview'); if (p) p.textContent = reportText(); }
+
+  function openTaskModal(task = null) {
+    const modal = $('#taskModal');
+    $('#taskId').value = task?.id || '';
+    $('#taskModalTitle').textContent = task ? 'Редактировать задачу' : 'Новая задача';
+    $('#taskTitle').value = task?.title || '';
+    $('#taskDue').value = task?.due || date;
+    $('#taskPriority').value = task?.priority || 'medium';
+    $('#taskCategory').value = task?.category || 'Операционка';
+    $('#taskComment').value = task?.comment || '';
+    $('#taskOwner').innerHTML = state.settings.staff.map((x) => `<option value="${esc(x)}">${esc(x)}</option>`).join('');
+    $('#taskOwner').value = task?.owner || state.club.manager;
+    modal.classList.remove('hidden'); modal.setAttribute('aria-hidden','false');
+    setTimeout(() => $('#taskTitle').focus(), 60);
+  }
+  function closeTaskModal() { $('#taskModal').classList.add('hidden'); $('#taskModal').setAttribute('aria-hidden','true'); }
+  function openMore() { $('#moreSheet').classList.remove('hidden'); $('#moreSheet').setAttribute('aria-hidden','false'); }
+  function closeMore() { $('#moreSheet').classList.add('hidden'); $('#moreSheet').setAttribute('aria-hidden','true'); }
+
+  function saveTaskFromForm() {
+    const id = $('#taskId').value, title = $('#taskTitle').value.trim(); if (!title) return;
+    const payload = {title, owner:$('#taskOwner').value, due:$('#taskDue').value || date, priority:$('#taskPriority').value, category:$('#taskCategory').value, comment:$('#taskComment').value.trim(), updatedAt:nowIso()};
+    if (id) { const t = state.tasks.find((x) => x.id === id); if (t) Object.assign(t, payload); }
+    else state.tasks.push({id:uid('task'), status:'todo', createdAt:nowIso(), sys:null, sourceMeeting:null, ...payload});
+    persist(); closeTaskMod
