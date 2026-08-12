@@ -1,0 +1,68 @@
+чу?')) { state.tasks = state.tasks.filter((x) => x.id !== delTask.dataset.deleteTask); persist(); render(); toast('Задача удалена'); } return; }
+    const tf = e.target.closest('[data-task-filter]'); if (tf) { taskFilter = tf.dataset.taskFilter; render(); return; }
+    const rhythm = e.target.closest('[data-rhythm]'); if (rhythm) { const d = ensure(date); const i = num(rhythm.dataset.rhythm); d.rhythm[i] = !d.rhythm[i]; d.updatedAt = nowIso(); persist(); render(); return; }
+    const agendaToggle = e.target.closest('[data-agenda-toggle]'); if (agendaToggle) { const i = num(agendaToggle.dataset.agendaToggle); if (meetingDraft.agenda[i]) { meetingDraft.agenda[i].done = !meetingDraft.agenda[i].done; render(); } return; }
+    const agendaDelete = e.target.closest('[data-agenda-delete]'); if (agendaDelete) { meetingDraft.agenda.splice(num(agendaDelete.dataset.agendaDelete),1); render(); return; }
+    const mt = e.target.closest('[data-meeting-type]'); if (mt) { meetingDraft = makeMeetingDraft(mt.dataset.meetingType); timer = {total:meetingDraft.duration*60,left:meetingDraft.duration*60,running:false,end:null}; saveTimerLocal(); render(); return; }
+    const od = e.target.closest('[data-open-date]'); if (od) { date = od.dataset.openDate; setPage('today'); return; }
+  });
+
+  document.addEventListener('change', (e) => {
+    if (e.target.id === 'taskOwnerFilter') { taskOwnerFilter = e.target.value; render(); return; }
+    if (e.target.matches('[data-check]')) { const d = ensure(date); d.checks[e.target.dataset.check] = e.target.checked; d.updatedAt = nowIso(); persist(); render(); return; }
+    if (e.target.matches('[data-meeting-field]')) { meetingDraft[e.target.dataset.meetingField] = e.target.value; if (e.target.dataset.meetingField === 'duration') meetingDraft.duration = Math.max(5, num(e.target.value)); return; }
+  });
+
+  document.addEventListener('input', (e) => {
+    const d = ensure(date); let changed = false;
+    if (e.target.dataset.priority !== undefined) { d.priorities[num(e.target.dataset.priority)] = e.target.value; d.updatedAt = nowIso(); changed = true; }
+    if (e.target.dataset.metric) { d.metrics[e.target.dataset.metric] = num(e.target.value); d.updatedAt = nowIso(); changed = true; }
+    if (e.target.dataset.note) { d.notes[e.target.dataset.note] = e.target.value; d.updatedAt = nowIso(); changed = true; }
+    if (e.target.dataset.tomorrow !== undefined) { d.report.tomorrow[num(e.target.dataset.tomorrow)] = e.target.value; d.updatedAt = nowIso(); changed = true; }
+    if (e.target.dataset.week) { const wk = state.plans.weeks[weekKey(date)]; pathSet(wk, e.target.dataset.week, e.target.value); wk.updatedAt = nowIso(); changed = true; }
+    if (e.target.dataset.month) { const mk = state.plans.months[monthKey(date)]; pathSet(mk, e.target.dataset.month, e.target.value); mk.updatedAt = nowIso(); changed = true; }
+    if (e.target.dataset.meetingField) meetingDraft[e.target.dataset.meetingField] = e.target.value;
+    if (e.target.dataset.setting) {
+      const key = e.target.dataset.setting;
+      if (key === 'club.name') state.club.name = e.target.value;
+      if (key === 'club.manager') state.club.manager = e.target.value;
+      if (key === 'month.revenuePlan') state.monthPlans[monthKey(date)].revenuePlan = num(e.target.value);
+      if (key === 'month.occupancyTarget') state.monthPlans[monthKey(date)].occupancyTarget = num(e.target.value);
+      state.monthPlans[monthKey(date)].updatedAt = nowIso(); changed = true;
+    }
+    if (changed) { persist(); refreshReportPreview(); }
+  });
+
+  document.addEventListener('change', async (e) => {
+    if (e.target.id !== 'importData') return;
+    const file = e.target.files?.[0]; if (!file) return;
+    try { const imported = normalize(JSON.parse(await file.text())); state = imported; dirty = true; saveLocal(); await pushState(); render(); toast('Резервная копия восстановлена'); }
+    catch { toast('Не удалось прочитать резервную копию'); }
+    e.target.value = '';
+  });
+
+  window.addEventListener('hashchange', () => { const h = location.hash.replace('#',''); if (PAGES[h]) { page = h; render(); } });
+  window.addEventListener('online', async () => { online = true; if (dirty) await pushState(); else await pullState(true); });
+  window.addEventListener('offline', () => { online = false; setSyncUi('error', 'Нет интернета · продолжаем локально'); });
+  document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible' && session?.token && !dirty) pullState(); });
+  bc?.addEventListener('message', (e) => { if (e.data?.type === 'synced' && !dirty) pullState(true); if (e.data?.type === 'local-change') { const local = safeJson(localStorage.getItem(LS_STATE)); if (local && !dirty) { state = normalize(local); render(); } } });
+
+  setInterval(() => {
+    tickTimer();
+    const today = currentDate();
+    if (date === addDays(today,-1) && clockFmt.format(new Date()).startsWith('00:')) { date = today; ensure(date); render(); }
+  }, 1000);
+
+  async function boot() {
+    ensure(date); render(); checkHealth();
+    if (!session?.token) return;
+    $('#auth').classList.add('hidden'); $('#app').classList.remove('hidden'); $('#mobileNav').classList.remove('hidden');
+    await pullState(true); render(); startPolling();
+  }
+
+  boot();
+})();
+
+</script>
+</body>
+</html>
