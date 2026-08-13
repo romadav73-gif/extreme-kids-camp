@@ -1,0 +1,32 @@
+name: Verify final parent link
+on:
+  push:
+    paths:
+      - '.github/workflows/verify-final-link.yml'
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check published immutable page
+        shell: bash
+        run: |
+          set -euo pipefail
+          URL='https://rawcdn.githack.com/romadav73-gif/extreme-kids-camp/2754cdbc6bb7b5df87f3393f19c0e628a87bee30/index.html'
+          curl -L --fail --retry 3 --max-time 60 -sS -D /tmp/h -o /tmp/site.html "$URL"
+          echo "URL=$URL"
+          sed -n '1,20p' /tmp/h
+          wc -c /tmp/site.html
+          python3 - <<'PY'
+from pathlib import Path
+import re, base64, hashlib
+s=Path('/tmp/site.html').read_text(encoding='utf-8')
+assert len(s.encode()) > 2_500_000, len(s)
+assert '5 ДНЕЙ.' in s
+assert '<b>Иван</b>' in s
+assert '<b>Стас</b>' in s
+assert 'BANDA BOX' in s and 'KIBERone' in s
+assert 'ДНЕИ' not in s and '5 ДНИ.' not in s
+imgs=re.findall(r'data:image/[^;]+;base64,([A-Za-z0-9+/=]+)',s)
+assert len(imgs)>=5, len(imgs)
+print('VERIFY_OK bytes=',len(s.encode()),'embedded_images=',len(imgs),'smallest_b64=',min(map(len,imgs)))
+PY
