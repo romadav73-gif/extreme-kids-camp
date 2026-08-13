@@ -1,0 +1,48 @@
+name: Final parent site
+on:
+  push:
+    branches: [main]
+permissions:
+  contents: write
+jobs:
+  fix:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - name: Switch site to original mentor photos
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('index.html')
+          s=p.read_text(encoding='utf-8')
+          if '<!-- FINAL-PARENT-HQ-V4 -->' in s:
+              raise SystemExit(0)
+          s=s.replace('<!doctype html>','<!doctype html><!-- FINAL-PARENT-HQ-V4 -->',1)
+          s=s.replace("--brand:url('https://extreme-kids-troparevo-camp.vercel.app/api/sprite');--mentors:url('https://extreme-kids-troparevo-camp.vercel.app/api/mentor')","--brand:url('public-assets/logo.jpg')")
+          s=s.replace('.brandLogo,.heroLogo,.guestArt{background-image:var(--brand);background-size:300% 300%;background-repeat:no-repeat}', '.brandLogo,.heroLogo{background-image:var(--brand);background-size:cover;background-position:center;background-repeat:no-repeat}')
+          s=s.replace('h1{font-size:clamp(62px,9vw,124px);line-height:.83;', 'h1{font-size:clamp(62px,9vw,124px);line-height:.89;')
+          s=s.replace('.line{display:block;overflow:hidden}', '.line{display:block;overflow:hidden;padding-bottom:.035em}')
+          old='.mentorArt{position:absolute;inset:0;background-image:var(--mentors);background-size:200% 200%;background-repeat:no-repeat;filter:brightness(.82) saturate(.98) contrast(1.02);transform:scale(1.002);transition:opacity .34s var(--e),transform .62s var(--e),filter .34s var(--e);image-rendering:auto}'
+          new='.mentorArt{position:absolute;inset:0;background-size:cover;background-position:center;background-repeat:no-repeat;filter:brightness(.9) saturate(1.02) contrast(1.02);transform:scale(1.002);transition:opacity .42s var(--e),transform .75s var(--e),filter .42s var(--e);image-rendering:auto}'
+          s=s.replace(old,new)
+          s=s.replace('.pos-vanya{background-position:100% 0}.pos-stas{background-position:0 0}.pos-tasya{background-position:0 100%}.pos-pair{background-position:100% 100%}', '')
+          s=s.replace('.banda{background-position:100% 0}.kiber{background-position:0 50%}', '.banda{background:radial-gradient(circle at 28% 25%,rgba(255,230,0,.32),transparent 25%),linear-gradient(145deg,#171717,#050505)}.kiber{background:radial-gradient(circle at 76% 24%,rgba(255,230,0,.24),transparent 24%),linear-gradient(145deg,#101010,#050505)}')
+          s=s.replace('@media(max-width:620px){.w{width:min(100% - 24px,1180px)}nav{top:8px;height:60px}.brandLogo{width:43px;height:43px}.brand b{font-size:10px}nav>.btn{display:none}.hero{min-height:auto;padding:105px 0 55px}.hg{gap:15px}h1{font-size:clamp(48px,15.5vw,70px)}', '@media(max-width:620px){.w{width:min(100% - 24px,1180px)}nav{top:8px;height:60px}.brandLogo{width:43px;height:43px}.brand b{font-size:10px}nav>.btn{display:none}.hero{min-height:auto;padding:105px 0 55px}.hg{gap:15px}h1{font-size:clamp(42px,13vw,62px);line-height:.93;letter-spacing:-.05em}')
+          s=s.replace('Выберите день — фотография наставника и программа сменятся мягко и плавно. Фото загружаются в HQ-качестве.','Выберите день — и посмотрите, кто будет рядом с детьми и как построена программа этого дня.')
+          s=s.replace('<div class="mentorArt pos-vanya" id="art"></div>','<div class="mentorArt" id="art" style="background-image:url(\'public-assets/stas.jpg\');background-position:center 30%"></div>')
+          marker="const days=[...document.querySelectorAll('.day')]"
+          s=s.replace(marker,"const MI=[['public-assets/stas.jpg','center 30%'],['public-assets/vanya.jpg','center 30%'],['public-assets/tasya.jpg','center 30%'],['public-assets/tasya.jpg','center 30%'],['public-assets/pair.jpg','center 30%']];"+marker)
+          s=s.replace("art.className='mentorArt '+D[i].p;mn.textContent=D[i].n;", "art.className='mentorArt';art.style.backgroundImage=`url('${MI[i][0]}')`;art.style.backgroundPosition=MI[i][1];mn.textContent=D[i].n;")
+          s=s.replace('<span class="word">5 ДНЕ.</span>','<span class="word">5 ДНЕЙ.</span>')
+          s=s.replace('<span class="word">5 ДНИ.</span>','<span class="word">5 ДНЕЙ.</span>')
+          p.write_text(s,encoding='utf-8')
+          PY
+      - name: Commit final site
+        run: |
+          if git diff --quiet; then exit 0; fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add index.html
+          git commit -m 'Use original mentor photos in parent site'
+          git push
