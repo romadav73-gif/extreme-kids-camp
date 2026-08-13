@@ -64,5 +64,69 @@
 })();
 
 </script>
+<script>
+(()=>{
+  const css=`
+  :root{--muted:#b2b7ae!important;--sidebar:292px}
+  body{font-size:16px!important;line-height:1.55!important}
+  #app{font-size:16px!important}
+  #app p,#app li{font-size:15px!important;line-height:1.7!important}
+  #app small,#app label{font-size:14px!important;line-height:1.58!important}
+  #app input,#app textarea,#app select{font-size:15px!important;line-height:1.5!important}
+  #app .button,#app button{font-size:14px}
+  #app .page-head p{font-size:16px!important;line-height:1.7!important;color:#bcc1b8!important}
+  #app .card p{font-size:15px!important;line-height:1.72!important;color:#cbd0c7!important}
+  #app .card-sub{font-size:14px!important;line-height:1.65!important;color:#b4bab0!important}
+  #app .hero-copy{font-size:15px!important;line-height:1.7!important}
+  #app .kpi>span{font-size:13px!important;line-height:1.4!important}
+  #app .kpi small{font-size:13px!important;line-height:1.55!important}
+  #app .tag{font-size:13px!important;padding:6px 9px!important;line-height:1.2!important}
+  #app .task-main b{font-size:15px!important;line-height:1.5!important}
+  #app .task-card{padding:14px 15px!important}
+  #app .metric-section-head h3{font-size:15px!important}
+  #app .metric-section-head span{font-size:13px!important}
+  #app .metric-box{padding:14px!important}
+  #app .metric-box label{font-size:14px!important;line-height:1.45!important;color:#b9beb5!important;min-height:0!important}
+  #app .metric-box input{font-size:15px!important}
+  #app .metric-box small{font-size:13px!important;line-height:1.5!important;color:#a2a89e!important}
+  #app .chart-labels{font-size:13px!important}
+  #app .timeline-item{padding:16px!important}
+  #app .timeline-item time{font-size:16px!important}
+  #app .timeline-copy b{font-size:16px!important;line-height:1.4!important}
+  #app .timeline-copy small{font-size:14px!important;line-height:1.62!important;color:#b8bdb4!important}
+  #app .check-group>h3{font-size:13px!important}
+  #app .check-row{padding:13px 14px!important}
+  #app .check-row b{font-size:15px!important}
+  #app .check-row small{font-size:14px!important;line-height:1.62!important;color:#b0b5ac!important}
+  #app .report-preview{font-size:15px!important;line-height:1.75!important}
+  #app .report-status b{font-size:14px!important}
+  #app .report-status span{font-size:13px!important}
+  #app .meeting-template b{font-size:15px!important}
+  #app .meeting-template span{font-size:14px!important;line-height:1.6!important}
+  #app .agenda-row span{font-size:14px!important}
+  #app .history-card h3{font-size:15px!important}
+  #app .history-card small{font-size:13px!important}
+  #app .history-card p{font-size:14px!important}
+  #app .contour b{font-size:14px!important}
+  #app .contour p{font-size:14px!important;line-height:1.62!important;color:#b1b6ad!important}
+  #app .guide-card{padding:18px!important}
+  #app .guide-card h3{font-size:16px!important;margin-bottom:9px!important}
+  #app .guide-card ul,#app .guide-card li{font-size:15px!important;line-height:1.78!important;color:#bec3ba!important}
+  #app .decision-row b,#app .decision-row span{font-size:14px!important;line-height:1.65!important}
+  #app .archive-card>span,#app .status-box>span,#app .nav-caption,#app .save-state,#app .profile-pill small{font-size:13px!important}
+  #app .archive-card small,#app .status-box small{font-size:14px!important;line-height:1.6!important}
+  #app .side-brand span,#app .side-day>span,#app .sync-panel small{font-size:13px!important}
+  #app .side-nav button{font-size:14px!important;padding:12px 11px!important}
+  #app .mobile-nav button span{font-size:13px!important}
+  #auth p,#auth small,#auth label{font-size:14px!important;line-height:1.6!important}
+  @media(max-width:820px){body,#app{font-size:15px!important}#app p,#app li{font-size:15px!important}#app small,#app label{font-size:14px!important}#app .metric-box label{font-size:14px!important}#app .timeline-copy small{font-size:14px!important}#app .guide-card li{font-size:14px!important}#app .mobile-nav button span{font-size:13px!important}}
+  `;
+  const s=document.createElement('style');
+  s.id='ek-v7-readable-final';
+  s.textContent=css;
+  document.head.appendChild(s);
+  document.documentElement.dataset.typography='v7-readable';
+})();
+</script>
 </body>
 </html>
