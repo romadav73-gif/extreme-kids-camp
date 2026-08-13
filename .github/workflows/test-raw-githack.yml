@@ -1,0 +1,20 @@
+name: TestRawGithack
+on:
+  push:
+    paths:
+      - .github/workflows/test-raw-githack.yml
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Browser test raw.githack.com
+        shell: bash
+        run: |
+          npm init -y >/dev/null 2>&1
+          npm install playwright@1.55.0 --no-save >/dev/null 2>&1
+          npx playwright install chromium >/dev/null 2>&1
+          cat >/tmp/t.cjs <<'JS'
+          const {chromium}=require('playwright');
+          (async()=>{const b=await chromium.launch({headless:true});const p=await b.newPage({viewport:{width:430,height:932}});const u='https://raw.githack.com/romadav73-gif/extreme-kids-camp/6fb8a09a2e6de88a33e966c3f1a99c590ca382e9/index.html';const r=await p.goto(u,{waitUntil:'load',timeout:90000});await p.waitForTimeout(1200);console.log('HTTP',r.status(),'TITLE',await p.title(),'H1',await p.locator('h1').first().textContent().catch(()=>''),'IVAN',await p.locator('text=Иван').count(),'STAS',await p.locator('text=Стас').count(),'IMGS',await p.locator('img').count(),'SW',await p.evaluate(()=>document.documentElement.scrollWidth),'VW',await p.evaluate(()=>innerWidth));await b.close();})().catch(e=>{console.error(e);process.exit(1)})
+JS
+          NODE_PATH="$PWD/node_modules" node /tmp/t.cjs
