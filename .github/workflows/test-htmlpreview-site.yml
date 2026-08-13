@@ -1,0 +1,43 @@
+name: Test htmlpreview parent site
+on:
+  push:
+    paths:
+      - .github/workflows/test-htmlpreview-site.yml
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Install Playwright
+        run: |
+          npm init -y >/dev/null 2>&1
+          npm install playwright@1.55.0 --no-save >/dev/null 2>&1
+          npx playwright install chromium >/dev/null 2>&1
+      - name: Verify htmlpreview site
+        shell: bash
+        run: |
+          cat >/tmp/check.cjs <<'JS'
+          const { chromium } = require('playwright');
+          (async()=>{
+            const raw='https://raw.githubusercontent.com/romadav73-gif/extreme-kids-camp/6fb8a09a2e6de88a33e966c3f1a99c590ca382e9/index.html';
+            const url='https://htmlpreview.github.io/?'+raw;
+            const browser=await chromium.launch({headless:true});
+            for(const [w,h] of [[1440,1000],[430,932],[390,844]]){
+              const ctx=await browser.newContext({viewport:{width:w,height:h}});
+              const page=await ctx.newPage();
+              const errors=[]; page.on('pageerror',e=>errors.push(String(e)));
+              const resp=await page.goto(url,{waitUntil:'load',timeout:90000});
+              await page.waitForTimeout(3500);
+              const r=await page.evaluate(()=>({title:document.title,h1:document.querySelector('h1')?.textContent?.replace(/\s+/g,' ').trim()||'',text:document.body.innerText,sw:document.documentElement.scrollWidth,vw:innerWidth,imgs:[...document.images].map(i=>({alt:i.alt,w:i.naturalWidth,h:i.naturalHeight,complete:i.complete})),mentor:document.getElementById('mentorImage')?{alt:document.getElementById('mentorImage').alt,w:document.getElementById('mentorImage').naturalWidth,h:document.getElementById('mentorImage').naturalHeight}:null}));
+              console.log('RESULT',JSON.stringify({w,h,status:resp?.status(),title:r.title,h1:r.h1,ivan:r.text.includes('Иван'),stas:r.text.includes('Стас'),banda:r.text.includes('BANDA BOX'),kiber:r.text.includes('KIBERone'),scroll:`${r.sw}/${r.vw}`,imgs:r.imgs.length,mentor:r.mentor,errors}));
+              if(resp?.status()!==200) throw new Error('HTTP');
+              if(!r.h1.includes('5 ДНЕЙ')||!r.h1.includes('ДВИЖЕНИЕ')||!r.h1.includes('ВПЕЧАТЛЕНИЯ')) throw new Error('wrong h1');
+              if(!r.text.includes('Иван')||!r.text.includes('Стас')||!r.text.includes('BANDA BOX')||!r.text.includes('KIBERone')) throw new Error('content missing');
+              if(r.sw>r.vw+3) throw new Error('overflow');
+              if(errors.length) throw new Error(errors.join(';'));
+              if(r.imgs.length<1||r.imgs.some(i=>!i.complete||i.w<100||i.h<100)) throw new Error('broken image');
+              await ctx.close();
+            }
+            await browser.close(); console.log('HTMLPREVIEW_OK');
+          })().catch(e=>{console.error(e);process.exit(1)});
+          JS
+          NODE_PATH="$PWD/node_modules" node /tmp/check.cjs
