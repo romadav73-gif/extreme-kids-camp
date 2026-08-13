@@ -1,0 +1,21 @@
+name: InspectFinalLink
+on:
+  push:
+    paths:
+      - .github/workflows/inspect-final-link.yml
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Inspect
+        run: |
+          url="https://rawcdn.githack.com/romadav73-gif/extreme-kids-camp/2754cdbc6bb7b5df87f3393f19c0e628a87bee30/index.html"
+          curl -L -sS --max-time 90 -D /tmp/headers -o /tmp/site.html "$url" || true
+          echo HEADERS
+          cat /tmp/headers || true
+          echo SIZE
+          wc -c /tmp/site.html || true
+          echo CHECKS
+          for q in "5 ДНЕЙ." "Иван" "Стас" "BANDA BOX" "KIBERone"; do printf '%s=' "$q"; grep -F -c "$q" /tmp/site.html || true; done
+          printf 'DATA_IMAGES='; grep -o "data:image/" /tmp/site.html | wc -l || true
+          head -c 120 /tmp/site.html || true
