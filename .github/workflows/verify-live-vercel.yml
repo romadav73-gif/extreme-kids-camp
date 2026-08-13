@@ -1,0 +1,53 @@
+name: Verify live Vercel camp site
+
+on:
+  push:
+    paths:
+      - .github/workflows/verify-live-vercel.yml
+  workflow_dispatch:
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Install Playwright
+        run: |
+          npm init -y >/dev/null 2>&1
+          npm install playwright@1.55.0 --no-save >/dev/null 2>&1
+          npx playwright install --with-deps chromium >/dev/null 2>&1
+
+      - name: Check live production URL
+        shell: bash
+        run: |
+          cat >/tmp/check.cjs <<'JS'
+          const { chromium } = require('playwright');
+          (async()=>{
+            const browser=await chromium.launch({headless:true});
+            for(const [w,h] of [[1440,1000],[1024,900],[430,932],[390,844],[360,800]]){
+              const ctx=await browser.newContext({viewport:{width:w,height:h},deviceScaleFactor:1});
+              const page=await ctx.newPage();
+              const errors=[];
+              page.on('pageerror',e=>errors.push(String(e)));
+              const resp=await page.goto('https://extreme-kids-troparevo-camp.vercel.app',{waitUntil:'domcontentloaded',timeout:90000});
+              await page.waitForFunction(()=>document.querySelector('h1')?.textContent?.includes('5 ДНЕЙ'),null,{timeout:90000});
+              await page.waitForTimeout(1800);
+              const r=await page.evaluate(()=>{
+                const text=document.body.innerText;
+                const h1=document.querySelector('h1')?.textContent?.replace(/\s+/g,' ').trim()||'';
+                const imgs=[...document.images].map(i=>({alt:i.alt,w:i.naturalWidth,h:i.naturalHeight,complete:i.complete}));
+                return {h1,text,sw:document.documentElement.scrollWidth,vw:innerWidth,imgs};
+              });
+              console.log('LIVE',JSON.stringify({w,h,status:resp?.status(),h1:r.h1,ivan:r.text.includes('Иван'),stas:r.text.includes('Стас'),banda:r.text.includes('BANDA BOX'),kiber:r.text.includes('KIBERone'),scroll:`${r.sw}/${r.vw}`,images:r.imgs.length,errors}));
+              if(resp?.status()!==200) throw new Error('HTTP '+resp?.status());
+              if(!r.h1.includes('5 ДНЕЙ')||!r.h1.includes('ДВИЖЕНИЕ')||!r.h1.includes('ВПЕЧАТЛЕНИЯ')) throw new Error('Wrong heading');
+              if(!r.text.includes('Иван')||!r.text.includes('Стас')||!r.text.includes('BANDA BOX')||!r.text.includes('KIBERone')) throw new Error('Missing parent content');
+              if(r.sw>r.vw+3) throw new Error(`Horizontal overflow ${r.sw}/${r.vw}`);
+              if(errors.length) throw new Error(errors.join('; '));
+              if(r.imgs.length<5||r.imgs.some(i=>!i.complete||i.w<100||i.h<100)) throw new Error('Broken or low-resolution image');
+              await ctx.close();
+            }
+            await browser.close();
+            console.log('LIVE_VERCEL_OK');
+          })().catch(e=>{console.error(e);process.exit(1)});
+          JS
+          NODE_PATH="$PWD/node_modules" node /tmp/check.cjs
