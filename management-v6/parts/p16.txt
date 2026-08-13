@@ -60,73 +60,36 @@
     await pullState(true); render(); startPolling();
   }
 
+
+
+  // V8 compact: motivation + weekly/monthly result tracking
+  const V8_BASE=100000,V8_KPI=20000,V8_TIERS=[[5000000,80000],[4500000,70000],[4000000,60000],[3500000,45000],[3000000,30000],[2700000,20000],[2400000,10000],[0,0]];
+  const V8_KPIS=[['sales','Продажи и CRM','Нет потерянных лидов, пробных, продлений и неоплат.'],['team','Команда','Задачи, сроки, смены, просрочки и обучение под контролем.'],['service','Родители и сервис','Обращения, жалобы, обратная связь и риски ухода отработаны.'],['quality','Качество управления','Отчёты, чистота, аудиты, инциденты и планы ведутся системно.']];
+  function v8prep(){const mk=monthKey(date),wk=weekKey(date),mp=state.monthPlans[mk],w=state.plans.weeks[wk],m=state.plans.months[mk];if(!mp.salary)mp.salary={checks:{},closedAt:null,snapshot:null};V8_KPIS.forEach(([k])=>{if(typeof mp.salary.checks[k]!=='boolean')mp.salary.checks[k]=false});if(!Array.isArray(w.resultStatus))w.resultStatus=[0,0,0];if(!('revenueTarget'in w))w.revenueTarget=0;if(!('closedAt'in w)){w.closedAt=null;w.snapshot=null}if(!Array.isArray(m.goalStatus))m.goalStatus=[0,0,0];if(!('closedAt'in m)){m.closedAt=null;m.snapshot=null}return{mk,wk,mp,w,m}}
+  function v8weekSum(wk){return Object.entries(state.days).filter(([d])=>weekKey(d)===wk).reduce((s,[,v])=>s+num(v.metrics?.revenue),0)}
+  function v8tier(f){for(const[t,b]of V8_TIERS)if(f>=t)return b;return 0}function v8coef(p){return p>=100?1:p>=95?.75:p>=90?.5:0}
+  function v8salary(mk){const mp=state.monthPlans[mk],s=mp.salary,fact=sumMonth(mk,'revenue'),plan=num(mp.revenuePlan),pr=plan?fact/plan*100:0,k=V8_KPIS.filter(([x])=>s.checks[x]).length*5000,raw=v8tier(fact),scale=raw*v8coef(pr);return{fact,plan,pr,k,raw,scale,total:V8_BASE+k+scale,final:s.snapshot?.amount??null}}
+  function v8task(scope,key){const cat=scope==='week'?`План недели ${key}`:`План месяца ${key}`,list=state.tasks.filter(t=>t.category===cat),done=list.filter(t=>t.status==='done').length;return{cat,list,done,total:list.length,pct:list.length?done/list.length*100:0}}
+  function v8gp(values,status){const ix=values.map((v,i)=>String(v||'').trim()?i:-1).filter(i=>i>=0);return ix.length?ix.reduce((s,i)=>s+num(status[i]||0),0)/ix.length*100:0}
+  function v8st(score,closed){const sh=score>=90?'Выполнено':score>=70?'Частично':'Не выполнено',cl=score>=90?'good':score>=70?'warn':'danger';return{sh,cl,label:closed?sh:`В работе · ${Math.round(score)}%`}}
+  function v8period(scope){const{mk,wk,mp,w,m}=v8prep(),isW=scope==='week',x=isW?w:m,key=isW?wk:mk,target=isW?num(w.revenueTarget):num(mp.revenuePlan),fact=isW?v8weekSum(wk):sumMonth(mk,'revenue'),rp=target?fact/target*100:0,gp=v8gp(isW?w.results:m.goals,isW?w.resultStatus:m.goalStatus),ts=v8task(scope,key);let a=[],tw=0;if(target){a.push([rp,50]);tw+=50}if((isW?w.results:m.goals).some(v=>String(v||'').trim())){a.push([gp,30]);tw+=30}if(ts.total){a.push([ts.pct,20]);tw+=20}const score=tw?a.reduce((s,[v,z])=>s+clamp(v,0,100)*z,0)/tw:0;return{x,key,target,fact,rp,gp,ts,score,st:v8st(score,!!x.closedAt)}}
+  function v8goal(scope,i,v){v=num(v);return`<button class="v8goal ${v>=1?'done':v>=.5?'part':''}" data-v8-${scope}="${i}">${v>=1?'✓':v>=.5?'◐':'○'}</button>`}
+  function v8tasks(scope,key){const t=v8task(scope,key);return t.list.length?t.list.map(x=>`<div class="v8task ${x.status==='done'?'done':''}"><button class="task-check" data-toggle-task="${esc(x.id)}">${x.status==='done'?'✓':''}</button><div><b>${esc(x.title)}</b><small>${esc(x.owner)} · ${esc(x.due)}</small></div><button data-edit-task="${esc(x.id)}">✎</button></div>`).join(''):`<div class="card-sub">Связанных задач пока нет.</div>`}
+  function v8close(scope){const p=v8period(scope),o=p.x;o.closedAt=nowIso();o.snapshot={key:p.key,monthKey:monthKey(date),score:Math.round(p.score),status:v8st(p.score,1).sh,target:p.target,fact:p.fact,gp:Math.round(p.gp),done:p.ts.done,total:p.ts.total,closedAt:o.closedAt};o.updatedAt=nowIso();if(scope==='month'){const{mk,mp}=v8prep(),s=v8salary(mk);mp.salary.closedAt=o.closedAt;mp.salary.snapshot={amount:Math.round(s.total),base:V8_BASE,kpi:s.k,scale:s.scale,fact:s.fact,plan:s.plan,closedAt:o.closedAt}}persist();render();toast(scope==='week'?'Неделя закрыта':'Месяц и зарплата зафиксированы')}
+  function v8closeCard(scope,p){const c=!!p.x.closedAt,st=v8st(p.score,c);return`<div class="v8close"><div class="v8closeTop"><div><div class="eyebrow">${scope==='week'?'ИТОГ НЕДЕЛИ':'ИТОГ МЕСЯЦА'}</div><h3>${c?'Результат зафиксирован':'Предварительный результат'}</h3></div><span class="v8pill ${st.cl}">${c?st.sh:`${Math.round(p.score)}% · ${st.sh}`}</span></div><div class="v8closeGrid"><div><span>Выручка</span><b>${p.target?`${money(p.fact)} / ${money(p.target)}`:'План не задан'}</b></div><div><span>Результаты</span><b>${Math.round(p.gp)}%</b></div><div><span>Задачи</span><b>${p.ts.done}/${p.ts.total}</b></div></div><button class="button ${c?'ghost':'primary'} compact" data-v8-act="${c?(scope==='week'?'openW':'openM'):(scope==='week'?'closeW':'closeM')}">${c?'Открыть снова':`Закрыть ${scope==='week'?'неделю':'месяц'}`}</button></div>`}
+  const v7Today=PAGES.today,v7Archive=PAGES.archive;
+  function v8today(){const{mk}=v8prep(),s=v8salary(mk),z=s.final??s.total,card=`<section class="card v8salary"><div><div class="eyebrow">МОЯ МОТИВАЦИЯ · ${esc(mk)}</div><strong>${money(z)}</strong><small>${s.final!=null?'Зафиксированная зарплата':`Расчёт сейчас · KPI ${money(s.k)} · план ${pct(s.pr)}`}</small></div><button class="button ghost compact" data-page="plans">Подробнее</button></section>`;return v7Today().replace('<div class="section-title"><div><h2>Три результата дня</h2>',card+'<div class="section-title"><div><h2>Три результата дня</h2>')}
+  function v8plans(){const{mk,wk,mp,w,m}=v8prep(),ws=v8period('week'),ms=v8period('month'),s=v8salary(mk),z=s.final??s.total;return pageHead('ПЛАНЫ · РЕЗУЛЬТАТ · МОТИВАЦИЯ','План и рост','Неделя и месяц считаются по выручке, результатам и задачам. Зарплата Софы рассчитывается автоматически.')+`<div class="v8sum"><div class="${ms.st.cl}"><span>Месяц</span><b>${Math.round(ms.score)}%</b><small>${ms.st.label}</small></div><div class="${ws.st.cl}"><span>Неделя</span><b>${Math.round(ws.score)}%</b><small>${ws.st.label}</small></div><div><span>Задачи планов</span><b>${ws.ts.done+ms.ts.done}/${ws.ts.total+ms.ts.total}</b><small>Выполнено</small></div><div class="good"><span>Зарплата</span><b>${money(z)}</b><small>${s.final!=null?'Зафиксирована':`план ${pct(s.pr)}`}</small></div></div><section class="card v8salary full"><div><div class="eyebrow">МОЯ ЗАРПЛАТА · ${esc(mk)}</div><strong>${money(z)}</strong><small>100 000 ₽ фикс + до 20 000 ₽ KPI + бонус масштаба</small></div><div class="v8salaryParts"><span>Фикс <b>${money(V8_BASE)}</b></span><span>KPI <b>${money(s.k)}</b></span><span>Масштаб <b>${money(s.scale)}</b><small>${money(s.raw)} × ${Math.round(v8coef(s.pr)*100)}% за выполнение плана</small></span></div></section><div class="section-title"><div><h2>KPI Софы · до 20 000 ₽</h2><p>Каждая выполненная зона — 5 000 ₽. При закрытии месяца сумма фиксируется.</p></div></div><section class="v8kpis">${V8_KPIS.map(([k,t,d])=>`<label><input type="checkbox" data-v8-salary="${k}" ${mp.salary.checks[k]?'checked':''} ${mp.salary.closedAt?'disabled':''}><span><b>${esc(t)}</b><small>${esc(d)}</small></span><strong>${mp.salary.checks[k]?'5 000 ₽':'0 ₽'}</strong></label>`).join('')}</section><div class="grid grid-2" style="margin-top:14px"><section class="card"><div class="eyebrow">НЕДЕЛЯ · ${esc(wk)}</div><div class="field" style="margin-top:10px"><label>План выручки недели</label><input type="number" data-week="revenueTarget" value="${num(w.revenueTarget)}" placeholder="Например 700000"></div><h2>Три результата недели</h2>${w.results.map((v,i)=>`<div class="goal-row v8"><span>${i+1}</span><input data-week="results.${i}" value="${esc(v)}" placeholder="Результат ${i+1}">${v8goal('week',i,w.resultStatus[i])}</div>`).join('')}<div class="v8taskHead"><h3>Задачи недели · ${ws.ts.done}/${ws.ts.total}</h3><button class="button primary compact" data-v8-act="taskW">+ Задача</button></div>${v8tasks('week',wk)}${v8closeCard('week',ws)}</section><section class="card"><div class="eyebrow">МЕСЯЦ · ${esc(mk)}</div><h2>Три результата месяца</h2>${m.goals.map((v,i)=>`<div class="goal-row v8"><span>${i+1}</span><input data-month="goals.${i}" value="${esc(v)}" placeholder="Результат ${i+1}">${v8goal('month',i,m.goalStatus[i])}</div>`).join('')}<div class="v8taskHead"><h3>Задачи месяца · ${ms.ts.done}/${ms.ts.total}</h3><button class="button primary compact" data-v8-act="taskM">+ Задача</button></div>${v8tasks('month',mk)}${v8closeCard('month',ms)}</section></div>`}
+  function v8archive(){const months=Object.entries(state.plans.months).filter(([,m])=>m.closedAt&&m.snapshot).sort((a,b)=>b[0].localeCompare(a[0])),weeks=Object.entries(state.plans.weeks).filter(([,w])=>w.closedAt&&w.snapshot).sort((a,b)=>b[0].localeCompare(a[0]));const extra=pageHead('АРХИВ','История результатов','Закрытые недели и месяцы сохраняются снимком.')+`<div class="section-title"><div><h2>Месяцы</h2></div></div><div class="v8hist">${months.length?months.map(([k,m])=>`<div><b>${esc(k)} · ${esc(m.snapshot.status)}</b><small>${money(m.snapshot.fact)} / ${money(m.snapshot.target)} · задачи ${m.snapshot.done}/${m.snapshot.total}${state.monthPlans[k]?.salary?.snapshot?` · ЗП ${money(state.monthPlans[k].salary.snapshot.amount)}`:''}</small></div>`).join(''):'<div><small>Закрытых месяцев пока нет.</small></div>'}</div><div class="section-title"><div><h2>Недели</h2></div></div><div class="v8hist">${weeks.length?weeks.map(([k,w])=>`<div><b>${esc(k)} · ${esc(w.snapshot.status)}</b><small>${w.snapshot.target?`${money(w.snapshot.fact)} / ${money(w.snapshot.target)}`:money(w.snapshot.fact)} · задачи ${w.snapshot.done}/${w.snapshot.total}</small></div>`).join(''):'<div><small>Закрытых недель пока нет.</small></div>'}</div><div class="section-title"><div><h2>Рабочие дни</h2></div></div>`;return extra+v7Archive().replace(/^<header[\s\S]*?<\/header>/,'')}
+  PAGES.today=v8today;PAGES.plans=v8plans;PAGES.archive=v8archive;
+  document.addEventListener('click',e=>{const a=e.target.closest('[data-v8-act]')?.dataset.v8Act;if(a==='taskW'){const{wk}=v8prep();openTaskModal();setTimeout(()=>{$('#taskCategory').value=`План недели ${wk}`},0)}if(a==='taskM'){const{mk}=v8prep();openTaskModal();setTimeout(()=>{$('#taskCategory').value=`План месяца ${mk}`},0)}if(a==='closeW')v8close('week');if(a==='closeM')v8close('month');if(a==='openW'){const{w}=v8prep();w.closedAt=null;w.snapshot=null;persist();render()}if(a==='openM'){const{m,mp}=v8prep();m.closedAt=null;m.snapshot=null;mp.salary.closedAt=null;mp.salary.snapshot=null;persist();render()}const wr=e.target.closest('[data-v8-week]');if(wr){const{w}=v8prep(),i=num(wr.dataset.v8Week),v=num(w.resultStatus[i]);w.resultStatus[i]=v<.5?.5:v<1?1:0;w.updatedAt=nowIso();persist();render()}const mr=e.target.closest('[data-v8-month]');if(mr){const{m}=v8prep(),i=num(mr.dataset.v8Month),v=num(m.goalStatus[i]);m.goalStatus[i]=v<.5?.5:v<1?1:0;m.updatedAt=nowIso();persist();render()}});
+  document.addEventListener('change',e=>{if(e.target.matches('[data-v8-salary]')){const{mp}=v8prep();if(!mp.salary.closedAt){mp.salary.checks[e.target.dataset.v8Salary]=e.target.checked;persist();render()}}});
+  const v8css=`body,#app{font-size:16px!important}#app p,#app li{font-size:15px!important;line-height:1.7!important}#app small,#app label{font-size:14px!important}.v8salary{display:flex;justify-content:space-between;gap:16px;align-items:center;background:linear-gradient(135deg,rgba(254,235,0,.1),rgba(255,255,255,.015));border-color:rgba(254,235,0,.18)}.v8salary.full{display:block}.v8salary strong{display:block;font-size:34px;letter-spacing:-.04em;margin-top:5px}.v8salaryParts{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:14px}.v8salaryParts span{padding:10px;border:1px solid var(--line);border-radius:12px;font-size:12px;color:#aaa}.v8salaryParts b{font-size:17px;color:#fff;margin-top:4px}.v8salaryParts small{display:block;font-size:11px!important;margin-top:3px}.v8sum{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:12px}.v8sum>div{padding:12px;border:1px solid var(--line);border-radius:14px}.v8sum span,.v8sum small{display:block;font-size:12px!important;color:#999}.v8sum b{display:block;font-size:20px;margin:5px 0}.v8sum .good b{color:var(--green)}.v8sum .warn b{color:var(--orange)}.v8sum .danger b{color:var(--red)}.v8kpis{display:grid;grid-template-columns:repeat(2,1fr);gap:8px}.v8kpis label{display:grid;grid-template-columns:auto 1fr auto;gap:10px;align-items:start;padding:12px;border:1px solid var(--line);border-radius:14px;background:rgba(255,255,255,.012)}.v8kpis input{width:18px;height:18px;accent-color:var(--yellow)}.v8kpis b,.v8kpis small{display:block}.v8kpis strong{font-size:13px;color:var(--yellow)}.goal-row.v8{grid-template-columns:auto 1fr auto}.v8goal{width:38px;height:38px;border:1px solid var(--line);border-radius:10px;background:#171914;color:#999}.v8goal.part{color:var(--orange)}.v8goal.done{background:var(--green);color:#071008}.v8taskHead{display:flex;justify-content:space-between;align-items:center;margin:14px 0 8px}.v8taskHead h3{font-size:14px;margin:0}.v8task{display:grid;grid-template-columns:auto 1fr auto;gap:8px;align-items:center;padding:9px;border:1px solid var(--line);border-radius:11px;margin-top:6px}.v8task.done{opacity:.6}.v8task b,.v8task small{display:block}.v8close{margin-top:12px;padding:13px;border:1px solid var(--line);border-radius:14px}.v8closeTop{display:flex;justify-content:space-between;gap:10px}.v8closeTop h3{font-size:15px;margin:4px 0}.v8pill{padding:6px 9px;border-radius:999px;font-size:11px;font-weight:900}.v8pill.good{color:var(--green)}.v8pill.warn{color:var(--orange)}.v8pill.danger{color:var(--red)}.v8closeGrid{display:grid;grid-template-columns:repeat(3,1fr);gap:7px;margin:10px 0}.v8closeGrid>div{padding:8px;background:rgba(0,0,0,.15);border-radius:10px}.v8closeGrid span,.v8closeGrid b{display:block;font-size:11px}.v8closeGrid b{font-size:13px;margin-top:3px}.v8hist{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}.v8hist>div{padding:12px;border:1px solid var(--line);border-radius:14px}.v8hist b,.v8hist small{display:block}@media(max-width:820px){.v8salary{display:block}.v8salary .button{margin-top:10px}.v8salaryParts,.v8sum,.v8kpis,.v8closeGrid,.v8hist{grid-template-columns:1fr}#app{font-size:15px!important}}`;
+  const v8style=document.createElement('style');v8style.textContent=v8css;document.head.appendChild(v8style);document.documentElement.dataset.management='v8';
+
   boot();
 })();
 
-</script>
-<script>
-(()=>{
-  const css=`
-  :root{--muted:#b2b7ae!important;--sidebar:292px}
-  body{font-size:16px!important;line-height:1.55!important}
-  #app{font-size:16px!important}
-  #app p,#app li{font-size:15px!important;line-height:1.7!important}
-  #app small,#app label{font-size:14px!important;line-height:1.58!important}
-  #app input,#app textarea,#app select{font-size:15px!important;line-height:1.5!important}
-  #app .button,#app button{font-size:14px}
-  #app .page-head p{font-size:16px!important;line-height:1.7!important;color:#bcc1b8!important}
-  #app .card p{font-size:15px!important;line-height:1.72!important;color:#cbd0c7!important}
-  #app .card-sub{font-size:14px!important;line-height:1.65!important;color:#b4bab0!important}
-  #app .hero-copy{font-size:15px!important;line-height:1.7!important}
-  #app .kpi>span{font-size:13px!important;line-height:1.4!important}
-  #app .kpi small{font-size:13px!important;line-height:1.55!important}
-  #app .tag{font-size:13px!important;padding:6px 9px!important;line-height:1.2!important}
-  #app .task-main b{font-size:15px!important;line-height:1.5!important}
-  #app .task-card{padding:14px 15px!important}
-  #app .metric-section-head h3{font-size:15px!important}
-  #app .metric-section-head span{font-size:13px!important}
-  #app .metric-box{padding:14px!important}
-  #app .metric-box label{font-size:14px!important;line-height:1.45!important;color:#b9beb5!important;min-height:0!important}
-  #app .metric-box input{font-size:15px!important}
-  #app .metric-box small{font-size:13px!important;line-height:1.5!important;color:#a2a89e!important}
-  #app .chart-labels{font-size:13px!important}
-  #app .timeline-item{padding:16px!important}
-  #app .timeline-item time{font-size:16px!important}
-  #app .timeline-copy b{font-size:16px!important;line-height:1.4!important}
-  #app .timeline-copy small{font-size:14px!important;line-height:1.62!important;color:#b8bdb4!important}
-  #app .check-group>h3{font-size:13px!important}
-  #app .check-row{padding:13px 14px!important}
-  #app .check-row b{font-size:15px!important}
-  #app .check-row small{font-size:14px!important;line-height:1.62!important;color:#b0b5ac!important}
-  #app .report-preview{font-size:15px!important;line-height:1.75!important}
-  #app .report-status b{font-size:14px!important}
-  #app .report-status span{font-size:13px!important}
-  #app .meeting-template b{font-size:15px!important}
-  #app .meeting-template span{font-size:14px!important;line-height:1.6!important}
-  #app .agenda-row span{font-size:14px!important}
-  #app .history-card h3{font-size:15px!important}
-  #app .history-card small{font-size:13px!important}
-  #app .history-card p{font-size:14px!important}
-  #app .contour b{font-size:14px!important}
-  #app .contour p{font-size:14px!important;line-height:1.62!important;color:#b1b6ad!important}
-  #app .guide-card{padding:18px!important}
-  #app .guide-card h3{font-size:16px!important;margin-bottom:9px!important}
-  #app .guide-card ul,#app .guide-card li{font-size:15px!important;line-height:1.78!important;color:#bec3ba!important}
-  #app .decision-row b,#app .decision-row span{font-size:14px!important;line-height:1.65!important}
-  #app .archive-card>span,#app .status-box>span,#app .nav-caption,#app .save-state,#app .profile-pill small{font-size:13px!important}
-  #app .archive-card small,#app .status-box small{font-size:14px!important;line-height:1.6!important}
-  #app .side-brand span,#app .side-day>span,#app .sync-panel small{font-size:13px!important}
-  #app .side-nav button{font-size:14px!important;padding:12px 11px!important}
-  #app .mobile-nav button span{font-size:13px!important}
-  #auth p,#auth small,#auth label{font-size:14px!important;line-height:1.6!important}
-  @media(max-width:820px){body,#app{font-size:15px!important}#app p,#app li{font-size:15px!important}#app small,#app label{font-size:14px!important}#app .metric-box label{font-size:14px!important}#app .timeline-copy small{font-size:14px!important}#app .guide-card li{font-size:14px!important}#app .mobile-nav button span{font-size:13px!important}}
-  `;
-  const s=document.createElement('style');
-  s.id='ek-v7-readable-final';
-  s.textContent=css;
-  document.head.appendChild(s);
-  document.documentElement.dataset.typography='v7-readable';
-})();
 </script>
 </body>
 </html>
