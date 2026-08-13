@@ -1,0 +1,25 @@
+name: Probe main Vercel site
+on:
+  push:
+    paths:
+      - '.github/workflows/probe-main-vercel.yml'
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Probe main site
+        shell: bash
+        run: |
+          set +e
+          for p in / /api/mentor /api/sprite /api/mentor?v=1 /api/sprite?v=1; do
+            url="https://extreme-kids-troparevo-camp.vercel.app$p"
+            echo "URL=$url"
+            curl -L -sS --max-time 20 -o /tmp/a -w 'HTTP=%{http_code} TYPE=%{content_type} SIZE=%{size_download}\n' "$url"
+            file /tmp/a || true
+            python3 - <<'PY'
+from PIL import Image
+try:
+ im=Image.open('/tmp/a'); print('IMAGE', im.size, im.format)
+except Exception as e: print('NOT_IMAGE', str(e)[:80])
+PY
+          done
