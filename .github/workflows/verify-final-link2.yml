@@ -1,0 +1,23 @@
+name: VerifyFinalLink2
+on:
+  push:
+    paths:
+      - .github/workflows/verify-final-link2.yml
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Fetch published page
+        run: |
+          set -e
+          url="https://rawcdn.githack.com/romadav73-gif/extreme-kids-camp/2754cdbc6bb7b5df87f3393f19c0e628a87bee30/index.html"
+          curl -L --fail --retry 3 --max-time 90 -sS -o /tmp/site.html "$url"
+          test $(wc -c < /tmp/site.html) -gt 2500000
+          grep -q "5 ДНЕЙ." /tmp/site.html
+          grep -q "Иван" /tmp/site.html
+          grep -q "Стас" /tmp/site.html
+          grep -q "BANDA BOX" /tmp/site.html
+          grep -q "KIBERone" /tmp/site.html
+          test $(grep -o "data:image/" /tmp/site.html | wc -l) -ge 5
+          echo VERIFY_OK
+          wc -c /tmp/site.html
