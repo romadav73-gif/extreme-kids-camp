@@ -1,0 +1,58 @@
+name: Fix final parent heading
+on:
+  push:
+    paths:
+      - .github/workflows/fix-final-heading.yml
+permissions:
+  contents: write
+jobs:
+  fix:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Fix heading and verify mentor photos
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import re, base64, hashlib
+          p=Path('index.html')
+          s=p.read_text(encoding='utf-8')
+          # Replace the main hero heading with the exact parent-facing copy requested.
+          patterns=[
+            r'<h1 class="hero-title[^>]*>.*?</h1>',
+            r'<h1[^>]*>\s*<span[^>]*>.*?</h1>'
+          ]
+          new='''<h1 class="hero-title reveal" aria-label="5 дней. Движение. Впечатления."><span>5 ДНЕЙ.</span><span>ДВИЖЕНИЕ.</span><span class="accent">ВПЕЧАТЛЕНИЯ.</span></h1>'''
+          changed=False
+          for pat in patterns:
+            ns,n=re.subn(pat,new,s,count=1,flags=re.S)
+            if n:
+              s=ns; changed=True; break
+          if not changed:
+            raise SystemExit('Hero h1 not found')
+          # Remove any technical language about photo quality if present.
+          s=s.replace('Фото загружаются в HQ-качестве.','')
+          s=s.replace('Все фотографии загружаются отдельными исходными файлами без повторного сжатия.','')
+          s=s.replace('Все фотографии загружаются в исходном высоком качестве.','')
+          # Validate final mentor assignment by exact embedded-image hashes.
+          def sha(uri): return hashlib.sha256(base64.b64decode(uri.split(',',1)[1])).hexdigest()
+          mi=re.search(r"\{name:'Иван'.*?img:'(data:image/jpeg;base64,[^']+)'",s,re.S)
+          ms=re.search(r"\{name:'Стас'.*?img:'(data:image/jpeg;base64,[^']+)'",s,re.S)
+          assert mi and ms
+          assert sha(mi.group(1))=='2f3c7e0c749e7985741b5750c9dccfd9ae83831d5dbd2f31dafc07b9ff889680'
+          assert sha(ms.group(1))=='557cf39ddd7302ca0e1f6de4f9417d251ee37d1351126993b4d0d8ee847166cc'
+          assert '<b>Иван</b>' in s and '<b>Стас</b>' in s
+          assert s.count('data:image/')>=7
+          p.write_text(s,encoding='utf-8')
+          print('FINAL_HEADING_AND_PHOTOS_OK',len(s.encode()),s.count('data:image/'))
+          PY
+      - name: Commit
+        run: |
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add index.html
+          git commit -m "Fix final parent heading" || exit 0
+          git push
