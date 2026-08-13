@@ -44,10 +44,12 @@ jobs:
           pre,code{max-width:100%;overflow-x:auto}
           :where(.container,.wrap,.wrapper,.shell,.section,.hero,.content,.card,.day-card,.mentor-card,.partner-card,[class*="container"],[class*="wrapper"],[class*="section"],[class*="content"],[class*="card"]){min-width:0;max-width:100%}
           .ticker,.ticker-wrap,[class*="ticker"]{max-width:100%;overflow:hidden}
+
           @media (max-width:900px){
             [style*="grid-template-columns"]{grid-template-columns:minmax(0,1fr)!important}
             :where([class*="grid"],[class*="cards"],[class*="days"],[class*="mentors"],[class*="partners"]){grid-template-columns:minmax(0,1fr)!important}
           }
+
           @media (max-width:640px){
             body{font-size:max(16px,1rem)}
             h1{font-size:clamp(2rem,10vw,3.6rem)!important;line-height:.98!important;letter-spacing:-.035em!important}
@@ -57,8 +59,32 @@ jobs:
             :where(.hero,.section,[class*="hero"],[class*="section"]){padding-left:18px!important;padding-right:18px!important}
             :where(button,.btn,.button,[class*="btn"],[class*="button"]){max-width:100%;white-space:normal;min-height:44px}
             [style*="width:"]{max-width:100%!important}
+
+            /* All five camp days must be visible without a hidden horizontal strip. */
+            :where(.day-tabs,.days-tabs,.day-tabs-wrap,[class*="day-tabs"]){
+              display:grid!important;
+              grid-template-columns:repeat(2,minmax(0,1fr))!important;
+              width:100%!important;
+              max-width:100%!important;
+              gap:9px!important;
+              overflow:visible!important;
+              transform:none!important;
+            }
+            .day-tab{
+              width:100%!important;
+              min-width:0!important;
+              max-width:100%!important;
+              margin:0!important;
+              flex:1 1 auto!important;
+              transform:none!important;
+            }
           }
-          @media (max-width:390px){:where(.hero,.section,[class*="hero"],[class*="section"]){padding-left:14px!important;padding-right:14px!important}}
+
+          @media (max-width:390px){
+            :where(.hero,.section,[class*="hero"],[class*="section"]){padding-left:14px!important;padding-right:14px!important}
+            :where(.day-tabs,.days-tabs,.day-tabs-wrap,[class*="day-tabs"]){grid-template-columns:minmax(0,1fr)!important}
+          }
+
           @media (prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important;scroll-behavior:auto!important}}
           </style>'''
 
@@ -139,7 +165,7 @@ jobs:
                   if (r.width <= 1 || r.height <= 1) return false;
                   if (s.position === 'absolute' && !(el.innerText || '').trim()) return false;
                   return r.left < -2 || r.right > vw + 2;
-                }).slice(0,12).map(el => {
+                }).slice(0,20).map(el => {
                   const r = el.getBoundingClientRect();
                   return {tag:el.tagName,cls:typeof el.className==='string'?el.className.slice(0,80):'',left:Math.round(r.left),right:Math.round(r.right),text:(el.innerText||'').trim().replace(/\s+/g,' ').slice(0,90)};
                 });
