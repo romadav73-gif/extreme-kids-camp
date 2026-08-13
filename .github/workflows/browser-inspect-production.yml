@@ -1,0 +1,48 @@
+name: BrowserInspectProduction
+on:
+  push:
+    paths:
+      - .github/workflows/browser-inspect-production.yml
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Inspect browser rendering
+        shell: bash
+        run: |
+          npm init -y >/dev/null 2>&1
+          npm install playwright@1.55.0 --no-save >/dev/null 2>&1
+          npx playwright install chromium >/dev/null 2>&1
+          cat >/tmp/check.cjs <<'JS'
+          const { chromium } = require('playwright');
+          (async()=>{
+            const browser=await chromium.launch({headless:true});
+            const url='https://rawcdn.githack.com/romadav73-gif/extreme-kids-camp/6fb8a09a2e6de88a33e966c3f1a99c590ca382e9/index.html';
+            for(const [w,h] of [[1440,1000],[430,932],[390,844]]){
+              const ctx=await browser.newContext({viewport:{width:w,height:h}});
+              const page=await ctx.newPage();
+              const errors=[]; page.on('pageerror',e=>errors.push(String(e)));
+              const resp=await page.goto(url,{waitUntil:'load',timeout:90000});
+              await page.waitForTimeout(1500);
+              const r=await page.evaluate(()=>({
+                statusTitle:document.title,
+                h1:document.querySelector('h1')?.textContent?.replace(/\s+/g,' ').trim()||'',
+                bodyHasIvan:document.body.textContent.includes('Иван'),
+                bodyHasStas:document.body.textContent.includes('Стас'),
+                sw:document.documentElement.scrollWidth,
+                vw:innerWidth,
+                imgs:[...document.images].map(i=>({alt:i.alt,w:i.naturalWidth,h:i.naturalHeight,complete:i.complete})),
+                mentor:document.getElementById('mentorImage')?{alt:document.getElementById('mentorImage').alt,w:document.getElementById('mentorImage').naturalWidth,h:document.getElementById('mentorImage').naturalHeight}:null
+              }));
+              console.log('VIEW',w,h,'HTTP',resp?.status(),'H1',JSON.stringify(r.h1),'ivan',r.bodyHasIvan,'stas',r.bodyHasStas,'scroll',r.sw+'/'+r.vw,'mentor',JSON.stringify(r.mentor),'imgs',JSON.stringify(r.imgs),'errors',JSON.stringify(errors));
+              if(resp?.status()!==200) throw new Error('HTTP not 200');
+              if(r.sw>r.vw+3) throw new Error('horizontal overflow');
+              if(!r.bodyHasIvan||!r.bodyHasStas) throw new Error('mentor names missing');
+              if(r.imgs.some(i=>!i.complete||i.w<100||i.h<100)) throw new Error('broken image');
+              await ctx.close();
+            }
+            await browser.close();
+            console.log('BROWSER_INSPECT_OK');
+          })().catch(e=>{console.error(e);process.exit(1)});
+          JS
+          NODE_PATH="$PWD/node_modules" node /tmp/check.cjs
