@@ -26,17 +26,9 @@ jobs:
           path = Path('index.html')
           html = path.read_text(encoding='utf-8')
           original_len = len(html)
-
-          # Idempotent: remove an older copy of this exact patch only.
-          html = re.sub(
-              r'\s*<style id="ek-parent-responsive-fix">.*?</style>\s*',
-              '\n',
-              html,
-              flags=re.S,
-          )
+          html = re.sub(r'\s*<style id="ek-parent-responsive-fix">.*?</style>\s*', '\n', html, flags=re.S)
 
           css = r'''<style id="ek-parent-responsive-fix">
-          /* Final parent-site hardening. This block intentionally does not alter image sources. */
           *,*::before,*::after{box-sizing:border-box}
           html{width:100%;max-width:100%;overflow-x:clip;scroll-behavior:smooth;-webkit-text-size-adjust:100%;text-size-adjust:100%}
           body{width:100%;max-width:100%;min-width:0;margin:0;overflow-x:clip}
@@ -50,21 +42,12 @@ jobs:
           a,button{touch-action:manipulation}
           table{max-width:100%}
           pre,code{max-width:100%;overflow-x:auto}
-
-          /* Common layout names used by the camp page stay inside the viewport. */
-          :where(.container,.wrap,.wrapper,.shell,.section,.hero,.content,.card,.day-card,.mentor-card,.partner-card,
-                 [class*="container"],[class*="wrapper"],[class*="section"],[class*="content"],[class*="card"]){
-            min-width:0;max-width:100%
-          }
-
+          :where(.container,.wrap,.wrapper,.shell,.section,.hero,.content,.card,.day-card,.mentor-card,.partner-card,[class*="container"],[class*="wrapper"],[class*="section"],[class*="content"],[class*="card"]){min-width:0;max-width:100%}
+          .ticker,.ticker-wrap,[class*="ticker"]{max-width:100%;overflow:hidden}
           @media (max-width:900px){
-            /* Inline multi-column layouts are the most common source of mobile overflow. */
             [style*="grid-template-columns"]{grid-template-columns:minmax(0,1fr)!important}
-            :where([class*="grid"],[class*="cards"],[class*="days"],[class*="mentors"],[class*="partners"]){
-              grid-template-columns:minmax(0,1fr)!important
-            }
+            :where([class*="grid"],[class*="cards"],[class*="days"],[class*="mentors"],[class*="partners"]){grid-template-columns:minmax(0,1fr)!important}
           }
-
           @media (max-width:640px){
             body{font-size:max(16px,1rem)}
             h1{font-size:clamp(2rem,10vw,3.6rem)!important;line-height:.98!important;letter-spacing:-.035em!important}
@@ -75,14 +58,8 @@ jobs:
             :where(button,.btn,.button,[class*="btn"],[class*="button"]){max-width:100%;white-space:normal;min-height:44px}
             [style*="width:"]{max-width:100%!important}
           }
-
-          @media (max-width:390px){
-            :where(.hero,.section,[class*="hero"],[class*="section"]){padding-left:14px!important;padding-right:14px!important}
-          }
-
-          @media (prefers-reduced-motion:reduce){
-            *,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important;scroll-behavior:auto!important}
-          }
+          @media (max-width:390px){:where(.hero,.section,[class*="hero"],[class*="section"]){padding-left:14px!important;padding-right:14px!important}}
+          @media (prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important;scroll-behavior:auto!important}}
           </style>'''
 
           if '</head>' not in html:
@@ -98,24 +75,24 @@ jobs:
           python3 - <<'PY'
           from pathlib import Path
           import re
-
           html = Path('index.html').read_text(encoding='utf-8')
           required = ['17', '21', 'Иван', 'Стас', 'Тася', 'Доминик', 'Женя']
           missing = [x for x in required if x not in html]
           if missing:
               raise SystemExit('Missing required content: ' + ', '.join(missing))
-
           if 'Ваня' in html:
               raise SystemExit('Old mentor label Ваня is still present; expected Иван')
-
           image_data = re.findall(r'data:image/[^;]+;base64,([A-Za-z0-9+/=]+)', html)
           if len(image_data) < 5:
               raise SystemExit(f'Expected at least 5 embedded original images, found {len(image_data)}')
           shortest = min(map(len, image_data))
           if shortest < 20000:
               raise SystemExit(f'Embedded image unexpectedly small: {shortest} base64 chars')
-          print(f'CONTENT_OK embedded_images={len(image_data)} shortest_base64={shortest}')
-          print('PARTNERS', 'Банда Бокс' in html, 'Киберван' in html)
+          partner_a = ('BANDA BOX' in html) or ('Банда Бокс' in html)
+          partner_b = ('KIBERone' in html) or ('Киберван' in html)
+          if not partner_a or not partner_b:
+              raise SystemExit(f'Partner labels missing: BANDA={partner_a} KIBER={partner_b}')
+          print(f'CONTENT_OK embedded_images={len(image_data)} shortest_base64={shortest} partners=OK')
           PY
 
       - name: Set up Node
@@ -144,56 +121,35 @@ jobs:
             const viewports = [[1440,1000],[1024,900],[768,1024],[430,932],[390,844],[360,800]];
             let failed = false;
             for (const [width,height] of viewports) {
-              const context = await browser.newContext({
-                viewport: { width, height },
-                reducedMotion: 'reduce',
-                deviceScaleFactor: 1
-              });
+              const context = await browser.newContext({viewport:{width,height},reducedMotion:'reduce',deviceScaleFactor:1});
               const page = await context.newPage();
-              const consoleErrors = [];
-              page.on('pageerror', e => consoleErrors.push(String(e)));
-              await page.goto('http://127.0.0.1:8000/', { waitUntil: 'load', timeout: 60000 });
+              const pageErrors = [];
+              page.on('pageerror', e => pageErrors.push(String(e)));
+              await page.goto('http://127.0.0.1:8000/', {waitUntil:'load',timeout:60000});
               await page.waitForTimeout(600);
               const result = await page.evaluate(() => {
                 const root = document.documentElement;
                 const body = document.body;
-                const viewportWidth = window.innerWidth;
-                const offenders = [...document.querySelectorAll('body *')]
-                  .filter(el => {
-                    const s = getComputedStyle(el);
-                    if (s.display === 'none' || s.visibility === 'hidden') return false;
-                    if (s.position === 'fixed') return false;
-                    const r = el.getBoundingClientRect();
-                    if (r.width <= 1 || r.height <= 1) return false;
-                    /* Ignore decorative animated/absolutely positioned shapes. */
-                    if (s.position === 'absolute' && !(el.innerText || '').trim()) return false;
-                    return r.left < -2 || r.right > viewportWidth + 2;
-                  })
-                  .slice(0, 12)
-                  .map(el => {
-                    const r = el.getBoundingClientRect();
-                    return {
-                      tag: el.tagName,
-                      cls: typeof el.className === 'string' ? el.className.slice(0,80) : '',
-                      left: Math.round(r.left),
-                      right: Math.round(r.right),
-                      text: (el.innerText || '').trim().replace(/\s+/g,' ').slice(0,90)
-                    };
-                  });
-                return {
-                  viewportWidth,
-                  scrollWidth: Math.max(root.scrollWidth, body.scrollWidth),
-                  offenders,
-                  title: document.title,
-                  images: [...document.images].map(i => ({complete:i.complete,w:i.naturalWidth,h:i.naturalHeight})),
-                };
+                const vw = innerWidth;
+                const offenders = [...document.querySelectorAll('body *')].filter(el => {
+                  if (el.closest('.ticker-track,.ticker,.ticker-wrap,[class*="ticker"]')) return false;
+                  const s = getComputedStyle(el);
+                  if (s.display === 'none' || s.visibility === 'hidden' || s.position === 'fixed') return false;
+                  const r = el.getBoundingClientRect();
+                  if (r.width <= 1 || r.height <= 1) return false;
+                  if (s.position === 'absolute' && !(el.innerText || '').trim()) return false;
+                  return r.left < -2 || r.right > vw + 2;
+                }).slice(0,12).map(el => {
+                  const r = el.getBoundingClientRect();
+                  return {tag:el.tagName,cls:typeof el.className==='string'?el.className.slice(0,80):'',left:Math.round(r.left),right:Math.round(r.right),text:(el.innerText||'').trim().replace(/\s+/g,' ').slice(0,90)};
+                });
+                return {vw,scrollWidth:Math.max(root.scrollWidth,body.scrollWidth),offenders,images:[...document.images].map(i=>({complete:i.complete,w:i.naturalWidth,h:i.naturalHeight}))};
               });
               const brokenImages = result.images.filter(i => !i.complete || i.w < 100 || i.h < 100);
-              console.log(`VIEWPORT ${width}x${height} scroll=${result.scrollWidth}/${result.viewportWidth} offenders=${result.offenders.length} brokenImages=${brokenImages.length}`);
+              console.log(`VIEWPORT ${width}x${height} scroll=${result.scrollWidth}/${result.vw} offenders=${result.offenders.length} brokenImages=${brokenImages.length}`);
               if (result.offenders.length) console.log('OFFENDERS', JSON.stringify(result.offenders));
-              if (consoleErrors.length) console.log('PAGE_ERRORS', JSON.stringify(consoleErrors));
-              if (result.scrollWidth > result.viewportWidth + 2 || result.offenders.length || brokenImages.length || consoleErrors.length) failed = true;
-              await page.screenshot({ path: `/tmp/camp-${width}.png`, fullPage: true });
+              if (pageErrors.length) console.log('PAGE_ERRORS', JSON.stringify(pageErrors));
+              if (result.scrollWidth > result.vw + 2 || result.offenders.length || brokenImages.length || pageErrors.length) failed = true;
               await context.close();
             }
             await browser.close();
