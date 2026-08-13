@@ -1,0 +1,50 @@
+name: Probe old image assets
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - '.github/workflows/probe-assets.yml'
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Probe
+        shell: bash
+        run: |
+          set +e
+          hosts=(
+            ek-hq-test.vercel.app
+            ek-hq-m0.vercel.app
+            ek-hq-m1.vercel.app
+            ek-hq-m2.vercel.app
+            ek-hq-m3.vercel.app
+            ek-hq-m4.vercel.app
+            ek-hq-m5.vercel.app
+            ek-hq-m6a.vercel.app
+            ek-final-c0.vercel.app
+            ek-final-c1.vercel.app
+            ek-final-c2.vercel.app
+            ek-final-c3.vercel.app
+            ek-final-c4.vercel.app
+            ek-final-c5.vercel.app
+            ek-final-c6.vercel.app
+            ek-final-c7.vercel.app
+            ek-final-c8.vercel.app
+            ek-camp-p04.vercel.app
+            ek-camp-p05.vercel.app
+            ek-camp-micro-a.vercel.app
+            ek-hqsprite-0.vercel.app
+            ek-hqsprite84-0.vercel.app
+          )
+          paths=(/vanya.jpg /vanya.png /stas.jpg /stas.png /tasya.jpg /tasya.png /pair.jpg /pair.png /assets/vanya.jpg /assets/vanya.png /api/mentor /api/sprite)
+          for h in "${hosts[@]}"; do
+            for p in "${paths[@]}"; do
+              url="https://$h$p"
+              meta=$(curl -L -sS --max-time 12 -o /tmp/a -w '%{http_code} %{content_type} %{size_download}' "$url" 2>/dev/null)
+              code=$(echo "$meta" | awk '{print $1}')
+              size=$(echo "$meta" | awk '{print $3}')
+              if [ "$code" = "200" ] && [ "${size:-0}" -gt 5000 ]; then
+                echo "FOUND $url :: $meta"
+              fi
+            done
+          done
