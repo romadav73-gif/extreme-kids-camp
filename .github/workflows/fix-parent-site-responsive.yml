@@ -1,0 +1,218 @@
+name: Fix and verify parent camp site
+
+on:
+  push:
+    paths:
+      - parent-site-fix.trigger
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  fix-and-test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Patch responsive layer without touching photos
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+
+          path = Path('index.html')
+          html = path.read_text(encoding='utf-8')
+          original_len = len(html)
+
+          # Idempotent: remove an older copy of this exact patch only.
+          html = re.sub(
+              r'\s*<style id="ek-parent-responsive-fix">.*?</style>\s*',
+              '\n',
+              html,
+              flags=re.S,
+          )
+
+          css = r'''<style id="ek-parent-responsive-fix">
+          /* Final parent-site hardening. This block intentionally does not alter image sources. */
+          *,*::before,*::after{box-sizing:border-box}
+          html{width:100%;max-width:100%;overflow-x:clip;scroll-behavior:smooth;-webkit-text-size-adjust:100%;text-size-adjust:100%}
+          body{width:100%;max-width:100%;min-width:0;margin:0;overflow-x:clip}
+          body *{min-width:0}
+          img,svg,video,canvas,picture{max-width:100%;height:auto}
+          img{object-position:center}
+          iframe{max-width:100%}
+          h1,h2,h3,h4,h5,h6,p,li,a,button,label{max-width:100%}
+          p,li,label{overflow-wrap:break-word}
+          h1,h2,h3,h4,h5,h6{overflow-wrap:normal;word-break:normal;text-wrap:balance}
+          a,button{touch-action:manipulation}
+          table{max-width:100%}
+          pre,code{max-width:100%;overflow-x:auto}
+
+          /* Common layout names used by the camp page stay inside the viewport. */
+          :where(.container,.wrap,.wrapper,.shell,.section,.hero,.content,.card,.day-card,.mentor-card,.partner-card,
+                 [class*="container"],[class*="wrapper"],[class*="section"],[class*="content"],[class*="card"]){
+            min-width:0;max-width:100%
+          }
+
+          @media (max-width:900px){
+            /* Inline multi-column layouts are the most common source of mobile overflow. */
+            [style*="grid-template-columns"]{grid-template-columns:minmax(0,1fr)!important}
+            :where([class*="grid"],[class*="cards"],[class*="days"],[class*="mentors"],[class*="partners"]){
+              grid-template-columns:minmax(0,1fr)!important
+            }
+          }
+
+          @media (max-width:640px){
+            body{font-size:max(16px,1rem)}
+            h1{font-size:clamp(2rem,10vw,3.6rem)!important;line-height:.98!important;letter-spacing:-.035em!important}
+            h2{font-size:clamp(1.65rem,8vw,2.55rem)!important;line-height:1.03!important}
+            h3{font-size:clamp(1.2rem,5.5vw,1.65rem)!important;line-height:1.12!important}
+            p,li{line-height:1.55}
+            :where(.hero,.section,[class*="hero"],[class*="section"]){padding-left:18px!important;padding-right:18px!important}
+            :where(button,.btn,.button,[class*="btn"],[class*="button"]){max-width:100%;white-space:normal;min-height:44px}
+            [style*="width:"]{max-width:100%!important}
+          }
+
+          @media (max-width:390px){
+            :where(.hero,.section,[class*="hero"],[class*="section"]){padding-left:14px!important;padding-right:14px!important}
+          }
+
+          @media (prefers-reduced-motion:reduce){
+            *,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important;scroll-behavior:auto!important}
+          }
+          </style>'''
+
+          if '</head>' not in html:
+              raise SystemExit('index.html has no </head>')
+          html = html.replace('</head>', css + '\n</head>', 1)
+          path.write_text(html, encoding='utf-8')
+          print(f'PATCH_OK before={original_len} after={len(html)}')
+          PY
+
+      - name: Verify parent-facing content and embedded photos remain intact
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+
+          html = Path('index.html').read_text(encoding='utf-8')
+          required = ['17', '21', 'Иван', 'Стас', 'Тася', 'Доминик', 'Женя']
+          missing = [x for x in required if x not in html]
+          if missing:
+              raise SystemExit('Missing required content: ' + ', '.join(missing))
+
+          if 'Ваня' in html:
+              raise SystemExit('Old mentor label Ваня is still present; expected Иван')
+
+          image_data = re.findall(r'data:image/[^;]+;base64,([A-Za-z0-9+/=]+)', html)
+          if len(image_data) < 5:
+              raise SystemExit(f'Expected at least 5 embedded original images, found {len(image_data)}')
+          shortest = min(map(len, image_data))
+          if shortest < 20000:
+              raise SystemExit(f'Embedded image unexpectedly small: {shortest} base64 chars')
+          print(f'CONTENT_OK embedded_images={len(image_data)} shortest_base64={shortest}')
+          print('PARTNERS', 'Банда Бокс' in html, 'Киберван' in html)
+          PY
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Install browser checker
+        shell: bash
+        run: |
+          npm init -y >/dev/null 2>&1
+          npm install playwright@1.55.0 --no-save
+          npx playwright install --with-deps chromium
+
+      - name: Browser-test desktop tablet and mobile
+        shell: bash
+        run: |
+          python3 -m http.server 8000 >/tmp/camp-http.log 2>&1 &
+          SERVER_PID=$!
+          trap 'kill $SERVER_PID || true' EXIT
+          sleep 2
+          cat >/tmp/check.cjs <<'JS'
+          const { chromium } = require('playwright');
+          (async () => {
+            const browser = await chromium.launch({ headless: true });
+            const viewports = [[1440,1000],[1024,900],[768,1024],[430,932],[390,844],[360,800]];
+            let failed = false;
+            for (const [width,height] of viewports) {
+              const context = await browser.newContext({
+                viewport: { width, height },
+                reducedMotion: 'reduce',
+                deviceScaleFactor: 1
+              });
+              const page = await context.newPage();
+              const consoleErrors = [];
+              page.on('pageerror', e => consoleErrors.push(String(e)));
+              await page.goto('http://127.0.0.1:8000/', { waitUntil: 'load', timeout: 60000 });
+              await page.waitForTimeout(600);
+              const result = await page.evaluate(() => {
+                const root = document.documentElement;
+                const body = document.body;
+                const viewportWidth = window.innerWidth;
+                const offenders = [...document.querySelectorAll('body *')]
+                  .filter(el => {
+                    const s = getComputedStyle(el);
+                    if (s.display === 'none' || s.visibility === 'hidden') return false;
+                    if (s.position === 'fixed') return false;
+                    const r = el.getBoundingClientRect();
+                    if (r.width <= 1 || r.height <= 1) return false;
+                    /* Ignore decorative animated/absolutely positioned shapes. */
+                    if (s.position === 'absolute' && !(el.innerText || '').trim()) return false;
+                    return r.left < -2 || r.right > viewportWidth + 2;
+                  })
+                  .slice(0, 12)
+                  .map(el => {
+                    const r = el.getBoundingClientRect();
+                    return {
+                      tag: el.tagName,
+                      cls: typeof el.className === 'string' ? el.className.slice(0,80) : '',
+                      left: Math.round(r.left),
+                      right: Math.round(r.right),
+                      text: (el.innerText || '').trim().replace(/\s+/g,' ').slice(0,90)
+                    };
+                  });
+                return {
+                  viewportWidth,
+                  scrollWidth: Math.max(root.scrollWidth, body.scrollWidth),
+                  offenders,
+                  title: document.title,
+                  images: [...document.images].map(i => ({complete:i.complete,w:i.naturalWidth,h:i.naturalHeight})),
+                };
+              });
+              const brokenImages = result.images.filter(i => !i.complete || i.w < 100 || i.h < 100);
+              console.log(`VIEWPORT ${width}x${height} scroll=${result.scrollWidth}/${result.viewportWidth} offenders=${result.offenders.length} brokenImages=${brokenImages.length}`);
+              if (result.offenders.length) console.log('OFFENDERS', JSON.stringify(result.offenders));
+              if (consoleErrors.length) console.log('PAGE_ERRORS', JSON.stringify(consoleErrors));
+              if (result.scrollWidth > result.viewportWidth + 2 || result.offenders.length || brokenImages.length || consoleErrors.length) failed = true;
+              await page.screenshot({ path: `/tmp/camp-${width}.png`, fullPage: true });
+              await context.close();
+            }
+            await browser.close();
+            if (failed) process.exit(1);
+            console.log('BROWSER_CHECK_OK all viewports clean');
+          })().catch(e => { console.error(e); process.exit(1); });
+          JS
+          NODE_PATH="$PWD/node_modules" node /tmp/check.cjs
+
+      - name: Commit verified correction
+        if: success()
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add index.html
+          if git diff --cached --quiet; then
+            echo "NO_CHANGES"
+          else
+            git commit -m "Fix and verify parent camp site responsiveness"
+            git push
+          fi
