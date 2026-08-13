@@ -1,0 +1,53 @@
+/* V8 readability: headings unchanged, all working text enlarged */
+:root{--muted:#b2b7ae!important;--sidebar:292px}
+body,#app{font-size:16px!important;line-height:1.55!important}
+#app p,#app li{font-size:15px!important;line-height:1.7!important}
+#app small,#app label{font-size:14px!important;line-height:1.58!important}
+#app input,#app textarea,#app select{font-size:15px!important;line-height:1.5!important}
+#app .page-head p{font-size:16px!important;line-height:1.7!important;color:#bcc1b8!important}
+#app .card p{font-size:15px!important;line-height:1.72!important;color:#cbd0c7!important}
+#app .card-sub{font-size:14px!important;line-height:1.65!important;color:#b4bab0!important}
+#app .hero-copy{font-size:15px!important;line-height:1.7!important;color:#cdd2c9!important}
+#app .readiness-copy b{font-size:15px!important}#app .readiness-copy span{font-size:14px!important;line-height:1.6!important;color:#b7bcb3!important}
+#app .kpi>span{font-size:13px!important;line-height:1.4!important}#app .kpi small{font-size:13px!important;line-height:1.55!important;color:#b4bab0!important}
+#app .alert-strip b{font-size:14px!important}#app .alert-strip small{font-size:13px!important;line-height:1.55!important;color:#b4bab0!important}
+#app .section-title p{font-size:14px!important;line-height:1.55!important}
+#app .priority-item textarea{font-size:15px!important;line-height:1.6!important}
+#app .task-card{padding:14px 15px!important}#app .task-main b{font-size:15px!important;line-height:1.5!important}#app .tag{font-size:13px!important;padding:6px 9px!important;line-height:1.2!important}
+#app .empty{font-size:14px!important;line-height:1.65!important}#app .empty b{font-size:15px!important}
+#app .segmented button{font-size:13px!important;padding:9px 12px!important}#app .toolbar select{font-size:14px!important}
+#app .summary-chip span{font-size:13px!important}#app .summary-chip b{font-size:21px!important}
+#app .side-brand b{font-size:16px!important}#app .side-brand span{font-size:13px!important}
+#app .side-day>span{font-size:13px!important}#app .side-day b{font-size:16px!important}#app .side-day small{font-size:15px!important}
+#app .nav-caption{font-size:13px!important}#app .side-nav button{font-size:14px!important;padding:12px 11px!important;line-height:1.3!important}#app .side-nav button em{font-size:13px!important}
+#app .sync-state b{font-size:13px!important}#app .sync-panel small{font-size:13px!important;line-height:1.55!important}#app .save-state{font-size:13px!important}
+#app .profile-pill b{font-size:13px!important}#app .profile-pill small{font-size:13px!important}
+#app .metric-section-head h3{font-size:15px!important}#app .metric-section-head span{font-size:13px!important}
+#app .metric-box{padding:14px!important}#app .metric-box label{font-size:14px!important;line-height:1.45!important;min-height:0!important;color:#b9beb5!important}#app .metric-box input{font-size:15px!important}#app .metric-box small{font-size:13px!important;color:#a2a89e!important;line-height:1.5!important}
+#app .chart-labels{font-size:13px!important}
+#app .timeline-item{padding:16px!important}#app .timeline-item time{font-size:16px!important}#app .timeline-copy b{font-size:16px!important;line-height:1.4!important}#app .timeline-copy small{font-size:14px!important;line-height:1.62!important;color:#b8bdb4!important}
+#app .check-group>h3{font-size:13px!important}#app .check-row{padding:13px 14px!important}#app .check-row b{font-size:15px!important}#app .check-row small{font-size:14px!important;line-height:1.62!important;color:#b0b5ac!important}
+#app .report-preview{font-size:15px!important;line-height:1.75!important}#app .report-status b{font-size:14px!important}#app .report-status span{font-size:13px!important}
+#app .meeting-template{padding:14px!important}#app .meeting-template b{font-size:15px!important}#app .meeting-template span{font-size:14px!important;line-height:1.6!important}
+#app .agenda-row span{font-size:14px!important;line-height:1.55!important}#app .agenda-add input{font-size:14px!important}#app .meeting-timer p{font-size:14px!important}
+#app .history-card h3{font-size:15px!important}#app .history-card small{font-size:13px!important}#app .history-card p{font-size:14px!important;line-height:1.6!important}
+#app .goal-row input{font-size:15px!important}#app .contour b{font-size:14px!important}#app .contour p{font-size:14px!important;line-height:1.62!important;color:#b1b6ad!important}
+#app .guide-card{padding:18px!important}#app .guide-card .guide-number{font-size:13px!important}#app .guide-card h3{font-size:16px!important;margin-bottom:9px!important}#app .guide-card ul,#app .guide-card li{font-size:15px!important;line-height:1.78!important;color:#bec3ba!important}
+#app .decision-row{grid-template-columns:185px 1fr!important;padding:14px!important}#app .decision-row b{font-size:14px!important}#app .decision-row span{font-size:14px!important;line-height:1.65!important;color:#b8bdb4!important}
+#app .archive-card>span{font-size:13px!important}#app .archive-card b{font-size:15px!important}#app .archive-card small{font-size:14px!important;line-height:1.6!important}
+#app .status-box>span{font-size:13px!important}#app .status-box b{font-size:15px!important}#app .status-box small{font-size:14px!important;line-height:1.6!important}
+#app .sheet-head span{font-size:13px!important}#app .sheet-grid button span{font-size:14px!important}#app .toast{font-size:14px!important;line-height:1.55!important}
+#app .mobile-brand b{font-size:13px!important}#app .mobile-brand small{font-size:13px!important}#app .date-control input{font-size:14px!important}
+#app .mobile-nav button span{font-size:13px!important}#app .mobile-nav button i{font-size:17px!important}
+#auth p,#auth small,#auth label{font-size:14px!important;line-height:1.6!important}#auth .auth-copy p{font-size:15px!important}#auth .role-card b{font-size:15px!important}#auth .role-card small{font-size:13px!important}#auth input{font-size:15px!important}
+.v8salary{display:flex;justify-content:space-between;gap:16px;align-items:center;background:linear-gradient(135deg,rgba(254,235,0,.1),rgba(255,255,255,.015));border-color:rgba(254,235,0,.18)}
+.v8salary.full{display:block}.v8salary strong{display:block;font-size:34px;letter-spacing:-.04em;margin-top:5px}.v8salary>div>small{font-size:14px!important}
+.v8salaryParts{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:14px}.v8salaryParts span{padding:11px;border:1px solid var(--line);border-radius:12px;font-size:14px!important;color:#b9beb5}.v8salaryParts b{display:block;font-size:18px!important;color:#fff;margin-top:5px}.v8salaryParts small{display:block;font-size:13px!important;margin-top:4px}
+.v8sum{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:12px}.v8sum>div{padding:13px;border:1px solid var(--line);border-radius:14px}.v8sum span,.v8sum small{display:block;font-size:13px!important;color:#aeb3aa}.v8sum b{display:block;font-size:21px;margin:5px 0}.v8sum .good b{color:var(--green)}.v8sum .warn b{color:var(--orange)}.v8sum .danger b{color:var(--red)}
+.v8kpis{display:grid;grid-template-columns:repeat(2,1fr);gap:8px}.v8kpis label{display:grid;grid-template-columns:auto 1fr auto;gap:11px;align-items:start;padding:14px;border:1px solid var(--line);border-radius:14px;background:rgba(255,255,255,.012)}.v8kpis input{width:20px;height:20px;accent-color:var(--yellow)}.v8kpis b{display:block;font-size:15px!important}.v8kpis small{display:block;font-size:14px!important;line-height:1.6!important}.v8kpis strong{font-size:14px!important;color:var(--yellow);white-space:nowrap}
+.goal-row.v8{grid-template-columns:auto 1fr auto}.v8goal{width:40px;height:40px;border:1px solid var(--line);border-radius:10px;background:#171914;color:#999;font-size:16px!important}.v8goal.part{color:var(--orange)}.v8goal.done{background:var(--green);color:#071008}
+.v8taskHead{display:flex;justify-content:space-between;align-items:center;margin:15px 0 9px}.v8taskHead h3{font-size:15px;margin:0}.v8task{display:grid;grid-template-columns:auto 1fr auto;gap:9px;align-items:center;padding:11px;border:1px solid var(--line);border-radius:11px;margin-top:7px}.v8task.done{opacity:.62}.v8task b{display:block;font-size:15px!important}.v8task small{display:block;font-size:14px!important}
+.v8close{margin-top:14px;padding:14px;border:1px solid var(--line);border-radius:14px}.v8closeTop{display:flex;justify-content:space-between;gap:10px}.v8closeTop h3{font-size:16px;margin:4px 0}.v8pill{padding:7px 10px;border-radius:999px;font-size:13px!important;font-weight:900}.v8pill.good{color:var(--green)}.v8pill.warn{color:var(--orange)}.v8pill.danger{color:var(--red)}
+.v8closeGrid{display:grid;grid-template-columns:repeat(3,1fr);gap:7px;margin:11px 0}.v8closeGrid>div{padding:10px;background:rgba(0,0,0,.15);border-radius:10px}.v8closeGrid span{display:block;font-size:13px!important;color:#aeb3aa}.v8closeGrid b{display:block;font-size:14px!important;margin-top:4px}
+.v8hist{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}.v8hist>div{padding:13px;border:1px solid var(--line);border-radius:14px}.v8hist b{display:block;font-size:15px!important}.v8hist small{display:block;font-size:14px!important;line-height:1.6!important;margin-top:5px}
+@media(max-width:820px){:root{--sidebar:255px}body,#app{font-size:15px!important}.v8salary{display:block}.v8salary .button{margin-top:10px}.v8salaryParts,.v8sum,.v8kpis,.v8closeGrid,.v8hist{grid-template-columns:1fr}#app .decision-row{grid-template-columns:1fr!important}#app .page-head p{font-size:15px!important}#app .guide-card ul,#app .guide-card li{font-size:14px!important}#app input,#app textarea,#app select{font-size:16px!important}}
