@@ -1,0 +1,46 @@
+name: Deploy Roman Finance
+
+on:
+  push:
+    branches: [roman-finance-v5-working]
+    paths:
+      - 'roman-finance/**'
+      - '.github/workflows/roman-finance-pages.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: roman-finance-pages
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: roman-finance-v5-working
+      - name: Build self-contained site
+        run: |
+          mkdir -p _site
+          cat roman-finance/chunk{1..6}.txt | base64 -d | gzip -d > _site/index.html
+          touch _site/.nojekyll
+          test -s _site/index.html
+          grep -q 'Roman Finance' _site/index.html
+      - name: Configure Pages
+        uses: actions/configure-pages@v5
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
