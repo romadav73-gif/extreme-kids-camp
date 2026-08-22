@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#17110f">
+<title>Roman Finance</title>
+<style>
+:root{color-scheme:dark;--bg:#120d0b;--text:#fff8ef;--muted:#baa79b;--accent:#e7b36d;--accent2:#bf7452}*{box-sizing:border-box}body{margin:0;min-height:100vh;display:grid;place-items:center;background:radial-gradient(850px 520px at 86% 0,rgba(231,179,109,.16),transparent 63%),radial-gradient(680px 480px at 0 100%,rgba(191,116,82,.13),transparent 60%),var(--bg);font-family:Inter,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:var(--text)}.boot{width:min(460px,calc(100% - 28px));padding:30px;border:1px solid rgba(255,255,255,.09);border-radius:28px;background:rgba(33,23,19,.86);backdrop-filter:blur(20px);box-shadow:0 28px 90px rgba(0,0,0,.48)}.mark{width:58px;height:58px;border-radius:19px;background:linear-gradient(135deg,var(--accent),var(--accent2));position:relative;box-shadow:0 0 44px rgba(231,179,109,.2);animation:float 2.5s ease-in-out infinite}.mark:after{content:"R";position:absolute;inset:5px;border-radius:15px;background:#17110f;display:grid;place-items:center;font-weight:900;font-size:23px}h1{font-size:25px;letter-spacing:-.04em;margin:22px 0 8px}p{font-size:14px;line-height:1.6;color:var(--muted);margin:0}.bar{height:8px;border-radius:999px;background:#2d201b;overflow:hidden;margin:24px 0 12px}.bar i{display:block;height:100%;width:35%;border-radius:999px;background:linear-gradient(90deg,var(--accent2),var(--accent));animation:load 1.1s ease-in-out infinite alternate}.status{font-size:12px;color:#ae998d}.error{display:none;margin-top:16px;padding:13px;border-radius:14px;background:rgba(255,110,110,.08);border:1px solid rgba(255,110,110,.22);color:#ffc9c9;font-size:13px;line-height:1.5}@keyframes load{to{width:94%}}@keyframes float{50%{transform:translateY(-5px)}}
+</style>
+</head>
+<body>
+<main class="boot"><div class="mark"></div><h1>Roman Finance</h1><p>Загружаю финансового помощника, аналитику и голосовой ввод.</p><div class="bar"><i></i></div><div class="status" id="status">Подключаю приложение…</div><div class="error" id="error"></div></main>
+<script>
+(async()=>{
+ const status=document.getElementById('status'),error=document.getElementById('error');
+ try{
+  const root='https://raw.githubusercontent.com/romadav73-gif/extreme-kids-camp/roman-finance-v5-working/roman-finance/';
+  const parts=await Promise.all([1,2,3,4,5,6].map(async n=>{const r=await fetch(root+'chunk'+n+'.txt',{cache:'no-store'});if(!r.ok)throw new Error('Не загружен модуль '+n);return (await r.text()).trim()}));
+  status.textContent='Запускаю финансовую систему…';
+  if(!('DecompressionStream' in window))throw new Error('Открой сайт в Chrome, Edge, Safari или Firefox последней версии.');
+  const bytes=Uint8Array.from(atob(parts.join('')),c=>c.charCodeAt(0));
+  const html=await new Response(new Blob([bytes]).stream().pipeThrough(new DecompressionStream('gzip'))).text();
+  document.open();document.write(html);document.close();
+ }catch(e){console.error(e);status.textContent='Не удалось запустить';error.style.display='block';error.textContent=(e&&e.message)||'Обнови страницу и попробуй ещё раз.'}
+})();
+</script>
+</body>
+</html>
