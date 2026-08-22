@@ -3,8 +3,6 @@ name: Build Roman Finance
 on:
   push:
     branches: [main]
-    paths:
-      - '.github/workflows/roman-finance-pages.yml'
   workflow_dispatch:
 
 permissions:
