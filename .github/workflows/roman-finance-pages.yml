@@ -1,4 +1,4 @@
-name: Deploy Roman Finance
+name: Build Roman Finance
 
 on:
   push:
@@ -13,45 +13,61 @@ permissions:
   id-token: write
 
 concurrency:
-  group: roman-finance-pages
+  group: roman-finance-build
   cancel-in-progress: true
 
 jobs:
-  deploy:
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
+  build:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Roman Finance source
         uses: actions/checkout@v4
         with:
           ref: roman-finance-v5-working
-      - name: Build self-contained site
+          fetch-depth: 0
+      - name: Decode self-contained site
+        run: |
+          cat roman-finance/chunk{1..6}.txt | base64 -d | gzip -d > roman-finance/site.html
+          test -s roman-finance/site.html
+          grep -q 'Roman Finance' roman-finance/site.html
+          printf 'build-ok\n%s bytes\n%s\n' "$(wc -c < roman-finance/site.html)" "$(date -u +%FT%TZ)" > roman-finance/build-status.txt
+      - name: Publish built HTML to branch
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add roman-finance/site.html roman-finance/build-status.txt
+          git commit -m "Build stable Roman Finance site" || exit 0
+          git push origin HEAD:roman-finance-v5-working
+      - name: Prepare optional Pages artifact
         run: |
           mkdir -p _site
-          cat roman-finance/chunk{1..6}.txt | base64 -d | gzip -d > _site/index.html
+          cp roman-finance/site.html _site/index.html
           touch _site/.nojekyll
-          test -s _site/index.html
-          grep -q 'Roman Finance' _site/index.html
       - name: Configure Pages
+        id: configure
+        continue-on-error: true
         uses: actions/configure-pages@v5
       - name: Upload Pages artifact
+        id: upload
+        if: steps.configure.outcome == 'success'
+        continue-on-error: true
         uses: actions/upload-pages-artifact@v3
         with:
           path: _site
       - name: Deploy to GitHub Pages
         id: deployment
+        if: steps.configure.outcome == 'success' && steps.upload.outcome == 'success'
+        continue-on-error: true
         uses: actions/deploy-pages@v4
-      - name: Record deployment result
+      - name: Record Pages result
         if: always()
         env:
-          RESULT: ${{ job.status }}
+          CONFIGURE: ${{ steps.configure.outcome }}
+          UPLOAD: ${{ steps.upload.outcome }}
+          DEPLOY: ${{ steps.deployment.outcome }}
           PAGE_URL: ${{ steps.deployment.outputs.page_url }}
         run: |
-          printf '%s\n%s\n%s\n' "$RESULT" "$PAGE_URL" "$(date -u +%FT%TZ)" > roman-finance/pages-status.txt
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          printf 'build=success\nconfigure=%s\nupload=%s\ndeploy=%s\nurl=%s\n%s\n' "$CONFIGURE" "$UPLOAD" "$DEPLOY" "$PAGE_URL" "$(date -u +%FT%TZ)" > roman-finance/pages-status.txt
           git add roman-finance/pages-status.txt
-          git commit -m "Record Roman Finance Pages deployment: $RESULT" || exit 0
+          git commit -m "Record Roman Finance publish status" || exit 0
           git push origin HEAD:roman-finance-v5-working
