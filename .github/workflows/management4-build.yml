@@ -23,6 +23,8 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Download and assemble verified application
+        id: assemble
+        continue-on-error: true
         shell: bash
         env:
           U0: https://extreme-kids-roller-control-v6-3oms2i9kd.vercel.app/bundle.txt?_vercel_share=NVAMqL8ieT0dMr8OAvodZC1F6Cn0skwp
@@ -39,34 +41,79 @@ jobs:
           U8: https://extreme-kids-roller-control-v6-q2y4aaiy3.vercel.app/bundle.txt?_vercel_share=YjbvsCMuIzcYQzT5dQ1oTZFaBJz3ZRCV
           U9: https://extreme-kids-roller-control-v6-gxhvombh2.vercel.app/bundle.txt?_vercel_share=y0aJzpqnCDs7HTKDgwyy4kAT7xhlNRYJ
         run: |
-          set -euo pipefail
+          set -u
           mkdir -p management4
-          rm -f /tmp/ek4.b64 /tmp/ek4.cookies
-          touch /tmp/ek4.b64 /tmp/ek4.cookies
-          for key in U0 U1 U2 U3 U4 U5 U6 U70 U71 U72 U73 U8 U9; do
-            url="${!key}"
-            curl --fail --silent --show-error --location \
-              --retry 5 --retry-delay 2 --retry-all-errors \
-              --cookie /tmp/ek4.cookies --cookie-jar /tmp/ek4.cookies \
-              "$url" >> /tmp/ek4.b64
-          done
-          tr -d '\r\n\t ' < /tmp/ek4.b64 | base64 --decode | gzip --decompress --stdout > management4/index.html
-          test "$(wc -c < management4/index.html)" -eq 175567
-          echo "b86a239e85f611529f53b406b8db5fda9a3ce01787e10ad2554ae44c655fafb2  management4/index.html" | sha256sum --check --strict
-          grep -q "EXTREME KIDS" management4/index.html
-          grep -q "Управление 4.0" management4/index.html
-          printf '%s\n' 'EXTREME KIDS Management 4.0 · production build' > management4/README.txt
+          python3 <<'PY'
+          import base64, gzip, hashlib, http.cookiejar, json, os, pathlib, sys, urllib.request
 
-      - name: Commit production site
+          order = ['U0','U1','U2','U3','U4','U5','U6','U70','U71','U72','U73','U8','U9']
+          jar = http.cookiejar.CookieJar()
+          opener = urllib.request.build_opener(urllib.request.HTTPCookieProcessor(jar))
+          opener.addheaders = [('User-Agent','Mozilla/5.0 EXTREME-KIDS-Builder/4.0')]
+          diagnostic = {'parts': [], 'success': False}
+          try:
+              texts = []
+              for key in order:
+                  url = os.environ[key]
+                  with opener.open(url, timeout=45) as response:
+                      body = response.read()
+                      text = body.decode('utf-8').strip()
+                      item = {
+                          'key': key,
+                          'status': getattr(response, 'status', 200),
+                          'final_url': response.geturl(),
+                          'bytes': len(body),
+                          'head': text[:16]
+                      }
+                      diagnostic['parts'].append(item)
+                      if item['status'] != 200:
+                          raise RuntimeError(f"{key}: HTTP {item['status']}")
+                      if text.startswith('<!') or text.startswith('<html') or 'Redirecting' in text[:100]:
+                          raise RuntimeError(f"{key}: protection page instead of bundle")
+                      texts.append(text)
+
+              joined = ''.join(texts)
+              compressed = base64.b64decode(joined, validate=True)
+              html = gzip.decompress(compressed)
+              digest = hashlib.sha256(html).hexdigest()
+              diagnostic.update({
+                  'base64_chars': len(joined),
+                  'compressed_bytes': len(compressed),
+                  'html_bytes': len(html),
+                  'sha256': digest
+              })
+              if len(html) != 175567:
+                  raise RuntimeError(f"unexpected HTML size: {len(html)}")
+              if digest != 'b86a239e85f611529f53b406b8db5fda9a3ce01787e10ad2554ae44c655fafb2':
+                  raise RuntimeError(f"unexpected SHA-256: {digest}")
+              decoded = html.decode('utf-8')
+              for marker in ('EXTREME KIDS', 'Управление 4.0', '2026.08.23-v4.0-live'):
+                  if marker not in decoded:
+                      raise RuntimeError(f"missing marker: {marker}")
+              pathlib.Path('management4/index.html').write_bytes(html)
+              pathlib.Path('management4/README.txt').write_text('EXTREME KIDS Management 4.0 · verified production build\n', encoding='utf-8')
+              diagnostic['success'] = True
+          except Exception as error:
+              diagnostic['error'] = f'{type(error).__name__}: {error}'
+              print(diagnostic['error'], file=sys.stderr)
+          finally:
+              pathlib.Path('management4-build-status.json').write_text(json.dumps(diagnostic, ensure_ascii=False, indent=2) + '\n', encoding='utf-8')
+          if not diagnostic['success']:
+              sys.exit(1)
+          PY
+
+      - name: Commit result and diagnostics
+        if: always()
         shell: bash
         run: |
           set -euo pipefail
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add management4/index.html management4/README.txt
+          git add management4-build-status.json
+          if [ -f management4/README.txt ]; then git add management4/index.html management4/README.txt; fi
           if git diff --cached --quiet; then
             echo "No changes"
             exit 0
           fi
-          git commit -m "Publish EXTREME KIDS Management 4.0"
+          git commit -m "Build EXTREME KIDS Management 4.0"
           git push
