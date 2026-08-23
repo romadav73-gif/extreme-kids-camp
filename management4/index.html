@@ -1,0 +1,98 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#070807">
+  <meta name="color-scheme" content="dark">
+  <meta name="robots" content="noindex,nofollow">
+  <meta name="referrer" content="no-referrer">
+  <title>EXTREME KIDS · Управление 4.0</title>
+  <link rel="icon" href="https://ek-ui2-logo.vercel.app/logo.webp">
+  <link rel="stylesheet" href="styles.css?v=20260823-6">
+</head>
+<body>
+  <section class="boot" id="boot">
+    <div class="boot-card">
+      <img class="boot-logo" src="https://ek-ui2-logo.vercel.app/logo.webp" alt="EXTREME KIDS Тропарёво">
+      <div class="eyebrow">EXTREME KIDS · ТРОПАРЁВО</div>
+      <h1>Управление 4.0</h1>
+      <p id="bootText">Подключаем общую рабочую систему…</p>
+      <div class="boot-progress"><i></i></div>
+      <button class="btn primary hidden" id="bootAction">Повторить</button>
+    </div>
+  </section>
+
+  <div class="app-shell" id="appShell">
+    <aside class="sidebar">
+      <div class="brand">
+        <img class="brand-logo" src="https://ek-ui2-logo.vercel.app/logo.webp" alt="EXTREME KIDS Тропарёво">
+        <div class="brand-copy">
+          <b>Управление 4.0</b>
+          <span>Роллер-школа · штаб</span>
+        </div>
+      </div>
+      <nav class="nav" id="nav"></nav>
+      <div class="side-footer">
+        <div class="sync-line"><span class="sync-dot"></span><b id="syncText">Подключение…</b></div>
+        <span id="syncSub">Общая база Романа и Станислава</span>
+        <b id="sideUser">—</b>
+        <span id="sideBuild">Версия 4.0 · данные сохраняются автоматически</span>
+      </div>
+    </aside>
+
+    <main class="main">
+      <header class="topbar">
+        <div class="top-title">
+          <div class="crumb">EXTREME KIDS · ТРОПАРЁВО</div>
+          <h1 id="pageTitle">Сегодня</h1>
+        </div>
+        <div class="top-actions">
+          <button class="btn ghost" data-action="syncNow">Синхронизировать</button>
+          <button class="btn primary keep-mobile" data-action="quickTask">+ Задача</button>
+          <div class="role-pill">
+            <span class="role-avatar" id="roleAvatar">—</span>
+            <div><b id="roleName">—</b><small id="roleTitle">—</small></div>
+          </div>
+        </div>
+      </header>
+      <div class="content" id="pages"></div>
+    </main>
+  </div>
+
+  <nav class="mobile-nav" id="mobileNav"></nav>
+
+  <div class="modal" id="modal" aria-hidden="true">
+    <div class="modal-box" id="modalBox">
+      <div class="modal-head">
+        <div><h3 id="modalTitle">—</h3><p id="modalSubtitle"></p></div>
+        <button class="btn icon ghost" data-action="closeModal" aria-label="Закрыть">×</button>
+      </div>
+      <div id="modalBody"></div>
+    </div>
+  </div>
+
+  <div class="toast" id="toast"></div>
+  <script>
+  (async()=>{
+    try{
+      const urls=[0,1,2,3].map(i=>`app${i}.txt?v=20260823-6`);
+      const parts=await Promise.all(urls.map(async url=>{
+        const response=await fetch(url,{cache:'no-store'});
+        if(!response.ok) throw new Error(`Не загружен ${url}: ${response.status}`);
+        return response.text();
+      }));
+      const code=parts.join('');
+      if(!code.includes('2026.08.23-v4.0-live')||!code.includes('async function boot')) throw new Error('Некорректная сборка приложения');
+      (0,eval)(code);
+    }catch(error){
+      console.error('APP_LOAD_FAILED',error);
+      document.getElementById('bootText').textContent='Не удалось загрузить систему: '+error.message;
+      const button=document.getElementById('bootAction');
+      button.classList.remove('hidden');
+      button.onclick=()=>location.reload();
+    }
+  })();
+  </script>
+</body>
+</html>
