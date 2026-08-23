@@ -1,0 +1,72 @@
+name: Build EXTREME KIDS Management 4.0
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - management4-build.trigger
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: management4-build
+  cancel-in-progress: true
+
+jobs:
+  build:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Download and assemble verified application
+        shell: bash
+        env:
+          U0: https://extreme-kids-roller-control-v6-3oms2i9kd.vercel.app/bundle.txt?_vercel_share=NVAMqL8ieT0dMr8OAvodZC1F6Cn0skwp
+          U1: https://extreme-kids-roller-control-v6-aaoic8t0n.vercel.app/bundle.txt?_vercel_share=Vz9u8OVKyyQqOpGZ5STgyXHPni8qV82d
+          U2: https://extreme-kids-roller-control-v6-6xl1yaapr.vercel.app/bundle.txt?_vercel_share=QOZgBr4BmocyZWpb9xPu0P1FDHhk4LAF
+          U3: https://extreme-kids-roller-control-v6-l3nynmbm8.vercel.app/bundle.txt?_vercel_share=3vP0qPF1CKwL6xXOsU5OIRuTFBSvjAW1
+          U4: https://extreme-kids-roller-control-v6-pz5difvij.vercel.app/bundle.txt?_vercel_share=TtSNxGQQmc3Gj8WP4Sv390ES4slgZzw3
+          U5: https://extreme-kids-roller-control-v6-odclwztnh.vercel.app/bundle.txt?_vercel_share=pprso7ZWemcgDn7hhL02DvU9A8NCaot0
+          U6: https://extreme-kids-roller-control-v6-cl80m8fxi.vercel.app/bundle.txt?_vercel_share=bUgNfaBjxiKF5mFgIqBQkoZGf2v9Gyzl
+          U70: https://extreme-kids-roller-control-v6-j5kve00re.vercel.app/bundle-part.txt?_vercel_share=sAlWiKkox9x0Xd3DDveW7UTD41ZXYBOV
+          U71: https://extreme-kids-roller-control-v6-salk0n5jk.vercel.app/bundle-part.txt?_vercel_share=nSZI4aqPQCAcWaBlOPV2O0cyD9WPCxr8
+          U72: https://extreme-kids-roller-control-v6-b6uz6h1tl.vercel.app/bundle-part.txt?_vercel_share=Q2AZFg1JpmQTJ34YepBqo4ksOFbPmEG2
+          U73: https://extreme-kids-roller-control-v6-g281nf070.vercel.app/bundle-part.txt?_vercel_share=wdYTPuU319PHW5Khwq7LUH8M63y4lM1V
+          U8: https://extreme-kids-roller-control-v6-q2y4aaiy3.vercel.app/bundle.txt?_vercel_share=YjbvsCMuIzcYQzT5dQ1oTZFaBJz3ZRCV
+          U9: https://extreme-kids-roller-control-v6-gxhvombh2.vercel.app/bundle.txt?_vercel_share=y0aJzpqnCDs7HTKDgwyy4kAT7xhlNRYJ
+        run: |
+          set -euo pipefail
+          mkdir -p management4
+          rm -f /tmp/ek4.b64 /tmp/ek4.cookies
+          touch /tmp/ek4.b64 /tmp/ek4.cookies
+          for key in U0 U1 U2 U3 U4 U5 U6 U70 U71 U72 U73 U8 U9; do
+            url="${!key}"
+            curl --fail --silent --show-error --location \
+              --retry 5 --retry-delay 2 --retry-all-errors \
+              --cookie /tmp/ek4.cookies --cookie-jar /tmp/ek4.cookies \
+              "$url" >> /tmp/ek4.b64
+          done
+          tr -d '\r\n\t ' < /tmp/ek4.b64 | base64 --decode | gzip --decompress --stdout > management4/index.html
+          test "$(wc -c < management4/index.html)" -eq 175567
+          echo "b86a239e85f611529f53b406b8db5fda9a3ce01787e10ad2554ae44c655fafb2  management4/index.html" | sha256sum --check --strict
+          grep -q "EXTREME KIDS" management4/index.html
+          grep -q "Управление 4.0" management4/index.html
+          printf '%s\n' 'EXTREME KIDS Management 4.0 · production build' > management4/README.txt
+
+      - name: Commit production site
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add management4/index.html management4/README.txt
+          if git diff --cached --quiet; then
+            echo "No changes"
+            exit 0
+          fi
+          git commit -m "Publish EXTREME KIDS Management 4.0"
+          git push
