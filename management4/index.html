@@ -9,7 +9,9 @@
   <meta name="referrer" content="no-referrer">
   <title>EXTREME KIDS · Управление 4.0</title>
   <link rel="icon" href="https://ek-ui2-logo.vercel.app/logo.webp">
-  <link rel="stylesheet" href="styles.css?v=20260823-6">
+  <style>
+    *{box-sizing:border-box}body{margin:0;background:#070807;color:#f6f7f3;font-family:Inter,Arial,sans-serif}.boot{position:fixed;inset:0;z-index:200;display:grid;place-items:center;padding:24px;background:radial-gradient(circle at 70% 10%,rgba(255,229,0,.18),transparent 32%),#070807}.boot-card{width:min(520px,100%);padding:34px;border:1px solid rgba(255,255,255,.09);border-radius:32px;background:#0f110f;text-align:center}.boot-logo{width:104px;height:104px;object-fit:cover;border-radius:25px}.boot h1{font-size:31px;margin:12px 0 0}.boot p{color:#949a92}.boot-progress{height:6px;overflow:hidden;border-radius:99px;background:#252925;margin:20px 0}.boot-progress i{display:block;width:38%;height:100%;background:#ffe500;border-radius:99px;animation:load 1.1s ease-in-out infinite}.hidden{display:none!important}.btn{border:0;border-radius:12px;padding:10px 14px;font-weight:900}.primary{background:#ffe500;color:#000}@keyframes load{0%{transform:translateX(-120%)}100%{transform:translateX(330%)}}
+  </style>
 </head>
 <body>
   <section class="boot" id="boot">
@@ -27,70 +29,57 @@
     <aside class="sidebar">
       <div class="brand">
         <img class="brand-logo" src="https://ek-ui2-logo.vercel.app/logo.webp" alt="EXTREME KIDS Тропарёво">
-        <div class="brand-copy">
-          <b>Управление 4.0</b>
-          <span>Роллер-школа · штаб</span>
-        </div>
+        <div class="brand-copy"><b>Управление 4.0</b><span>Роллер-школа · штаб</span></div>
       </div>
       <nav class="nav" id="nav"></nav>
       <div class="side-footer">
         <div class="sync-line"><span class="sync-dot"></span><b id="syncText">Подключение…</b></div>
-        <span id="syncSub">Общая база Романа и Станислава</span>
-        <b id="sideUser">—</b>
+        <span id="syncSub">Общая база Романа и Станислава</span><b id="sideUser">—</b>
         <span id="sideBuild">Версия 4.0 · данные сохраняются автоматически</span>
       </div>
     </aside>
-
     <main class="main">
       <header class="topbar">
-        <div class="top-title">
-          <div class="crumb">EXTREME KIDS · ТРОПАРЁВО</div>
-          <h1 id="pageTitle">Сегодня</h1>
-        </div>
+        <div class="top-title"><div class="crumb">EXTREME KIDS · ТРОПАРЁВО</div><h1 id="pageTitle">Сегодня</h1></div>
         <div class="top-actions">
           <button class="btn ghost" data-action="syncNow">Синхронизировать</button>
           <button class="btn primary keep-mobile" data-action="quickTask">+ Задача</button>
-          <div class="role-pill">
-            <span class="role-avatar" id="roleAvatar">—</span>
-            <div><b id="roleName">—</b><small id="roleTitle">—</small></div>
-          </div>
+          <div class="role-pill"><span class="role-avatar" id="roleAvatar">—</span><div><b id="roleName">—</b><small id="roleTitle">—</small></div></div>
         </div>
       </header>
       <div class="content" id="pages"></div>
     </main>
   </div>
-
   <nav class="mobile-nav" id="mobileNav"></nav>
-
   <div class="modal" id="modal" aria-hidden="true">
     <div class="modal-box" id="modalBox">
-      <div class="modal-head">
-        <div><h3 id="modalTitle">—</h3><p id="modalSubtitle"></p></div>
-        <button class="btn icon ghost" data-action="closeModal" aria-label="Закрыть">×</button>
-      </div>
+      <div class="modal-head"><div><h3 id="modalTitle">—</h3><p id="modalSubtitle"></p></div><button class="btn icon ghost" data-action="closeModal" aria-label="Закрыть">×</button></div>
       <div id="modalBody"></div>
     </div>
   </div>
-
   <div class="toast" id="toast"></div>
   <script>
   (async()=>{
+    const b64bytes=value=>{const raw=atob(value);return Uint8Array.from(raw,c=>c.charCodeAt(0))};
+    const ungzip=async value=>{
+      if(!('DecompressionStream' in window)) throw new Error('Обновите браузер до актуальной версии');
+      const stream=new Blob([b64bytes(value)]).stream().pipeThrough(new DecompressionStream('gzip'));
+      return new Response(stream).text();
+    };
+    const loadParts=async(prefix,count)=>{
+      const parts=await Promise.all(Array.from({length:count},(_,i)=>fetch(`${prefix}${i}.b64?v=20260823-7`,{cache:'no-store'}).then(r=>{if(!r.ok)throw new Error(`Не загружен ${prefix}${i}: ${r.status}`);return r.text()})));
+      return parts.join('');
+    };
     try{
-      const urls=[0,1,2,3].map(i=>`app${i}.txt?v=20260823-6`);
-      const parts=await Promise.all(urls.map(async url=>{
-        const response=await fetch(url,{cache:'no-store'});
-        if(!response.ok) throw new Error(`Не загружен ${url}: ${response.status}`);
-        return response.text();
-      }));
-      const code=parts.join('');
+      const [css64,app64]=await Promise.all([loadParts('css',1),loadParts('app',5)]);
+      const [css,code]=await Promise.all([ungzip(css64),ungzip(app64)]);
+      const style=document.createElement('style');style.textContent=css;document.head.appendChild(style);
       if(!code.includes('2026.08.23-v4.0-live')||!code.includes('async function boot')) throw new Error('Некорректная сборка приложения');
       (0,eval)(code);
     }catch(error){
       console.error('APP_LOAD_FAILED',error);
       document.getElementById('bootText').textContent='Не удалось загрузить систему: '+error.message;
-      const button=document.getElementById('bootAction');
-      button.classList.remove('hidden');
-      button.onclick=()=>location.reload();
+      const button=document.getElementById('bootAction');button.classList.remove('hidden');button.onclick=()=>location.reload();
     }
   })();
   </script>
