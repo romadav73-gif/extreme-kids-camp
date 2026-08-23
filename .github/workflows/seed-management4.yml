@@ -7,16 +7,22 @@ on:
       - '.github/workflows/seed-management4.yml'
 
 permissions:
-  contents: read
+  contents: write
+
+concurrency:
+  group: seed-management4
+  cancel-in-progress: false
 
 jobs:
   seed:
     runs-on: ubuntu-latest
     steps:
+      - name: Checkout
+        uses: actions/checkout@v6
       - name: Create protected workspace
         shell: bash
         env:
-          NS: ek4-2e061b94ec155c66e0716f3435451696
+          NS: ek4-839c74b9b196fd44d077691fc673c573
           RECORD_B64: eyJ2ZXJzaW9uIjoyLCJyZXZpc2lvbiI6MSwidXBkYXRlZEF0IjoxNzg3NTA5NDI2ODA3LCJlZGl0b3IiOiJzeXN0ZW0iLCJpdiI6IlNhTlFVWk5vYzRWQWdqMSsiLCJkYXRhIjoiSHpQbHJCViswWlBESU04V0VqVS9iVm5mbjdJcjZ3Znh2MTA4cXN5UTBidU1tTU5RL2JDYlJZOEFKaHJ3OGFsNEo5TkFIWng3eWhYT0NLTXJYdHJrL2drVVBnSlo3QmxGMWtMYkpEY3Z4RnRhdmlnOVhpOEYreWtWSTJpdWxDYmxIdzZQMGR6NU5YcWVxL2lDdGg1amMyanF4eDlpTkNIRFNCcWNwZ0QxaXJRZ1hWZThSQ0xKSGpwd0w3VUlteE80bDAvNWdrak5ZeTBlMHQ4eWxJZkV4WlF6SlRSYWplVkdvMlE2OVlacFpFK3lVUFczU1poTTJWVUs1VE1RdElvdC90RkZ6MVpsNWpCbTZYT1dvWXNhbGZDN2M1bFMyZXVML1N6bTl6c0RTWFZFSnlVZGdBeEZiVERtWGlDY0JENi90N2hYaXBPcUdqQ1N5SjBHaXhUMlV2N2Y2SVBJZG1WRDh5Y3EwOVdvbzJlaFpHRUdJS1NtU3FEeEMxV0k3WHFiMUJyblFJSDFTL3pIY25TclFCQlowMHpZY3JLYXNvSnBDVlN5YlRIM3JLM1RMZVg1RFVVTU9OS1dMQlRnUThqT2JqYkptQzRTaTN2cWVnZ0RKcVAzYkFhOTJzcUZaS3hmY05uUnV0WmgrY3VCTG9aWXpGMWdHMlQ2czh2VmJxKzRYUkFLZkQ2R2t5R0lJZkNtaVJhU0NpMG5hVEdUYTcxL2xIVkplK2pVbTBnZnpnWWg4UGxyVVhGMHFuQi9TSVk5QVpRU1l6QWZUSjIzb09uN0U2Mm45VFFEdXB2OEpGblVVOTlQcXpjY3hxVEN5cGU3NTB5L1M2R3ZWbUZlT0JBTXJ2T0h4UDZDOUg2bEpEdFZ3em5GK0JsNExPeFNpRkpxUTd5dTVxbkROSkZ4eWVqdmdxalFZUUFDaG91K3NOcE5sZjg0SmVoeklFcWV0ZnJDSGV6cnZjQUdBZHVKYlNjbUY5SW05V0p2eVFDTUxOcDY5aDNmVmord2J3cHgyYWx6cmZ6dFZBPT0iLCJlbmNvZGluZyI6Imd6aXAifQ==
         run: |
           set -euo pipefail
@@ -44,5 +50,12 @@ PEM
           printf '%s' "$key" | openssl pkeyutl -encrypt -pubin -inkey public.pem \
             -pkeyopt rsa_padding_mode:oaep -pkeyopt rsa_oaep_md:sha256 \
             | base64 -w0 > sealed.txt
-          echo "WORKSPACE_READY=$NS"
-          echo "SEALED_MANTLE_KEY=$(cat sealed.txt)"
+          {
+            echo "NS=$NS"
+            echo "SEALED=$(cat sealed.txt)"
+          } > management4/seed-result.txt
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add management4/seed-result.txt
+          git commit -m 'Record encrypted Management 4 workspace key'
+          git push
