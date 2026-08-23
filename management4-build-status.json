@@ -1,0 +1,13 @@
+{
+  "parts": [
+    {
+      "key": "U0",
+      "status": 200,
+      "final_url": "https://vercel.com/login?next=%2Fsso-api%3Furl%3Dhttps%253A%252F%252Fextreme-kids-roller-control-v6-3oms2i9kd.vercel.app%252Fbundle.txt%253F_vercel_share%253DNVAMqL8ieT0dMr8OAvodZC1F6Cn0skwp%26nonce%3D4cf8b63dda8575b1666b5509fb903fcc3900b0adcfebce322fe88d1ba9ff3b6c",
+      "bytes": 478936,
+      "head": "<!DOCTYPE html><"
+    }
+  ],
+  "success": false,
+  "error": "RuntimeError: U0: protection page instead of bundle"
+}
