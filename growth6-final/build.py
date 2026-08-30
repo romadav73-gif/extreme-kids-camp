@@ -21,6 +21,17 @@ def fetch_text(url: str) -> str:
         return response.read().decode('utf-8').strip()
 
 
+def source_diagnostics(html: str) -> None:
+    title = re.search(r'<title>(.*?)</title>', html, re.S | re.I)
+    ids = re.findall(r'id=["\']([^"\']+)', html)
+    funcs = re.findall(r'(?:function\s+|window\.)([A-Za-z_$][\w$]*)', html)
+    print('SOURCE_BYTES', len(html.encode('utf-8')))
+    print('SOURCE_TITLE', (title.group(1).strip() if title else 'none'))
+    print('SOURCE_IDS', ids[:80])
+    print('SOURCE_FUNCTIONS', funcs[:120])
+    print('SOURCE_HEAD', repr(html[:1200]))
+
+
 def build() -> dict:
     encoded = ''.join(fetch_text(RAW + f'p{i}.b64') for i in range(7))
     html = gzip.decompress(base64.b64decode(encoded, validate=True)).decode('utf-8')
@@ -32,6 +43,7 @@ def build() -> dict:
     ]
     absent = [marker for marker in required if marker not in html]
     if absent:
+        source_diagnostics(html)
         raise RuntimeError('The pinned application core is incomplete: ' + ', '.join(absent))
 
     html = re.sub(r'<title>.*?</title>', '<title>EXTREME KIDS · Growth OS 6.0</title>', html, count=1, flags=re.S)
@@ -52,6 +64,7 @@ def build() -> dict:
     old_mobile = '`<button data-id="${x[0]}" onclick="go(\'${x[0]}\')">${x[1]}</button>`'
     new_mobile = '`<button class="${UI.page===x[0]?\'active\':\'\'}" data-id="${x[0]}" onclick="go(\'${x[0]}\')">${x[1]}</button>`'
     if old_desktop not in html or old_mobile not in html:
+        source_diagnostics(html)
         raise RuntimeError('Navigation templates changed; refusing an unsafe patch')
     html = html.replace(old_desktop, new_desktop, 1).replace(old_mobile, new_mobile, 1)
 
