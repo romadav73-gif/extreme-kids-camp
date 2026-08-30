@@ -1,0 +1,134 @@
+name: Build and publish EXTREME KIDS Growth OS 6
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - growth6-src/**
+      - .github/workflows/build-growth6-production.yml
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: growth6-production
+  cancel-in-progress: true
+
+jobs:
+  build-test-publish:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Assemble production files
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 <<'PY'
+          import base64, gzip, hashlib, pathlib, re
+
+          src = pathlib.Path('growth6-src')
+          out = pathlib.Path('growth6')
+          out.mkdir(exist_ok=True)
+
+          def decode(pattern, destination):
+              parts = sorted(src.glob(pattern))
+              if not parts:
+                  raise RuntimeError(f'No source parts for {pattern}')
+              joined = ''.join(p.read_text(encoding='utf-8').strip() for p in parts)
+              compressed = base64.b64decode(re.sub(r'\s+', '', joined), validate=True)
+              decoded = gzip.decompress(compressed)
+              destination.write_bytes(decoded)
+              print(destination, 'parts=', len(parts), 'compressed=', len(compressed), 'decoded=', len(decoded), 'sha256=', hashlib.sha256(decoded).hexdigest())
+              return decoded
+
+          index = src.joinpath('index.template.html').read_text(encoding='utf-8')
+          out.joinpath('index.html').write_text(index, encoding='utf-8')
+          css = decode('app-css-x*.part', out/'app.css')
+          js = decode('app-js-x*.part', out/'app.js')
+
+          checks = [
+              ('Growth OS 6.0', index),
+              ('app.css?v=600', index),
+              ('app.js?v=600', index),
+              ('--yellow:#f0c72f', css.decode('utf-8')),
+              ('window.EKGrowthOS', js.decode('utf-8')),
+              ('https://mantledb.sh/v2/', js.decode('utf-8')),
+          ]
+          for marker, text in checks:
+              if marker not in text:
+                  raise RuntimeError(f'Missing build marker: {marker}')
+          if len(css) < 25000:
+              raise RuntimeError(f'CSS unexpectedly small: {len(css)}')
+          if len(js) < 80000:
+              raise RuntimeError(f'JS unexpectedly small: {len(js)}')
+          PY
+          node --check growth6/app.js
+
+      - name: Start local production and browsers
+        shell: bash
+        run: |
+          set -euo pipefail
+          CHROME="$(command -v google-chrome || command -v chromium || command -v chromium-browser || true)"
+          if [ -z "$CHROME" ]; then
+            echo "Chrome/Chromium was not found" >&2
+            exit 1
+          fi
+          echo "Using $CHROME"
+          python3 -m http.server 8765 --directory growth6 >/tmp/growth6-server.log 2>&1 &
+          "$CHROME" --headless=new --no-sandbox --disable-gpu --disable-dev-shm-usage --remote-debugging-address=127.0.0.1 --remote-debugging-port=9222 --user-data-dir=/tmp/growth6-chrome-1 about:blank >/tmp/growth6-chrome-1.log 2>&1 &
+          "$CHROME" --headless=new --no-sandbox --disable-gpu --disable-dev-shm-usage --remote-debugging-address=127.0.0.1 --remote-debugging-port=9223 --user-data-dir=/tmp/growth6-chrome-2 about:blank >/tmp/growth6-chrome-2.log 2>&1 &
+          sleep 2
+          curl --fail --silent http://127.0.0.1:8765/ | grep -q 'Growth OS 6.0'
+
+      - name: Browser smoke test all tabs, CRUD and two-device sync
+        shell: bash
+        run: |
+          set -euo pipefail
+          node growth6-src/smoke.mjs
+
+      - name: Promote tested build to production directory
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p growth5-live
+          cp growth6/index.html growth5-live/index.html
+          cp growth6/app.css growth5-live/app.css
+          cp growth6/app.js growth5-live/app.js
+          cat > growth5-live/BUILD.txt <<EOF
+          EXTREME KIDS Growth OS 6.0
+          Commit source: ${GITHUB_SHA}
+          Browser smoke: passed
+          Built: $(date -u +%Y-%m-%dT%H:%M:%SZ)
+          EOF
+
+      - name: Commit tested production build and diagnostics
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add growth6/index.html growth6/app.css growth6/app.js
+          git add growth5-live/index.html growth5-live/app.css growth5-live/app.js growth5-live/BUILD.txt
+          git add diagnostics/growth6-dashboard.png diagnostics/growth6-smoke-report.json
+          if git diff --cached --quiet; then
+            echo "No generated changes"
+            exit 0
+          fi
+          git commit -m "Publish tested EXTREME KIDS Growth OS 6.0"
+          git push
+
+      - name: Diagnostics on failure
+        if: failure()
+        shell: bash
+        run: |
+          echo '--- server ---'
+          cat /tmp/growth6-server.log || true
+          echo '--- chrome 1 ---'
+          tail -100 /tmp/growth6-chrome-1.log || true
+          echo '--- chrome 2 ---'
+          tail -100 /tmp/growth6-chrome-2.log || true
