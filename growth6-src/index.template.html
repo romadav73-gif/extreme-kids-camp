@@ -1,0 +1,124 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#080806">
+  <meta name="color-scheme" content="dark">
+  <meta name="robots" content="noindex,nofollow">
+  <meta name="referrer" content="no-referrer">
+  <title>EXTREME KIDS · Growth OS 6.0</title>
+  <link rel="icon" href="https://ek-ui2-logo.vercel.app/logo.webp">
+  <link rel="stylesheet" href="app.css?v=600">
+</head>
+<body>
+  <div class="ambient ambient-one"></div>
+  <div class="ambient ambient-two"></div>
+
+  <section class="boot" id="boot" aria-live="polite">
+    <div class="boot-card">
+      <div class="boot-logo-wrap">
+        <img src="https://ek-ui2-logo.vercel.app/logo.webp" alt="EXTREME KIDS Тропарёво" class="boot-logo">
+        <span class="boot-ring"></span>
+      </div>
+      <div class="eyebrow">EXTREME KIDS · ТРОПАРЁВО</div>
+      <h1>Growth OS <span>6.0</span></h1>
+      <p id="bootText">Подключаем рабочую систему клуба…</p>
+      <div class="boot-progress"><i></i></div>
+      <button class="btn btn-primary hidden" id="bootRetry">Повторить запуск</button>
+    </div>
+  </section>
+
+  <div class="app-shell hidden" id="appShell">
+    <aside class="sidebar" id="sidebar">
+      <div class="brand">
+        <img src="https://ek-ui2-logo.vercel.app/logo.webp" alt="EXTREME KIDS" class="brand-logo">
+        <div class="brand-copy">
+          <b>GROWTH OS <span>6.0</span></b>
+          <small>Стратегия клуба · 2026/27</small>
+        </div>
+      </div>
+
+      <div class="workspace-pill">
+        <span class="workspace-dot" id="workspaceDot"></span>
+        <div>
+          <b id="workspaceStatus">Подключение…</b>
+          <small id="workspaceSub">Общая зашифрованная база</small>
+        </div>
+      </div>
+
+      <nav class="nav" id="mainNav" aria-label="Разделы"></nav>
+
+      <div class="sidebar-footer">
+        <div class="profile-mini">
+          <span class="avatar" id="sidebarAvatar">Р</span>
+          <div>
+            <b id="sidebarName">Роман</b>
+            <small id="sidebarRole">Владелец клуба</small>
+          </div>
+        </div>
+        <button class="icon-btn" data-action="settings" title="Настройки" aria-label="Настройки">
+          <svg viewBox="0 0 24 24"><path d="M12 8.5a3.5 3.5 0 1 0 0 7 3.5 3.5 0 0 0 0-7Z"/><path d="M19.4 15a1.7 1.7 0 0 0 .34 1.88l.06.06-2.12 2.12-.06-.06a1.7 1.7 0 0 0-1.88-.34 1.7 1.7 0 0 0-1.03 1.55V20.3h-3v-.09a1.7 1.7 0 0 0-1.03-1.55 1.7 1.7 0 0 0-1.88.34l-.06.06-2.12-2.12.06-.06A1.7 1.7 0 0 0 7 15a1.7 1.7 0 0 0-1.55-1.03H5.3v-3h.15A1.7 1.7 0 0 0 7 9.94a1.7 1.7 0 0 0-.34-1.88L6.6 8l2.12-2.12.06.06a1.7 1.7 0 0 0 1.88.34 1.7 1.7 0 0 0 1.03-1.55V4.6h3v.13a1.7 1.7 0 0 0 1.03 1.55 1.7 1.7 0 0 0 1.88-.34l.06-.06L19.8 8l-.06.06a1.7 1.7 0 0 0-.34 1.88 1.7 1.7 0 0 0 1.55 1.03h.15v3h-.15A1.7 1.7 0 0 0 19.4 15Z"/></svg>
+        </button>
+      </div>
+    </aside>
+
+    <main class="main">
+      <header class="topbar">
+        <div class="top-title">
+          <button class="mobile-menu-btn" data-action="toggleSidebar" aria-label="Открыть меню">
+            <span></span><span></span><span></span>
+          </button>
+          <div>
+            <div class="crumb" id="pageCrumb">EXTREME KIDS · ТРОПАРЁВО</div>
+            <h1 id="pageTitle">Главная Романа</h1>
+          </div>
+        </div>
+        <div class="top-actions">
+          <label class="month-select-wrap" title="Рабочий месяц">
+            <span>Месяц</span>
+            <select id="monthSelect" class="select compact"></select>
+          </label>
+          <button class="btn btn-ghost" data-action="syncNow">
+            <span class="sync-spinner" id="syncSpinner"></span>
+            <span class="desktop-only">Синхронизировать</span>
+          </button>
+          <button class="btn btn-primary" data-action="quickAdd">+ Добавить</button>
+          <div class="role-switch">
+            <button class="role-button" data-action="roleMenu">
+              <span class="avatar small" id="topAvatar">Р</span>
+              <span class="desktop-only"><b id="topRoleName">Роман</b><small id="topRoleTitle">Владелец</small></span>
+              <svg viewBox="0 0 24 24"><path d="m7 10 5 5 5-5"/></svg>
+            </button>
+            <div class="popover hidden" id="rolePopover"></div>
+          </div>
+        </div>
+      </header>
+
+      <section class="content" id="pages" aria-live="polite"></section>
+    </main>
+  </div>
+
+  <nav class="mobile-nav hidden" id="mobileNav" aria-label="Мобильная навигация"></nav>
+  <div class="sidebar-scrim hidden" id="sidebarScrim" data-action="toggleSidebar"></div>
+
+  <div class="modal hidden" id="modal" aria-hidden="true">
+    <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+      <div class="modal-head">
+        <div>
+          <div class="eyebrow" id="modalKicker">EXTREME KIDS</div>
+          <h2 id="modalTitle">—</h2>
+          <p id="modalSubtitle"></p>
+        </div>
+        <button class="icon-btn" data-action="closeModal" aria-label="Закрыть">×</button>
+      </div>
+      <div class="modal-body" id="modalBody"></div>
+    </div>
+  </div>
+
+  <div class="toast-stack" id="toastStack"></div>
+  <input type="file" id="importInput" accept="application/json" hidden>
+
+  <script src="app.js?v=600"></script>
+</body>
+</html>
