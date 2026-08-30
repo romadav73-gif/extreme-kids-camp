@@ -1,0 +1,38 @@
+name: Decode management app diagnostics
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/decode-management-app.yml
+
+permissions:
+  contents: write
+
+jobs:
+  decode:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Decode bundled management app
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import base64, gzip, pathlib
+          root = pathlib.Path('management4')
+          app = gzip.decompress(base64.b64decode(''.join((root/f'app{i}.b64').read_text().strip() for i in range(5))))
+          css = gzip.decompress(base64.b64decode((root/'css0.b64').read_text().strip()))
+          out = pathlib.Path('diagnostics')
+          out.mkdir(exist_ok=True)
+          (out/'management4-app-decoded.js').write_bytes(app)
+          (out/'management4-css-decoded.css').write_bytes(css)
+          PY
+      - name: Commit decoded diagnostics
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add diagnostics/management4-app-decoded.js diagnostics/management4-css-decoded.css
+          git diff --cached --quiet && exit 0
+          git commit -m "Decode management app diagnostics"
+          git push
