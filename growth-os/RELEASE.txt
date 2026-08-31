@@ -6,4 +6,5 @@ Owner and Sofia task deletion: ready
 Automatic mentor and goal aggregation: ready
 Shared encrypted database sync: ready
 Browser boot check: passed
+Release status: production
 Built: 2026-08-31T14:57:44Z
