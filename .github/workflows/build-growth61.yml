@@ -1,0 +1,89 @@
+name: Build and verify EXTREME KIDS Growth OS 6.1
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - growth6-source/current.html
+      - growth6-source/patch_v61.py
+      - growth6-source/smoke_v61.mjs
+      - .github/workflows/build-growth61.yml
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: growth61-build
+  cancel-in-progress: true
+
+jobs:
+  build-test:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    timeout-minutes: 18
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Build Growth OS 6.1
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 growth6-source/patch_v61.py
+          python3 <<'PY'
+          import re
+          from pathlib import Path
+          html=Path('growth6-source/v6.1.html').read_text(encoding='utf-8')
+          scripts=re.findall(r'<script>(.*?)</script>',html,re.S)
+          if not scripts: raise SystemExit('No inline application script')
+          app=max(scripts,key=len)
+          Path('/tmp/growth61-app.js').write_text(app,encoding='utf-8')
+          print('html bytes',len(html.encode()),'app bytes',len(app.encode()))
+          PY
+          node --check /tmp/growth61-app.js
+          grep -q "const VERSION='6.1.0'" growth6-source/v6.1.html
+          grep -q "manager:{name:'Софа'" growth6-source/v6.1.html
+          grep -q "function renderManager()" growth6-source/v6.1.html
+          grep -q "function taskMonthKey(task)" growth6-source/v6.1.html
+          grep -q "Удалять задачи могут только Роман и Софа" growth6-source/v6.1.html
+
+      - name: Start local server and isolated browsers
+        shell: bash
+        run: |
+          set -euo pipefail
+          chrome="$(command -v google-chrome || command -v google-chrome-stable || command -v chromium || command -v chromium-browser || true)"
+          test -n "$chrome"
+          python3 -m http.server 8765 --directory growth6-source >/tmp/growth61-http.log 2>&1 &
+          "$chrome" --headless=new --no-sandbox --disable-gpu --disable-dev-shm-usage --ignore-certificate-errors --remote-debugging-address=127.0.0.1 --remote-debugging-port=9222 --user-data-dir=/tmp/growth61-browser-1 about:blank >/tmp/growth61-browser-1.log 2>&1 &
+          "$chrome" --headless=new --no-sandbox --disable-gpu --disable-dev-shm-usage --ignore-certificate-errors --remote-debugging-address=127.0.0.1 --remote-debugging-port=9223 --user-data-dir=/tmp/growth61-browser-2 about:blank >/tmp/growth61-browser-2.log 2>&1 &
+          sleep 2
+          curl --fail --silent http://127.0.0.1:8765/v6.1.html | grep -q 'Growth OS 6.0'
+
+      - name: Test month filters, permissions, derived metrics and synchronization
+        shell: bash
+        run: |
+          set -euo pipefail
+          node growth6-source/smoke_v61.mjs
+
+      - name: Commit verified build
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add growth6-source/v6.1.html growth61-production-src diagnostics/growth61-manager.png diagnostics/growth61-smoke-report.json
+          if git diff --cached --quiet; then
+            echo 'Verified build already current'
+            exit 0
+          fi
+          git commit -m "Build verified EXTREME KIDS Growth OS 6.1"
+          git push
+
+      - name: Diagnostics on failure
+        if: failure()
+        shell: bash
+        run: |
+          echo '--- HTTP ---'; cat /tmp/growth61-http.log || true
+          echo '--- Browser 1 ---'; tail -120 /tmp/growth61-browser-1.log || true
+          echo '--- Browser 2 ---'; tail -120 /tmp/growth61-browser-2.log || true
