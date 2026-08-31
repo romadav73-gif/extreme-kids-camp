@@ -1,0 +1,105 @@
+name: Build Growth OS 6.1 payroll and mentor cabinets
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - growth6-source/payroll-patch-chunks/**
+      - growth6-source/patch_payroll_v1.py
+      - .github/workflows/build-growth61-payroll.yml
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Restore and run payroll patch
+        shell: bash
+        run: |
+          set -euo pipefail
+          if compgen -G 'growth6-source/payroll-patch-chunks/part*.txt' >/dev/null; then
+            cat growth6-source/payroll-patch-chunks/part*.txt | base64 -d | gzip -d > growth6-source/patch_payroll_v1.py
+          fi
+          python3 -m py_compile growth6-source/patch_payroll_v1.py
+          python3 growth6-source/patch_payroll_v1.py
+          python3 <<'PY'
+          import re
+          from pathlib import Path
+          html = Path('growth-os/index.html').read_text(encoding='utf-8')
+          scripts = re.findall(r'<script>(.*?)</script>', html, re.S)
+          if not scripts:
+              raise SystemExit('Application script missing')
+          Path('/tmp/growth-payroll-app.js').write_text(max(scripts, key=len), encoding='utf-8')
+          PY
+          node --check /tmp/growth-payroll-app.js
+
+      - name: Browser smoke tests
+        shell: bash
+        run: |
+          set -euo pipefail
+          chrome="$(command -v google-chrome || command -v google-chrome-stable || command -v chromium || command -v chromium-browser || true)"
+          test -n "$chrome"
+          python3 -m http.server 8765 --directory growth-os >/tmp/growth-payroll-http.log 2>&1 &
+          server_pid=$!
+          trap 'kill $server_pid 2>/dev/null || true' EXIT
+          sleep 1
+          key='0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef'
+
+          run_dom () {
+            local name="$1"
+            local hash="$2"
+            timeout 50s "$chrome" --headless=new --no-sandbox --disable-gpu --disable-dev-shm-usage --ignore-certificate-errors --virtual-time-budget=15000 --dump-dom "http://127.0.0.1:8765/#w=ek-payroll-${GITHUB_RUN_ID}&k=${key}&${hash}&t=release" >"/tmp/${name}.html" 2>"/tmp/${name}.log" || true
+          }
+
+          run_dom owner 'r=owner&v=payroll'
+          grep -q 'ЗП команды' /tmp/owner.html
+          grep -q 'Администраторы · автоматический расчёт' /tmp/owner.html
+          grep -q 'Наставники · начисления Романа' /tmp/owner.html
+          ! grep -q 'Ошибка запуска' /tmp/owner.html
+
+          run_dom admin 'r=admin&p=anya&v=admin'
+          grep -q 'зарплата и задачи' /tmp/admin.html
+          grep -q 'Прогноз к концу месяца' /tmp/admin.html
+          grep -q 'График смен по дням' /tmp/admin.html
+          ! grep -q 'Ошибка запуска' /tmp/admin.html
+
+          run_dom mentor 'r=mentor&p=ivan&v=mentor'
+          grep -q 'МОЯ ЗАРПЛАТА ЗА МЕСЯЦ' /tmp/mentor.html
+          grep -q 'За что начислена зарплата' /tmp/mentor.html
+          ! grep -q 'Ошибка запуска' /tmp/mentor.html
+
+      - name: Commit ready site
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git rm -r --ignore-unmatch growth6-source/payroll-patch-chunks
+          git add growth6-source/patch_payroll_v1.py growth6-source/v6.1.html growth6-source/SHA256.txt growth-os growth61-live growth-os-6
+          if git diff --cached --quiet; then
+            echo 'Payroll release already current'
+            exit 0
+          fi
+          git commit -m "Publish Growth OS payroll and mentor cabinets"
+          git push
+
+      - name: Diagnostics on failure
+        if: failure()
+        shell: bash
+        run: |
+          echo '--- HTTP ---'
+          cat /tmp/growth-payroll-http.log || true
+          for name in owner admin mentor; do
+            echo "--- ${name} chrome ---"
+            cat "/tmp/${name}.log" || true
+            echo "--- ${name} DOM tail ---"
+            tail -120 "/tmp/${name}.html" || true
+          done
