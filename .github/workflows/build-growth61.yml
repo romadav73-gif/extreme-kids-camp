@@ -1,6 +1,6 @@
 name: Build and verify EXTREME KIDS Growth OS 6.1
 
-# Verification run with stable local HTTP probe.
+# Verification run after authoritative task-deletion synchronization fix.
 on:
   push:
     branches: [main]
