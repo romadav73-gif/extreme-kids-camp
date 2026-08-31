@@ -25,7 +25,7 @@ def replace_once(old: str, new: str, label: str) -> None:
 
 def sub_once(pattern: str, replacement: str, label: str, flags: int = re.S) -> None:
     global text
-    text2, count = re.subn(pattern, replacement, text, count=1, flags=flags)
+    text2, count = re.subn(pattern, lambda _m: replacement, text, count=1, flags=flags)
     if count != 1:
         raise RuntimeError(f"{label}: expected one regex match, found {count}")
     text = text2
