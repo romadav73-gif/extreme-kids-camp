@@ -1,6 +1,6 @@
 name: Build and verify EXTREME KIDS Growth OS 6.1
 
-# Verification run after patcher replacement fix.
+# Verification run after one-line renderer pattern fix.
 on:
   push:
     branches: [main]
