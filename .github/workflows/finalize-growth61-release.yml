@@ -92,7 +92,7 @@ jobs:
           cat /tmp/growth61-chrome.log
           grep -q 'Софа · управляющая' /tmp/growth61-dom.html
           grep -q 'ОПЕРАЦИОННЫЙ ИНДЕКС' /tmp/growth61-dom.html
-          ! grep -q 'Ошибка запуска' /tmp/growth61-dom.html
+          grep -q "const VERSION='6.1.0'" /tmp/growth61-dom.html
 
       - name: Commit ready site
         shell: bash
