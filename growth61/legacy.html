@@ -1,0 +1,13 @@
+<!doctype html><html lang="ru"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex,nofollow"><title>Growth OS 6.0 · migration bridge</title><style>html,body{margin:0;background:#080806;color:#f0c72f;font:14px Arial,sans-serif}.status{padding:18px}</style></head><body><div class="status" id="status">Подключение к Growth OS 6.0…</div><script>
+(async()=>{try{
+ if(!('DecompressionStream'in window))throw new Error('Браузер не поддерживает распаковку');
+ const COMMIT='6c2b79c325d45715dae3091c0fa4e8d2928951f7';
+ const BASE=`https://raw.githubusercontent.com/romadav73-gif/extreme-kids-camp/${COMMIT}/growth6-production-src/`;
+ const files=['p00_0','p00_1','p00_2','p00_3','p00_4','p00_5','p01','p02','p03'];
+ const parts=await Promise.all(files.map(async file=>{const r=await fetch(BASE+file,{cache:'no-store'});if(!r.ok)throw new Error(file+' '+r.status);return(await r.text()).trim()}));
+ const raw=atob(parts.join('').replace(/\s+/g,'')),bytes=Uint8Array.from(raw,c=>c.charCodeAt(0));
+ let page=await new Response(new Blob([bytes]).stream().pipeThrough(new DecompressionStream('gzip'))).text();
+ page=page.replace(/<link rel="manifest"[^>]*>/i,'').replace(/if\('serviceWorker'in navigator\)navigator\.serviceWorker\.register\('sw\.js\?v=6003'\)\.catch\(\(\)=>\{\}\);/,'');
+ document.open();document.write(page);document.close();
+}catch(error){document.getElementById('status').textContent='Legacy bridge error: '+error.message;console.error(error)}})();
+</script></body></html>
