@@ -1,0 +1,46 @@
+name: Fix Growth OS 6.1 deletion synchronization
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/fix-growth61-tombstone-sync.yml
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  fix:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Make tombstones authoritative and retry eventual sync
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 <<'PY'
+          from pathlib import Path
+
+          p=Path('growth6-source/patch_v61.py')
+          s=p.read_text(encoding='utf-8')
+          anchor="merge_state = r'''function mergeStates(local,remote){"
+          insert="""replace_once(\n    \"function newer(a,b){return String(a?.updatedAt||a?.meta?.updatedAt||'')>=String(b?.updatedAt||b?.meta?.updatedAt||'')?a:b}\",\n    \"function newer(a,b){if(a?.deletedAt&&!b?.deletedAt)return a;if(b?.deletedAt&&!a?.deletedAt)return b;return String(a?.deletedAt||a?.updatedAt||a?.meta?.updatedAt||'')>=String(b?.deletedAt||b?.updatedAt||b?.meta?.updatedAt||'')?a:b}\",\n    \"tombstone precedence\",\n)\n\n"""
+          if 'tombstone precedence' not in s:
+              if anchor not in s: raise SystemExit('patcher anchor missing')
+              s=s.replace(anchor,insert+anchor,1)
+          p.write_text(s,encoding='utf-8')
+
+          p=Path('growth6-source/smoke_v61.mjs')
+          s=p.read_text(encoding='utf-8')
+          old="""await owner.evaluate(`window.EKGrowthOS.sync()`, true);\nawait owner.wait(`Boolean(window.EKGrowthOS.getState().tasks.find(t=>t.id==='ci_sep')?.deletedAt)`, 15000);\nreport.sync.deleteTombstone = true;"""
+          new="""let deletionArrived=false;\nfor(let attempt=0;attempt<5&&!deletionArrived;attempt++){\n  await owner.evaluate(`window.EKGrowthOS.sync()`, true);\n  await sleep(650);\n  deletionArrived=await owner.evaluate(`Boolean(window.EKGrowthOS.getState().tasks.find(t=>t.id==='ci_sep')?.deletedAt)`);\n}\nassert(deletionArrived,'Deletion tombstone did not converge to owner after retries');\nreport.sync.deleteTombstone = true;"""
+          if old not in s: raise SystemExit('smoke sync block missing')
+          p.write_text(s.replace(old,new,1),encoding='utf-8')
+          PY
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add growth6-source/patch_v61.py growth6-source/smoke_v61.mjs
+          git commit -m "Make Growth OS 6.1 task deletions converge across devices"
+          git push
