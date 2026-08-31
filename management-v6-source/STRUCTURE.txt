@@ -1,0 +1,80 @@
+253: управля:           <p>Один центр для ежедневной работы управляющей: цифры, задачи, родители, команда, собрания и итог собственнику.</p>
+271: Софа:         <p class="muted">Выберите роль. Роман и Софа работают с одной общей базой.</p>
+275: Софа:             <span><b>Софа</b><small>Управляющая</small></span>
+320: tasks:         <button data-page="tasks"><i>✓</i><span>Задачи</span><em id="navTasks">0</em></button>
+327: управля:         <button data-page="guide"><i>✦</i><span>Система управляющей</span></button>
+371: tasks:     <button data-page="tasks"><i>✓</i><span>Задачи</span></button>
+385: управля:         <button data-page="guide"><i>✦</i><span>Система управляющей</span></button>
+416: const API:   const API = '/api';
+464: tasks:       ['team_tasks', 'Команда понимает задачи', 'У каждой задачи есть ответственный и срок.'],
+472: tasks:       ['close_tasks', 'Задачи обновлены', 'Просрочки разобраны, завтра определено.'],
+522: Софа:       title: 'Роман + Софа', duration: 60, participants: 'Роман, Софа',
+526: admins:     admins: {
+527: Софа:       title: 'Собрание администраторов', duration: 45, participants: 'Софа, Аня, Адель',
+532: Софа:       title: 'Воронка продаж', duration: 20, participants: 'Софа, администраторы',
+537: Софа:       title: 'Качество и дисциплина', duration: 30, participants: 'Софа, ответственные сотрудники',
+542: Софа:       title: 'Закрытие месяца', duration: 90, participants: 'Роман, Софа',
+551: Софа:       club: {name:'EXTREME KIDS Тропарёво', manager:'Софа'},
+551: manager:       club: {name:'EXTREME KIDS Тропарёво', manager:'Софа'},
+552: tasks:       monthPlans: {}, days: {}, tasks: [], meetings: [],
+554: Софа:       settings: {staff:['Софа','Аня','Адель','Роман']},
+583: tasks:       tasks:Array.isArray(x.tasks) ? x.tasks : [],
+590: tasks:     s.tasks = s.tasks.map((t) => ({
+591: manager:       id:t.id || uid('task'), title:t.title || 'Без названия', owner:t.owner || s.club.manager, due:t.due || currentDate(),
+597: admins:       ...m, id:m.id || uid('meet'), type:m.type || 'admins', title:m.title || MEETING_TEMPLATES[m.type]?.title || 'Рабочая встреча',
+599: tasks:       decision:m.decision || '', tasks:Array.isArray(m.tasks) ? m.tasks : [], updatedAt:m.updatedAt || s.meta.updatedAt || nowIso()
+629: admins:   let meetingDraft = makeMeetingDraft('admins');
+650: admins:     if (wd === 2) recurring.push(['admins', 'Собрание администраторов — 45 минут', 'high', 'Команда']);
+655: tasks:       if (!state.tasks.some((t) => t.sys === sys)) {
+656: tasks:         state.tasks.push({id:uid('task'), sys, title, owner:state.club.manager, due:d, status:'todo', priority, category, comment:'', createdAt:nowIso(), updatedAt:nowIso()});
+656: manager:         state.tasks.push({id:uid('task'), sys, title, owner:state.club.manager, due:d, status:'todo', priority, category, comment:'', createdAt:nowIso(), updatedAt:nowIso()});
+773: tasks:     out.tasks = mergeById(out.tasks, local.tasks || []);
+824: tasks:   function tasksFor(filter = taskFilter) {
+825: tasks:     let list = state.tasks.slice();
+837: tasks:     const open = state.tasks.filter((t) => t.status !== 'done' && t.due <= date).length;
+838: tasks:     const overdue = state.tasks.filter((t) => t.status !== 'done' && t.due < date).length;
+845: tasks:     const allowed = ['today','tasks','numbers','rhythm','report','meetings','plans','guide','archive','settings'];
+857: tasks:     const open = state.tasks.filter((t) => t.status !== 'done' && t.due <= date).sort((a,b) => a.due.localeCompare(b.due)).slice(0,6);
+858: tasks:     const overdue = state.tasks.filter((t) => t.status !== 'done' && t.due < date).length;
+889: tasks:           <div class="section-title" style="margin:0 0 10px"><div><h2>Задачи в работе</h2><p>Просроченное и назначенное на выбранный день.</p></div><button class="button ghost" data-page="tasks">Все задачи</button></div>
+893: Софа:           <div class="section-title" style="margin:0 0 10px"><div><h2>${dayOfWeek(date) === 2 ? 'Собрание администраторов' : 'Контрольная точка'}</h2><p>${dayOfWeek(date) === 2 ? 'Вторник · 45 минут · Софа ведёт встречу' : 'Ритм дня не должен держаться в голов
+915: function tasksPage:   function tasksPage() {
+915: tasks:   function tasksPage() {
+916: tasks:     const list = tasksFor();
+917: tasks:     const open = state.tasks.filter((t) => t.status !== 'done').length;
+918: tasks:     const todayCount = state.tasks.filter((t) => t.status !== 'done' && t.due === date).length;
+919: tasks:     const overdue = state.tasks.filter((t) => t.status !== 'done' && t.due < date).length;
+920: tasks:     const done = state.tasks.filter((t) => t.status === 'done').length;
+931: Софа:     return pageHead('ЦИФРЫ КЛУБА', 'Управление по данным', 'Софа должна видеть не просто факт, а отклонение и то, что можно изменить сегодня.', `<button class="button ghost compact" data-act="manualSync">Синхронизировать</button>`) + `
+980: tasks:     const taskDone = state.tasks.filter((t) => t.status === 'done' && t.updatedAt?.slice(0,10) === date).length;
+981: tasks:     const overdue = state.tasks.filter((t) => t.status !== 'done' && t.due < date).length;
+985: function reportPage:   function reportPage() {
+987: Софа:     return pageHead('ЕЖЕДНЕВНЫЙ ОТЧЁТ', 'Итог собственнику', 'Цифры собираются автоматически. Софа добавляет только то, что невозможно понять из цифр.', `<button class="button ghost compact" data-act="copyReport">Скопировать</button><button class="button prima
+998: управля:             <div class="field full"><label>Что требует решения Романа</label><textarea data-note="owner" placeholder="Только вопросы, которые нельзя решить в полномочиях управляющей">${esc(d.notes.owner)}</textarea></div>
+1010: admins:     const t = MEETING_TEMPLATES[type] || MEETING_TEMPLATES.admins;
+1011: tasks:     return {type, date:date || currentDate(), participants:t.participants, duration:t.duration, agenda:t.agenda.map((text) => ({text,done:false})), notes:'', decision:'', tasks:''};
+1015: admins:     const t = MEETING_TEMPLATES[meetingDraft.type] || MEETING_TEMPLATES.admins;
+1031: tasks:             <div class="field full"><label>Задачи после встречи</label><textarea data-meeting-field="tasks" placeholder="По одной задаче с новой строки. Можно: задача | ответственный | 2026-08-20">${esc(meetingDraft.tasks)}</textarea></div>
+1037: tasks:           <div class="card"><h2>Последние протоколы</h2><div class="meeting-history">${history.length ? history.map((m) => `<div class="history-card"><h3>${esc(m.title)}</h3><small>${esc(m.date)} · ${esc(m.participants || '')}</small>${m.decision ? `<p><b>Реше
+1056: Софа:     return pageHead('СИСТЕМА УПРАВЛЯЮЩЕЙ', 'Софа управляет клубом, а не ресепшеном', 'Если непонятно, что делать дальше — этот раздел возвращает к роли, приоритетам и полномочиям.') + `
+1056: управля:     return pageHead('СИСТЕМА УПРАВЛЯЮЩЕЙ', 'Софа управляет клубом, а не ресепшеном', 'Если непонятно, что делать дальше — этот раздел возвращает к роли, приоритетам и полномочиям.') + `
+1064: Софа:         <section class="card"><h2>Когда подключать Романа</h2><div class="decision-table"><div class="decision-row"><b>Софа решает сама</b><span>Ежедневные задачи, CRM, стандартные вопросы родителей, контроль пробных и продлений, чистота, обучение и организаци
+1066: Софа:       <div class="section-title"><div><h2>Стандарты сервиса</h2><p>Короткие нормы, которые Софа контролирует у всей команды.</p></div></div>
+1080: manager:         <section class="card"><h2>Параметры клуба</h2><div class="form-grid"><div class="field full"><label>Название клуба</label><input data-setting="club.name" value="${esc(state.club.name)}"></div><div class="field"><label>Управляющая</label><input data-set
+1085: tasks:   const PAGES = {today:todayPage,tasks:tasksPage,numbers:numbersPage,rhythm:rhythmPage,report:reportPage,meetings:meetingsPage,plans:plansPage,guide:guidePage,archive:archivePage,settings:settingsPage};
+1087: function render:   function render() {
+1114: manager:     $('#taskOwner').value = task?.owner || state.club.manager;
+1125: tasks:     if (id) { const t = state.tasks.find((x) => x.id === id); if (t) Object.assign(t, payload); }
+1126: tasks:     else state.tasks.push({id:uid('task'), status:'todo', createdAt:nowIso(), sys:null, sourceMeeting:null, ...payload});
+1133: manager:       return {id:uid('task'), title:titleRaw, owner:ownerRaw || state.club.manager, due:/^\d{4}-\d{2}-\d{2}$/.test(dueRaw || '') ? dueRaw : addDays(meetingDraft.date, 7), status:'todo', priority:'high', category:'Управление', comment:`Из встречи: ${MEETING_TEM
+1139: tasks:     const m = {id:meetingId, type:meetingDraft.type, title:MEETING_TEMPLATES[meetingDraft.type]?.title || 'Рабочая встреча', date:meetingDraft.date, participants:meetingDraft.participants, duration:meetingDraft.duration, agenda:meetingDraft.agenda.map((x) => (
+1141: tasks:     const tasks = parseMeetingTasks(meetingDraft.tasks, meetingId); state.tasks.push(...tasks);
+1143: tasks:     persist(); render(); toast(`Протокол сохранён${tasks.length ? ` · создано задач: ${tasks.length}` : ''}`);
+1199: admins:       if (a === 'openAdminMeeting') { meetingDraft = makeMeetingDraft('admins'); setPage('meetings'); }
+1210: tasks:     const toggleTask = e.target.closest('[data-toggle-task]'); if (toggleTask) { const t = state.tasks.find((x) => x.id === toggleTask.dataset.toggleTask); if (t) { t.status = t.status === 'done' ? 'todo' : 'done'; t.updatedAt = nowIso(); persist(); render(); 
+1211: tasks:     const editTask = e.target.closest('[data-edit-task]'); if (editTask) { const t = state.tasks.find((x) => x.id === editTask.dataset.editTask); if (t) openTaskModal(t); return; }
+1212: tasks:     const delTask = e.target.closest('[data-delete-task]'); if (delTask) { if (confirm('Удалить задачу?')) { state.tasks = state.tasks.filter((x) => x.id !== delTask.dataset.deleteTask); persist(); render(); toast('Задача удалена'); } return; }
+1239: manager:       if (key === 'club.manager') state.club.manager = e.target.value;
+1283: tasks:   function v8task(scope,key){const cat=scope==='week'?`План недели ${key}`:`План месяца ${key}`,list=state.tasks.filter(t=>t.category===cat),done=list.filter(t=>t.status==='done').length;return{cat,list,done,total:list.length,pct:list.length?done/list.length*1
+1288: tasks:   function v8tasks(scope,key){const t=v8task(scope,key);return t.list.length?t.list.map(x=>`<div class="v8task ${x.status==='done'?'done':''}"><button class="task-check" data-toggle-task="${esc(x.id)}">${x.status==='done'?'✓':''}</button><div><b>${esc(x.title)
+1293: tasks:   function v8plans(){const{mk,wk,mp,w,m}=v8prep(),ws=v8period('week'),ms=v8period('month'),s=v8salary(mk),z=s.final??s.total;return pageHead('ПЛАНЫ · РЕЗУЛЬТАТ · МОТИВАЦИЯ','План и рост','Неделя и месяц считаются по выручке, результатам и задачам. Зарплата Соф
