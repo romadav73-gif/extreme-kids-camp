@@ -1,0 +1,48 @@
+name: Extract Growth OS 6 source
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/extract-growth6-source.yml
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  extract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Reconstruct validated production source
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 <<'PY'
+          import base64, gzip, hashlib, pathlib, re
+          files=['p00_0','p00_1','p00_2','p00_3','p00_4','p00_5','p01','p02','p03']
+          src=pathlib.Path('growth6-production-src')
+          joined=''.join((src/f).read_text(encoding='utf-8').strip() for f in files)
+          compressed=base64.b64decode(re.sub(r'\s+','',joined),validate=True)
+          page=gzip.decompress(compressed)
+          digest=hashlib.sha256(page).hexdigest()
+          expected='26f1ad0993e2238703e9e91bc4e3b20b2879f57c98b1deae80a2e45e8eccd497'
+          if digest != expected:
+              raise RuntimeError(f'SHA mismatch: {digest}')
+          out=pathlib.Path('growth6-source')
+          out.mkdir(exist_ok=True)
+          (out/'current.html').write_bytes(page)
+          (out/'SHA256.txt').write_text(digest+'\n',encoding='utf-8')
+          print('bytes',len(page),'sha256',digest)
+          PY
+      - name: Commit source snapshot
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add growth6-source/current.html growth6-source/SHA256.txt
+          git diff --cached --quiet && exit 0
+          git commit -m "Extract current Growth OS 6 production source"
+          git push
