@@ -33,16 +33,31 @@ jobs:
               raise RuntimeError(f'SHA mismatch: {digest}')
           out=pathlib.Path('growth6-source')
           out.mkdir(exist_ok=True)
-          (out/'current.html').write_bytes(page)
+          text=page.decode('utf-8')
+          (out/'current.html').write_text(text,encoding='utf-8')
           (out/'SHA256.txt').write_text(digest+'\n',encoding='utf-8')
-          print('bytes',len(page),'sha256',digest)
+          keywords=[
+            'const ROLES','const PEOPLE','const DEFAULT_STATE','function normalizeState','function currentMonthKey',
+            'function renderTasks','function taskForm','function renderGroups','function renderGoals','function renderStas',
+            'function renderMentor','function renderAdmin','function renderTeam','function renderSettings','function navigate',
+            'async function syncNow','function saveState','function mergeState','data-action="deleteTask"','deleteTask',
+            'monthSelect','activeMonth','selectedMonth','ownerId','roleId','window.EKGrowthOS'
+          ]
+          lines=text.splitlines()
+          hits=[]
+          for i,line in enumerate(lines,1):
+              for key in keywords:
+                  if key in line:
+                      hits.append(f'{i}: {key}: {line[:260]}')
+          (out/'STRUCTURE.txt').write_text('\n'.join(hits)+'\n',encoding='utf-8')
+          print('bytes',len(page),'lines',len(lines),'sha256',digest,'hits',len(hits))
           PY
       - name: Commit source snapshot
         shell: bash
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add growth6-source/current.html growth6-source/SHA256.txt
+          git add growth6-source/current.html growth6-source/SHA256.txt growth6-source/STRUCTURE.txt
           git diff --cached --quiet && exit 0
-          git commit -m "Extract current Growth OS 6 production source"
+          git commit -m "Refresh Growth OS 6 source snapshot and structure index"
           git push
