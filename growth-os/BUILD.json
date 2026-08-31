@@ -1,0 +1,11 @@
+{
+  "version": "6.1.0",
+  "build": "2026.08.31-manager-month-sync",
+  "features": [
+    "month-scoped task filtering",
+    "Sofia manager role",
+    "owner and Sofia task deletion",
+    "automatic goals and mentor aggregation",
+    "shared encrypted database sync"
+  ]
+}

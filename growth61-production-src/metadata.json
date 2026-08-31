@@ -1,0 +1,26 @@
+{
+  "version": "6.1.0",
+  "build": "2026.08.31-manager-month-sync",
+  "bytes": 173797,
+  "compressedBytes": 44617,
+  "base64Chars": 59492,
+  "sha256": "9cd9359fb24f3dc10d5b899c6bd9f978aab619a5addbe906b497f45b38f9e8e0",
+  "parts": [
+    "p000",
+    "p001",
+    "p002",
+    "p003",
+    "p004",
+    "p005",
+    "p006",
+    "p007",
+    "p008",
+    "p009",
+    "p010",
+    "p011",
+    "p012",
+    "p013",
+    "p014"
+  ],
+  "partSize": 4000
+}
