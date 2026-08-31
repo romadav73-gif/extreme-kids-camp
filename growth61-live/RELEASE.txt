@@ -1,9 +1,8 @@
 EXTREME KIDS Growth OS 6.1.0
-Build: 2026.08.31-manager-month-sync
-Month filtering: ready
-Sofia manager profile: ready
-Owner and Sofia task deletion: ready
-Automatic mentor and goal aggregation: ready
-Shared encrypted database sync: ready
-Browser boot check: passed
-Built: 2026-08-31T14:57:44Z
+Build: 2026.08.31-payroll-team-readability
+Administrator salary automation: ready
+Administrator personal cabinets and salary forecast: ready
+Mentor payroll and personal cabinets: ready
+Dynamic mentor management: ready
+Comfort readability mode: ready
+Uploaded workbook motivation rules: integrated

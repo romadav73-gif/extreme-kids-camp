@@ -1,11 +1,15 @@
 {
   "version": "6.1.0",
-  "build": "2026.08.31-manager-month-sync",
+  "build": "2026.08.31-payroll-team-readability",
   "features": [
-    "month-scoped task filtering",
-    "Sofia manager role",
-    "owner and Sofia task deletion",
-    "automatic goals and mentor aggregation",
-    "shared encrypted database sync"
+    "administrator salary and motivation rules from uploaded workbook",
+    "administrator salary forecast and shift calendar",
+    "personal administrator cabinets",
+    "owner-managed mentor payroll entries",
+    "personal mentor cabinets with payroll breakdown",
+    "dynamic mentor add, archive and restore",
+    "personal staff access links",
+    "readability scale 100, 110 and 120 percent",
+    "mandatory tasks linked to administrator bonus"
   ]
 }

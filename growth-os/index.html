@@ -373,6 +373,151 @@ a{color:inherit}
 @media(prefers-reduced-motion:reduce){*,*:before,*:after{animation:none!important;transition:none!important;scroll-behavior:auto!important}}
 
 .task-actions-inline{display:flex;align-items:center;gap:8px;margin-left:auto}.task-delete{width:30px;height:30px;display:grid;place-items:center;border-radius:9px;border:1px solid #4b2d26;background:#251512;color:#db8b7d;opacity:.78;transition:.18s}.task-delete:hover{opacity:1;transform:translateY(-1px);border-color:#805046;background:#321b17}.task-delete svg{width:15px;height:15px;fill:none;stroke:currentColor;stroke-width:1.8}.task-card .task-top{align-items:flex-start}.goal-progress small{display:block;margin-top:5px;color:var(--muted);font-size:11px}.role-hero a.btn{text-decoration:none}
+
+/* PAYROLL_TEAM_READABILITY_CSS_V1_START */
+:root{
+  --ui-scale:1.1;
+  --readable-text:#f8f3e4;
+  --readable-muted:#c9c1ad;
+  --readable-soft:#a99f89;
+}
+body{
+  font-size:calc(16px * var(--ui-scale));
+  line-height:1.68;
+  color:var(--readable-text);
+  letter-spacing:.006em;
+  text-rendering:geometricPrecision;
+  -webkit-font-smoothing:antialiased;
+  -moz-osx-font-smoothing:grayscale;
+}
+.noise{display:none!important}
+.content{max-width:1780px;padding:28px 32px 58px}
+.card{background:linear-gradient(145deg,#1a1812,#11100c);border-color:#44391e}
+.card:hover{transform:none;border-color:#5d4a1e}
+.page{gap:22px}
+.page-head h2{font-size:30px;line-height:1.22}
+.page-head p{max-width:920px;font-size:16px;line-height:1.62;color:var(--readable-muted)}
+.card-head h3{font-size:20px;line-height:1.35}
+.card-head p,.metric-sub,.item-main small,.role-score p,.chart-panel p,.settings-block p,.readable-note{font-size:14px;line-height:1.58;color:var(--readable-muted)}
+.nav-btn{min-height:48px;font-size:16px;line-height:1.3}
+.btn{min-height:46px;font-size:15px}
+.btn-small{min-height:38px;font-size:13px}
+.input,.select{height:49px;font-size:15px}
+.textarea{font-size:15px;line-height:1.55}
+.data-table th{font-size:12px;letter-spacing:.065em;color:#d2c5aa}
+.data-table td{font-size:15px;line-height:1.5;color:#ebe2cf;padding-top:15px;padding-bottom:15px}
+.table-title b,.item-main b{font-size:15px;line-height:1.4}
+.metric-label{font-size:12px;color:#d8b84c}
+.metric-value{font-size:34px;line-height:1.08}
+.eyebrow{font-size:11px;letter-spacing:.14em}
+.top-title h1{font-size:31px}
+.readable-page{max-width:100%}
+.readable-select{width:auto;min-width:185px}
+.readable-note{margin:15px 0 0}
+.readable-settings{background:linear-gradient(145deg,#211d10,#13110c)}
+
+.payroll-hero{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:26px;
+  padding:28px 30px;
+  border-radius:24px;
+  background:radial-gradient(circle at 86% 0,rgba(240,199,47,.18),transparent 42%),linear-gradient(145deg,#28220e,#11100c);
+  border:1px solid #69531b;
+  box-shadow:var(--shadow);
+}
+.payroll-hero-value{margin-top:8px;font-size:52px;line-height:1;font-weight:950;letter-spacing:-.045em;color:var(--yellow-bright);text-shadow:0 0 30px rgba(240,199,47,.13)}
+.payroll-hero p{margin:10px 0 0;color:var(--readable-muted);font-size:15px}
+.payroll-hero p b{color:#fff0a9}
+.payroll-forecast{min-width:170px;padding:18px 21px;border-radius:18px;text-align:center;background:#19160d;border:1px solid #4d3d18}
+.payroll-forecast span,.payroll-forecast b,.payroll-forecast small{display:block}
+.payroll-forecast span{font-size:12px;font-weight:850;letter-spacing:.08em;text-transform:uppercase;color:#c6ab51}
+.payroll-forecast b{margin-top:5px;font-size:42px;line-height:1;color:var(--yellow-bright)}
+.payroll-forecast small{margin-top:7px;font-size:13px;color:var(--readable-muted)}
+.mentor-pay-hero{background:radial-gradient(circle at 86% 0,rgba(240,199,47,.14),transparent 42%),linear-gradient(145deg,#24200e,#11100c)}
+
+.payroll-motivation{background:radial-gradient(circle at 90% 0,rgba(240,199,47,.09),transparent 40%),linear-gradient(145deg,#211d10,#12110d)}
+.motivation-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}
+.motivation-grid>div{padding:15px;border-radius:14px;background:#16140e;border:1px solid #3b3119}
+.motivation-grid span,.motivation-grid b{display:block}
+.motivation-grid span{font-size:12px;color:var(--readable-muted)}
+.motivation-grid b{margin-top:5px;font-size:22px;color:#fff0a4}
+.motivation-grid .good{border-color:#79601b;background:#29220d}
+.motivation-grid .attention{border-color:#5e3a25;background:#231714}
+.bonus-tiers{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:9px;margin-top:13px}
+.bonus-tier{padding:12px 13px;border-radius:13px;background:#15130d;border:1px solid #352d1a}
+.bonus-tier span,.bonus-tier b{display:block}
+.bonus-tier span{font-size:11px;color:var(--readable-soft)}
+.bonus-tier b{margin-top:3px;font-size:17px}
+.bonus-tier.active{background:#31280b;border-color:#81631a;box-shadow:inset 0 0 0 1px rgba(240,199,47,.1)}
+.bonus-tier.active b{color:var(--yellow-bright)}
+
+.salary-breakdown{display:grid;gap:8px}
+.salary-row{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:13px 14px;border-radius:13px;background:#15130d;border:1px solid #342c19}
+.salary-row b,.salary-row small{display:block}
+.salary-row small{margin-top:2px;color:var(--readable-muted);font-size:12px}
+.salary-row strong{font-size:17px;color:#fff0a4;white-space:nowrap}
+.salary-row strong.negative,.salary-entry strong.negative{color:#ef9b8c}
+.salary-row.total{margin-top:4px;padding:16px;background:#2b240b;border-color:#74591a}
+.salary-row.total b,.salary-row.total strong{font-size:20px;color:var(--yellow-bright)}
+
+.salary-calendar-week,.salary-calendar{display:grid;grid-template-columns:repeat(7,minmax(112px,1fr));gap:8px}
+.salary-calendar-week{margin-bottom:8px;text-align:center;font-size:11px;font-weight:900;letter-spacing:.09em;text-transform:uppercase;color:#a99e88}
+.salary-calendar{overflow-x:auto;padding-bottom:3px}
+.salary-day{min-height:105px;padding:11px;border-radius:14px;background:#12110d;border:1px solid #302918;transition:border-color .16s ease,background .16s ease}
+.salary-day.off{opacity:.42}
+.salary-day.today{border-color:#80631b;box-shadow:inset 0 0 0 1px rgba(240,199,47,.1)}
+.salary-day.worked{background:linear-gradient(145deg,#2d260c,#17140c);border-color:#765c19}
+.salary-day.planned{background:#1c1a13;border-style:dashed;border-color:#756b4c}
+.salary-date{display:flex;align-items:center;justify-content:space-between;gap:6px}
+.salary-date b{font-size:15px}
+.salary-date span{padding:3px 7px;border-radius:99px;background:#3a2f0b;color:#ffe47e;font-size:9px;font-weight:900;text-transform:uppercase}
+.salary-day small{display:block;margin-top:9px;color:var(--readable-muted);font-size:11px;line-height:1.4}
+.salary-day em{display:block;margin-top:5px;color:#efcf60;font-size:11px;font-style:normal;font-weight:850}
+
+.salary-entry-list{display:grid;gap:10px}
+.salary-entry{display:grid;grid-template-columns:minmax(0,1fr) auto auto;align-items:center;gap:14px;padding:14px 15px;border-radius:14px;background:#15130d;border:1px solid #352d1a}
+.salary-entry span,.salary-entry b,.salary-entry small{display:block}
+.salary-entry span{font-size:11px;color:#c2a94e;text-transform:uppercase;letter-spacing:.055em}
+.salary-entry b{margin-top:4px;font-size:15px}
+.salary-entry small{margin-top:3px;color:var(--readable-muted);font-size:12px}
+.salary-entry strong{font-size:18px;color:#fff0a4;white-space:nowrap}
+
+.payroll-table{min-width:1150px}
+.payroll-table .table-sub{display:block;margin-top:4px;color:#c4a84d;font-size:10px}
+.payroll-history{max-height:520px;overflow:auto;padding-right:3px}
+.personal-links-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:18px}
+.personal-links-grid h4{margin:0 0 10px;font-size:17px}
+.scale-buttons{display:flex;gap:10px;flex-wrap:wrap}
+.mandatory-task-check{padding:13px 14px;border-radius:13px;background:#241e0c;border:1px solid #5c4818;color:#f2d979}
+
+@media(max-width:1280px){
+  .motivation-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .salary-calendar-week,.salary-calendar{grid-template-columns:repeat(7,minmax(105px,1fr))}
+}
+@media(max-width:820px){
+  body{font-size:calc(16px * min(var(--ui-scale),1.12))}
+  .content{padding:20px 15px 36px}
+  .payroll-hero{align-items:flex-start;flex-direction:column;padding:22px}
+  .payroll-hero-value{font-size:43px}
+  .payroll-forecast{width:100%;min-width:0;display:grid;grid-template-columns:1fr auto 1fr;align-items:center;text-align:left}
+  .payroll-forecast b{font-size:34px;text-align:center}
+  .payroll-forecast small{text-align:right}
+  .salary-calendar-week,.salary-calendar{grid-template-columns:repeat(7,108px)}
+  .personal-links-grid{grid-template-columns:1fr}
+}
+@media(max-width:560px){
+  .page-head h2{font-size:25px}
+  .page-head p{font-size:15px}
+  .metric-value{font-size:30px}
+  .motivation-grid,.bonus-tiers{grid-template-columns:1fr}
+  .salary-entry{grid-template-columns:minmax(0,1fr) auto}
+  .salary-entry .task-delete{grid-column:2;grid-row:2}
+  .payroll-hero-value{font-size:37px}
+  .readable-select{width:100%;min-width:0}
+}
+/* PAYROLL_TEAM_READABILITY_CSS_V1_END */
 </style>
 </head>
 <body>
@@ -387,7 +532,7 @@ a{color:inherit}
         <span class="boot-ring"></span>
       </div>
       <div class="eyebrow">EXTREME KIDS · ТРОПАРЁВО</div>
-      <h1>Growth OS <span>6.0</span></h1>
+      <h1>Growth OS <span>6.1</span></h1>
       <p id="bootText">Подключаем рабочую систему клуба…</p>
       <div class="boot-progress"><i></i></div>
       <button class="btn btn-primary hidden" id="bootRetry">Повторить запуск</button>
@@ -399,7 +544,7 @@ a{color:inherit}
       <div class="brand">
         <img src="https://ek-ui2-logo.vercel.app/logo.webp" alt="EXTREME KIDS" class="brand-logo">
         <div class="brand-copy">
-          <b>GROWTH OS <span>6.0</span></b>
+          <b>GROWTH OS <span>6.1</span></b>
           <small>Стратегия клуба · 2026/27</small>
         </div>
       </div>
@@ -489,7 +634,7 @@ a{color:inherit}
 'use strict';
 
 const VERSION='6.1.0';
-const BUILD='2026.08.31-manager-month-sync';
+const BUILD='2026.08.31-payroll-team-readability';
 const SYNC_BASE='https://mantledb.sh/v2/';
 const DEFAULT_ROLE='owner';
 const $=(s,r=document)=>r.querySelector(s);
@@ -1008,7 +1153,7 @@ function handleSubmit(e){
  const f=e.target;if(!(f instanceof HTMLFormElement))return;e.preventDefault();const v=formValues(f),stamp=nowIso();
  if(f.id==='monthForm'){const m=currentMonth();Object.assign(m,{minimum:num(v.minimum),target:num(v.target),stretch:num(v.stretch),fact:num(v.fact),focus:v.focus,loadTarget:num(v.loadTarget),updatedAt:stamp});closeModal();touch(`Обновлён план месяца ${m.label}`)}
  if(f.id==='revenueForm'){const m=currentMonth();m.daily=m.daily||[];m.daily.push({id:id('rev'),date:v.date,amount:num(v.amount),note:v.note,updatedAt:stamp});m.fact=sum(m.daily,x=>x.amount);m.updatedAt=stamp;closeModal();touch(`Добавлено поступление ${money(v.amount)}`)}
- if(f.id==='taskForm'){const old=state.tasks.find(x=>x.id===f.dataset.id);const item={...(old||{}),id:old?.id||id('task'),title:v.title,description:v.description,ownerId:v.ownerId,monthKey:v.monthKey||monthKeyFromDate(v.deadline)||state.settings.currentMonth,deadline:v.deadline,priority:v.priority,status:v.status,createdBy:old?.createdBy||(currentRole==='manager'?'manager':currentRole==='owner'?'owner':credentials.role),updatedAt:stamp};upsert(state.tasks,item);closeModal();touch(`Задача: ${item.title}`)}
+ if(f.id==='taskForm'){const old=state.tasks.find(x=>x.id===f.dataset.id);const item={...(old||{}),id:old?.id||id('task'),title:v.title,description:v.description,ownerId:v.ownerId,monthKey:v.monthKey||monthKeyFromDate(v.deadline)||state.settings.currentMonth,deadline:v.deadline,priority:v.priority,status:v.status,required:f.elements.required?.checked||false,createdBy:old?.createdBy||(currentRole==='manager'?'manager':currentRole==='owner'?'owner':credentials.role),updatedAt:stamp};upsert(state.tasks,item);closeModal();touch(`Задача: ${item.title}`)}
  if(f.id==='groupForm'){const old=state.groups.find(x=>x.id===f.dataset.id);const item={...(old||{}),id:old?.id||id('grp'),mentorId:v.mentorId,name:v.name,discipline:v.discipline,day:v.day,time:v.time,level:v.level,capacity:num(v.capacity),students:num(v.students),monthlyPrice:num(v.monthlyPrice),prime:/1[6-9]:|20:|Суббота|Воскресенье/.test(v.time+' '+v.day),status:'active',updatedAt:stamp};upsert(state.groups,item);closeModal();touch(`Группа: ${item.name}`)}
  if(f.id==='goalForm'){const old=state.goals.find(x=>x.id===f.dataset.id);const item={...(old||{}),id:old?.id||id('goal'),title:v.title,category:v.category,ownerId:v.ownerId,deadline:v.deadline,progress:clamp(v.progress,0,100),status:v.status,priority:v.priority,metric:v.metric,target:num(v.target),notes:v.notes,updatedAt:stamp};upsert(state.goals,item);closeModal();touch(`Цель: ${item.title}`)}
  if(f.id==='eventForm'){const old=state.events.find(x=>x.id===f.dataset.id);const item={...(old||{}),id:old?.id||id('event'),title:v.title,type:v.type,ownerId:v.ownerId,date:v.date,time:v.time,venue:v.venue,participantsPlan:num(v.participantsPlan),participantsFact:num(v.participantsFact),revenuePlan:num(v.revenuePlan),revenueFact:num(v.revenueFact),costPlan:num(v.costPlan),costFact:num(v.costFact),gifts:v.gifts,plan:v.plan,actual:v.actual,status:v.status,updatedAt:stamp};upsert(state.events,item);closeModal();touch(`Событие: ${item.title}`)}
@@ -1058,6 +1203,329 @@ async function boot(){
   if('serviceWorker'in navigator)navigator.serviceWorker.register('sw.js?v=6003').catch(()=>{});
  }catch(e){console.error('BOOT_FAILED',e);$('#bootText').textContent='Ошибка запуска: '+e.message;$('#bootRetry').classList.remove('hidden');$('#bootRetry').onclick=()=>location.reload()}
 }
+
+// PAYROLL_TEAM_READABILITY_V1_START
+const PAYROLL_EXTENSION_BUILD='2026.08.31-payroll-team-readability';
+const DEFAULT_ADMIN_COMPENSATION={
+  shiftRate:2500,
+  groupRate:.07,
+  itRate:.03,
+  bonusTiers:[
+    {id:'base',from:0,to:2499999.99,amount:10000,label:'до 2,5 млн ₽'},
+    {id:'target',from:2500000,to:3499999.99,amount:12500,label:'2,5–3,5 млн ₽'},
+    {id:'strong',from:3500000,to:null,amount:15000,label:'от 3,5 млн ₽'}
+  ]
+};
+const AUGUST_ADMIN_SNAPSHOT={
+  monthKey:'2026-08',
+  clubRevenue:2162988,
+  admins:{
+    anya:{revenue:955889,sales:28,groupSales:14,itSales:14,shifts:14,shiftPay:35000,commission:54602.03,groupCommission:null,itCommission:null,tasks:41,done:41,required:41,requiredDone:41,bonus:10000,premiums:0,fines:0,corrections:0,total:99602.03,daily:[
+      {date:'2026-08-01',weekday:'Сб',sales:2,revenue:32300,commission:1593,autoShift:1,manualShift:0,totalShift:1,tasks:0,done:0},{date:'2026-08-02',weekday:'Вс',sales:0,revenue:0,commission:0,autoShift:0,manualShift:0,totalShift:0,tasks:0,done:0},{date:'2026-08-03',weekday:'Пн',sales:0,revenue:0,commission:0,autoShift:0,manualShift:0,totalShift:0,tasks:0,done:0},{date:'2026-08-04',weekday:'Вт',sales:2,revenue:60300,commission:2785,autoShift:1,manualShift:0,totalShift:1,tasks:0,done:0},{date:'2026-08-05',weekday:'Ср',sales:2,revenue:64400,commission:3884,autoShift:1,manualShift:0,totalShift:1,tasks:0,done:0},{date:'2026-08-06',weekday:'Чт',sales:0,revenue:0,commission:0,autoShift:0,manualShift:0,totalShift:0,tasks:0,done:0},{date:'2026-08-07',weekday:'Пт',sales:0,revenue:0,commission:0,autoShift:0,manualShift:0,totalShift:0,tasks:0,done:0},{date:'2026-08-08',weekday:'Сб',sales:0,revenue:0,commission:0,autoShift:0,manualShift:0,totalShift:0,tasks:3,done:3},{date:'2026-08-09',weekday:'Вс',sales:2,revenue:43500,commission:2865,autoShift:1,manualShift:0,totalShift:1,tasks:4,done:4},{date:'2026-08-10',weekday:'Пн',sales:0,revenue:0,commission:0,autoShift:0,manualShift:0,totalShift:0,tasks:0,done:0},{date:'2026-08-11',weekday:'Вт',sales:0,revenue:0,commission:0,autoShift:0,manualShift:0,totalShift:0,tasks:0,done:0},{date:'2026-08-12',weekday:'Ср',sales:2,revenue:23560,commission:1365.2,autoShift:1,manualShift:0,totalShift:1,tasks:5,done:5},{date:'2026-08-13',weekday:'Чт',sales:2,revenue:81467,commission:4106.69,autoShift:1,manualShift:0,totalShift:1,tasks:3,done:3},{date:'2026-08-14',weekday:'Пт',sales:0,revenue:0,commission:0,autoShift:0,manualShift:0,totalShift:0,tasks:0,done:0},{date:'2026-08-15',weekday:'Сб',sales:0,revenue:0,commission:0,autoShift:0,manualShift:0,totalShift:0,tasks:0,done:0},{date:'2026-08-16',weekday:'Вс',sales:2,revenue:59700,commission:3735,autoShift:1,manualShift:0,totalShift:1,tasks:3,done:3},{date:'2026-08-17',weekday:'Пн',sales:2,revenue:42075,commission:1614.25,autoShift:1,manualShift:0,totalShift:1,tasks:4,done:4},{date:'2026-08-18',weekday:'Вт',sales:0,revenue:0,commission:0,autoShift:0,manualShift:0,totalShift:0,tasks:0,done:0},{date:'2026-08-19',weekday:'Ср',sales:0,revenue:0,commission:0,autoShift:0,manualShift:0,totalShift:0,tasks:0,done:0},{date:'2026-08-20',weekday:'Чт',sales:2,revenue:55400,commission:3878,autoShift:1,manualShift:0,totalShift:1,tasks:3,done:3},{date:'2026-08-21',weekday:'Пт',sales:2,revenue:49200,commission:2100,autoShift:1,manualShift:0,totalShift:1,tasks:4,done:4},{date:'2026-08-22',weekday:'Сб',sales:0,revenue:0,commission:0,autoShift:0,manualShift:0,totalShift:0,tasks:0,done:0},{date:'2026-08-23',weekday:'Вс',sales:0,revenue:0,commission:0,autoShift:0,manualShift:0,totalShift:0,tasks:0,done:0},{date:'2026-08-24',weekday:'Пн',sales:2,revenue:15100,commission:901,autoShift:1,manualShift:0,totalShift:1,tasks:4,done:4},{date:'2026-08-25',weekday:'Вт',sales:2,revenue:120275,commission:7836.05,autoShift:1,manualShift:0,totalShift:1,tasks:2,done:2},{date:'2026-08-26',weekday:'Ср',sales:0,revenue:0,commission:0,autoShift:0,manualShift:0,totalShift:0,tasks:0,done:0},{date:'2026-08-27',weekday:'Чт',sales:0,revenue:0,commission:0,autoShift:0,manualShift:0,totalShift:0,tasks:0,done:0},{date:'2026-08-28',weekday:'Пт',sales:2,revenue:58412,commission:3452.84,autoShift:1,manualShift:0,totalShift:1,tasks:3,done:3},{date:'2026-08-29',weekday:'Сб',sales:0,revenue:0,commission:0,autoShift:0,manualShift:0,totalShift:0,tasks:0,done:0},{date:'2026-08-30',weekday:'Вс',sales:0,revenue:0,commission:0,autoShift:0,manualShift:0,totalShift:0,tasks:0,done:0},{date:'2026-08-31',weekday:'Пн',sales:2,revenue:250200,commission:14486,autoShift:1,manualShift:0,totalShift:1,tasks:3,done:3}
+    ]},
+    adel:{revenue:1207099,sales:32,groupSales:16,itSales:16,shifts:16,shiftPay:40000,commission:65426.33,groupCommission:null,itCommission:null,tasks:45,done:45,required:45,requiredDone:45,bonus:10000,premiums:0,fines:0,corrections:0,total:115426.33,daily:[
+      {date:'2026-08-01',weekday:'Сб',sales:0,revenue:0,commission:0,autoShift:0,manualShift:0,totalShift:0,tasks:0,done:0},{date:'2026-08-02',weekday:'Вс',sales:2,revenue:23700,commission:711,autoShift:1,manualShift:0,totalShift:1,tasks:0,done:0},{date:'2026-08-03',weekday:'Пн',sales:2,revenue:69014,commission:3958.98,autoShift:1,manualShift:0,totalShift:1,tasks:0,done:0},{date:'2026-08-04',weekday:'Вт',sales:0,revenue:0,commission:0,autoShift:0,manualShift:0,totalShift:0,tasks:0,done:0},{date:'2026-08-05',weekday:'Ср',sales:0,revenue:0,commission:0,autoShift:0,manualShift:0,totalShift:0,tasks:0,done:0},{date:'2026-08-06',weekday:'Чт',sales:2,revenue:56100,commission:3219,autoShift:1,manualShift:0,totalShift:1,tasks:3,done:3},{date:'2026-08-07',weekday:'Пт',sales:2,revenue:27000,commission:1002,autoShift:1,manualShift:0,totalShift:1,tasks:3,done:3},{date:'2026-08-08',weekday:'Сб',sales:0,revenue:0,commission:0,autoShift:0,manualShift:0,totalShift:0,tasks:0,done:0},{date:'2026-08-09',weekday:'Вс',sales:0,revenue:0,commission:0,autoShift:0,manualShift:0,totalShift:0,tasks:0,done:0},{date:'2026-08-10',weekday:'Пн',sales:2,revenue:22200,commission:1494,autoShift:1,manualShift:0,totalShift:1,tasks:0,done:0},{date:'2026-08-11',weekday:'Вт',sales:2,revenue:75220,commission:3221.4,autoShift:1,manualShift:0,totalShift:1,tasks:4,done:4},{date:'2026-08-12',weekday:'Ср',sales:0,revenue:0,commission:0,autoShift:0,manualShift:0,totalShift:0,tasks:0,done:0},{date:'2026-08-13',weekday:'Чт',sales:0,revenue:0,commission:0,autoShift:0,manualShift:0,totalShift:0,tasks:0,done:0},{date:'2026-08-14',weekday:'Пт',sales:2,revenue:68651,commission:3728.97,autoShift:1,manualShift:0,totalShift:1,tasks:4,done:4},{date:'2026-08-15',weekday:'Сб',sales:2,revenue:93840,commission:5000.8,autoShift:1,manualShift:0,totalShift:1,tasks:3,done:3},{date:'2026-08-16',weekday:'Вс',sales:0,revenue:0,commission:0,autoShift:0,manualShift:0,totalShift:0,tasks:0,done:0},{date:'2026-08-17',weekday:'Пн',sales:0,revenue:0,commission:0,autoShift:0,manualShift:0,totalShift:0,tasks:0,done:0},{date:'2026-08-18',weekday:'Вт',sales:2,revenue:70536,commission:2513.52,autoShift:1,manualShift:0,totalShift:1,tasks:5,done:5},{date:'2026-08-19',weekday:'Ср',sales:2,revenue:47200,commission:2860,autoShift:1,manualShift:0,totalShift:1,tasks:4,done:4},{date:'2026-08-20',weekday:'Чт',sales:0,revenue:0,commission:0,autoShift:0,manualShift:0,totalShift:0,tasks:0,done:0},{date:'2026-08-21',weekday:'Пт',sales:0,revenue:0,commission:0,autoShift:0,manualShift:0,totalShift:0,tasks:0,done:0},{date:'2026-08-22',weekday:'Сб',sales:2,revenue:97836,commission:5368.52,autoShift:1,manualShift:0,totalShift:1,tasks:3,done:3},{date:'2026-08-23',weekday:'Вс',sales:2,revenue:93036,commission:5180.52,autoShift:1,manualShift:0,totalShift:1,tasks:3,done:3},{date:'2026-08-24',weekday:'Пн',sales:0,revenue:0,commission:0,autoShift:0,manualShift:0,totalShift:0,tasks:0,done:0},{date:'2026-08-25',weekday:'Вт',sales:0,revenue:0,commission:0,autoShift:0,manualShift:0,totalShift:0,tasks:0,done:0},{date:'2026-08-26',weekday:'Ср',sales:2,revenue:95145,commission:5770.15,autoShift:1,manualShift:0,totalShift:1,tasks:4,done:4},{date:'2026-08-27',weekday:'Чт',sales:2,revenue:95084,commission:5279.88,autoShift:1,manualShift:0,totalShift:1,tasks:3,done:3},{date:'2026-08-28',weekday:'Пт',sales:0,revenue:0,commission:0,autoShift:0,manualShift:0,totalShift:0,tasks:0,done:0},{date:'2026-08-29',weekday:'Сб',sales:2,revenue:39689,commission:2554.23,autoShift:1,manualShift:0,totalShift:1,tasks:3,done:3},{date:'2026-08-30',weekday:'Вс',sales:2,revenue:232848,commission:13563.36,autoShift:1,manualShift:0,totalShift:1,tasks:3,done:3},{date:'2026-08-31',weekday:'Пн',sales:0,revenue:0,commission:0,autoShift:0,manualShift:0,totalShift:0,tasks:0,done:0}
+    ]}
+  }
+};
+
+function payrollClone(value){return JSON.parse(JSON.stringify(value))}
+function salaryMoney(value){return new Intl.NumberFormat('ru-RU',{minimumFractionDigits:0,maximumFractionDigits:2}).format(Number(value)||0)+' ₽'}
+function activeAdmins(){return (state?.people||[]).filter(p=>p.role==='admin'&&p.active!==false&&!p.archivedAt&&!p.deletedAt)}
+function activeMentors(){return (state?.people||[]).filter(p=>(p.role==='mentor'||p.id==='stas')&&p.active!==false&&!p.archivedAt&&!p.deletedAt)}
+function payrollEnsure(s){
+  if(!s||typeof s!=='object')return s;
+  s.settings=s.settings||{};
+  const incoming=s.settings.adminCompensation||{};
+  s.settings.adminCompensation={...payrollClone(DEFAULT_ADMIN_COMPENSATION),...incoming,bonusTiers:Array.isArray(incoming.bonusTiers)&&incoming.bonusTiers.length?incoming.bonusTiers:payrollClone(DEFAULT_ADMIN_COMPENSATION.bonusTiers)};
+  s.settings.uiScale=clamp(Number(s.settings.uiScale)||1.1,1,1.22);
+  s.adminOperationsByMonth=s.adminOperationsByMonth&&typeof s.adminOperationsByMonth==='object'?s.adminOperationsByMonth:{};
+  s.mentorPayroll=Array.isArray(s.mentorPayroll)?s.mentorPayroll:[];
+  s.adminSalarySnapshots=s.adminSalarySnapshots&&typeof s.adminSalarySnapshots==='object'?s.adminSalarySnapshots:{};
+  if(!s.adminSalarySnapshots['2026-08'])s.adminSalarySnapshots['2026-08']=payrollClone(AUGUST_ADMIN_SNAPSHOT);
+  if(!s.months['2026-08'])s.months['2026-08']={key:'2026-08',label:'Август 2026',minimum:2500000,target:2500000,stretch:3500000,fact:2162988,daily:[],focus:'Исторический расчёт зарплаты администраторов',loadTarget:75,updatedAt:'2026-08-31T23:59:59.000Z'};
+  s.people=(s.people||[]).map(p=>({...p,active:p.active!==false}));
+  s.ui={...(s.ui||{}),selectedAdmin:s.ui?.selectedAdmin||'anya',selectedMentor:s.ui?.selectedMentor||'stas',payrollTab:s.ui?.payrollTab||'all'};
+  s.meta=s.meta||{};s.meta.build=PAYROLL_EXTENSION_BUILD;
+  return s;
+}
+
+const __seedStatePayrollBase=seedState;
+seedState=function(){return payrollEnsure(__seedStatePayrollBase())};
+const __ensureStatePayrollBase=ensureState;
+ensureState=function(raw){return payrollEnsure(__ensureStatePayrollBase(raw))};
+
+credentials.personId=new URLSearchParams(location.hash.replace(/^#/,'')).get('p')||credentials.personId||'';
+credentials.requestedView=new URLSearchParams(location.hash.replace(/^#/,'')).get('v')||'';
+
+function adminViewerId(){
+  const list=activeAdmins();
+  if(currentRole==='admin'&&list.some(p=>p.id===credentials.personId))return credentials.personId;
+  const chosen=state?.ui?.selectedAdmin;
+  return list.some(p=>p.id===chosen)?chosen:(list[0]?.id||'anya');
+}
+function mentorViewerId(){
+  const list=activeMentors();
+  if(currentRole==='mentor'&&list.some(p=>p.id===credentials.personId))return credentials.personId;
+  const chosen=state?.ui?.selectedMentor;
+  return list.some(p=>p.id===chosen)?chosen:(list[0]?.id||'stas');
+}
+function isPersonalRole(){return (currentRole==='admin'||currentRole==='mentor')&&Boolean(credentials.personId)}
+function canManageAdminPayroll(){return currentRole==='owner'||currentRole==='manager'}
+function canManageMentorPayroll(){return currentRole==='owner'}
+function canManageMentors(){return currentRole==='owner'}
+
+const __roleInfoPayrollBase=roleInfo;
+roleInfo=function(){
+  if(state&&currentRole==='admin'){
+    const p=person(adminViewerId());return{name:p.name,title:p.title||'Администратор',avatar:p.avatar||String(p.name||'А')[0],start:'admin'};
+  }
+  if(state&&currentRole==='mentor'){
+    const p=person(mentorViewerId());return{name:p.name,title:p.title||'Наставник',avatar:p.avatar||String(p.name||'Н')[0],start:'mentor'};
+  }
+  return __roleInfoPayrollBase();
+};
+
+const __peopleOptionsPayrollBase=peopleOptions;
+peopleOptions=function(selected='',roles=null){
+  return (state.people||[]).filter(p=>p.active!==false&&!p.archivedAt&&!p.deletedAt).filter(p=>!roles||roles.includes(p.role)||roles.includes(p.id)).map(p=>`<option value="${p.id}" ${selected===p.id?'selected':''}>${esc(p.name)} · ${esc(p.area||p.title)}</option>`).join('');
+};
+
+function personalRoleLink(role,personId=''){
+  const p=new URLSearchParams();p.set('w',credentials.workspace);p.set('k',credentials.key);p.set('r',role);if(personId)p.set('p',personId);p.set('t',`${role}-${personId||'team'}-${crypto.getRandomValues(new Uint32Array(1))[0].toString(36)}`);return`${location.origin}${location.pathname}#${p.toString()}`;
+}
+roleLink=function(role,personId=''){return personalRoleLink(role,personId)};
+
+const workSection=NAV.find(section=>section.section==='Работа');
+if(workSection&&!workSection.items.some(x=>x.id==='payroll'))workSection.items.splice(3,0,{id:'payroll',label:'ЗП и мотивация',icon:'revenue',roles:['owner','manager']});
+
+function applyUiScale(){if(!state)return;document.documentElement.style.setProperty('--ui-scale',String(clamp(state.settings.uiScale||1.1,1,1.22)))}
+const __renderShellPayrollBase=renderShell;
+renderShell=function(){applyUiScale();return __renderShellPayrollBase()};
+
+const __switchRolePayrollBase=switchRole;
+switchRole=function(role){
+  if(role==='admin')credentials.personId=state?.ui?.selectedAdmin||activeAdmins()[0]?.id||'';
+  else if(role==='mentor')credentials.personId=state?.ui?.selectedMentor||activeMentors()[0]?.id||'';
+  else credentials.personId='';
+  __switchRolePayrollBase(role);
+  const p=new URLSearchParams(location.hash.slice(1));if(credentials.personId)p.set('p',credentials.personId);else p.delete('p');history.replaceState(null,'',location.pathname+location.search+'#'+p.toString());
+};
+
+function adminOpsMonth(key=state.settings.currentMonth){
+  state.adminOperationsByMonth=state.adminOperationsByMonth||{};
+  if(!state.adminOperationsByMonth[key])state.adminOperationsByMonth[key]={sales:[],shifts:[],adjustments:[],updatedAt:nowIso()};
+  const m=state.adminOperationsByMonth[key];m.sales=Array.isArray(m.sales)?m.sales:[];m.shifts=Array.isArray(m.shifts)?m.shifts:[];m.adjustments=Array.isArray(m.adjustments)?m.adjustments:[];return m;
+}
+function adminRates(adminId){
+  const base=state.settings.adminCompensation||DEFAULT_ADMIN_COMPENSATION,p=person(adminId),own=p.adminPay||{};
+  return{shiftRate:Number(own.shiftRate??base.shiftRate)||0,groupRate:Number(own.groupRate??base.groupRate)||0,itRate:Number(own.itRate??base.itRate)||0,bonusTiers:Array.isArray(base.bonusTiers)?base.bonusTiers:DEFAULT_ADMIN_COMPENSATION.bonusTiers};
+}
+function bonusForRevenue(revenue,tiers){const r=Number(revenue)||0;const tier=(tiers||[]).find(x=>r>=Number(x.from||0)&&(x.to==null||r<=Number(x.to)));return tier?Number(tier.amount)||0:0}
+function recordLive(x){return x&&!x.deletedAt}
+function taskIsRequired(t){return t?.required===true||t?.mandatory===true||String(t?.required||t?.mandatory||'').toLowerCase()==='да'}
+function monthRecordDate(key){const {mode}=dayOfProjection(key);if(mode==='past')return`${key}-${String(new Date(Number(key.slice(0,4)),Number(key.slice(5,7)),0).getDate()).padStart(2,'0')}`;if(mode==='future')return`${key}-00`;return today()}
+function adminAllSalesForMonth(key){return adminOpsMonth(key).sales.filter(recordLive)}
+function adminMonthStats(adminId,key=state.settings.currentMonth){
+  const snapshot=state.adminSalarySnapshots?.[key]?.admins?.[adminId],ops=adminOpsMonth(key),sales=ops.sales.filter(x=>recordLive(x)&&x.adminId===adminId),shifts=ops.shifts.filter(x=>recordLive(x)&&x.adminId===adminId),adjustments=ops.adjustments.filter(x=>recordLive(x)&&x.adminId===adminId),rates=adminRates(adminId);
+  if(snapshot&&!sales.length&&!shifts.length&&!adjustments.length){
+    const daily=(snapshot.daily||[]).map(x=>({...x,shift:Boolean(x.totalShift),planned:false})),dailyMap=new Map(daily.map(x=>[x.date,x]));
+    return{adminId,key,legacy:true,rates,revenue:snapshot.revenue||0,groupRevenue:0,itRevenue:0,salesCount:snapshot.sales||0,groupSales:snapshot.groupSales||0,itSales:snapshot.itSales||0,groupCommission:0,itCommission:0,commission:snapshot.commission||0,autoShifts:snapshot.shifts||0,manualShifts:0,shifts:snapshot.shifts||0,forecastShifts:snapshot.shifts||0,shiftPay:snapshot.shiftPay||0,projectedShiftPay:snapshot.shiftPay||0,premiums:snapshot.premiums||0,fines:snapshot.fines||0,corrections:snapshot.corrections||0,required:snapshot.required||0,requiredDone:snapshot.requiredDone||0,tasks:snapshot.tasks||0,tasksDone:snapshot.done||0,taskProgress:snapshot.tasks?snapshot.done/snapshot.tasks*100:0,bonusEligible:true,bonus:snapshot.bonus||0,bonusPotential:snapshot.bonus||0,total:snapshot.total||0,forecastTotal:snapshot.total||0,clubRevenue:state.adminSalarySnapshots[key].clubRevenue||0,clubForecast:state.adminSalarySnapshots[key].clubRevenue||0,daily,dailyMap,salesEntries:[],shiftEntries:[],adjustmentEntries:[]};
+  }
+  const groupSales=sales.filter(s=>s.type==='group'),itSales=sales.filter(s=>s.type==='it'),groupRevenue=sum(groupSales,s=>s.amount),itRevenue=sum(itSales,s=>s.amount),revenue=groupRevenue+itRevenue;
+  const groupCommission=sum(groupSales,s=>Number(s.amount||0)*Number(s.rate??rates.groupRate)),itCommission=sum(itSales,s=>Number(s.amount||0)*Number(s.rate??rates.itRate)),commission=groupCommission+itCommission;
+  const saleDates=new Set(sales.map(s=>s.date).filter(Boolean));
+  const projection=dayOfProjection(key),cutoff=monthRecordDate(key),workedShiftEntries=shifts.filter(s=>s.status==='worked'||(s.status!=='planned'&&String(s.date||'')<=cutoff)),plannedEntries=shifts.filter(s=>s.status==='planned'||String(s.date||'')>cutoff);
+  const manualDates=new Set(workedShiftEntries.map(s=>s.date).filter(d=>d&&!saleDates.has(d))),plannedDates=new Set(plannedEntries.map(s=>s.date).filter(d=>d&&!saleDates.has(d)));
+  const actualShiftDates=new Set([...saleDates,...manualDates]),shiftsActual=actualShiftDates.size,explicitForecastShiftDates=new Set([...actualShiftDates,...plannedDates]);
+  let forecastShifts=shiftsActual,projectedCommission=commission;
+  if(projection.mode==='current'&&projection.elapsed){
+    const paceShifts=Math.round(shiftsActual/projection.elapsed*projection.days),paceCommission=commission/projection.elapsed*projection.days;
+    forecastShifts=Math.max(explicitForecastShiftDates.size,paceShifts);projectedCommission=Math.max(commission,paceCommission);
+  }else if(projection.mode==='future'){forecastShifts=explicitForecastShiftDates.size;projectedCommission=commission}else if(projection.mode==='past'){forecastShifts=shiftsActual;projectedCommission=commission}
+  const taskList=tasksForMonth(key).filter(t=>t.ownerId===adminId),requiredTasks=taskList.filter(taskIsRequired),requiredDone=requiredTasks.filter(t=>statusDone(t.status)).length,tasksDone=taskList.filter(t=>statusDone(t.status)).length,bonusEligible=requiredTasks.length>0&&requiredDone===requiredTasks.length;
+  const clubRevenueFromMonth=monthFact(state.months[key]||{}),allAdminRevenue=sum(adminAllSalesForMonth(key),s=>s.amount),clubRevenue=clubRevenueFromMonth||allAdminRevenue;
+  let clubForecast=clubRevenue;try{clubForecast=forecast(state.months[key]||currentMonth()).base||clubRevenue}catch{}
+  if(!clubForecast&&projection.mode==='current'&&projection.elapsed)clubForecast=allAdminRevenue/projection.elapsed*projection.days;
+  const bonus=bonusEligible?bonusForRevenue(clubRevenue,rates.bonusTiers):0,bonusPotential=requiredTasks.length?bonusForRevenue(clubForecast,rates.bonusTiers):0;
+  const premiums=sum(adjustments.filter(a=>a.type==='premium'),a=>Math.abs(a.amount)),fines=sum(adjustments.filter(a=>a.type==='fine'),a=>Math.abs(a.amount)),corrections=sum(adjustments.filter(a=>a.type==='correction'),a=>a.amount),shiftPay=shiftsActual*rates.shiftRate,projectedShiftPay=forecastShifts*rates.shiftRate,total=shiftPay+commission+bonus+premiums+corrections-fines,forecastTotal=projectedShiftPay+projectedCommission+bonusPotential+premiums+corrections-fines;
+  const dailyMap=new Map();
+  const ensureDay=date=>{if(!dailyMap.has(date))dailyMap.set(date,{date,sales:0,revenue:0,commission:0,autoShift:0,manualShift:0,totalShift:0,planned:false,tasks:0,done:0});return dailyMap.get(date)};
+  sales.forEach(s=>{const d=ensureDay(s.date);d.sales++;d.revenue+=Number(s.amount)||0;d.commission+=Number(s.amount||0)*Number(s.rate??(s.type==='group'?rates.groupRate:rates.itRate));d.autoShift=1;d.totalShift=1});
+  shifts.forEach(s=>{const d=ensureDay(s.date);if(s.status==='planned'||String(s.date||'')>cutoff)d.planned=true;else if(!d.autoShift){d.manualShift=1;d.totalShift=1}});
+  taskList.forEach(t=>{const date=t.deadline||`${key}-01`,d=ensureDay(date);d.tasks++;if(statusDone(t.status))d.done++});
+  return{adminId,key,legacy:false,rates,revenue,groupRevenue,itRevenue,salesCount:sales.length,groupSales:groupSales.length,itSales:itSales.length,groupCommission,itCommission,commission,projectedCommission,autoShifts:saleDates.size,manualShifts:manualDates.size,shifts:shiftsActual,forecastShifts,shiftPay,projectedShiftPay,premiums,fines,corrections,required:requiredTasks.length,requiredDone,tasks:taskList.length,tasksDone,taskProgress:taskList.length?tasksDone/taskList.length*100:0,bonusEligible,bonus,bonusPotential,total,forecastTotal,clubRevenue,clubForecast,daily:[...dailyMap.values()].sort((a,b)=>a.date.localeCompare(b.date)),dailyMap,salesEntries:sales.slice().sort((a,b)=>String(b.date).localeCompare(String(a.date))),shiftEntries:shifts.slice().sort((a,b)=>String(b.date).localeCompare(String(a.date))),adjustmentEntries:adjustments.slice().sort((a,b)=>String(b.date).localeCompare(String(a.date)))};
+}
+
+function mentorEntries(mentorId,key=state.settings.currentMonth){return state.mentorPayroll.filter(x=>recordLive(x)&&x.mentorId===mentorId&&monthKeyFromDate(x.date)===key).sort((a,b)=>String(b.date).localeCompare(String(a.date)))}
+function mentorPayrollStats(mentorId,key=state.settings.currentMonth){const entries=mentorEntries(mentorId,key),total=sum(entries,e=>e.amount),paid=sum(entries.filter(e=>e.status==='paid'),e=>e.amount),planned=total-paid;return{mentorId,key,entries,total,paid,planned,count:entries.length}}
+
+function mergeMonthRecords(localMap={},remoteMap={}){
+  const out={...localMap,...remoteMap};
+  for(const key of new Set([...Object.keys(localMap||{}),...Object.keys(remoteMap||{})])){
+    const l=localMap?.[key]||{},r=remoteMap?.[key]||{};out[key]={...l,...r,sales:mergeLists(l.sales||[],r.sales||[]),shifts:mergeLists(l.shifts||[],r.shifts||[]),adjustments:mergeLists(l.adjustments||[],r.adjustments||[]),updatedAt:[l.updatedAt,r.updatedAt].filter(Boolean).sort().pop()||nowIso()};
+  }
+  return out;
+}
+const __mergeStatesPayrollBase=mergeStates;
+mergeStates=function(local,remote){
+  const out=payrollEnsure(__mergeStatesPayrollBase(local,remote));if(!remote)return out;
+  out.adminOperationsByMonth=mergeMonthRecords(local?.adminOperationsByMonth||{},remote?.adminOperationsByMonth||{});
+  out.mentorPayroll=mergeLists(local?.mentorPayroll||[],remote?.mentorPayroll||[]);
+  out.adminSalarySnapshots={...(local?.adminSalarySnapshots||{}),...(remote?.adminSalarySnapshots||{})};
+  return payrollEnsure(out);
+};
+
+function adminSelectHtml(id){return`<select class="select readable-select" data-filter="selectedAdmin">${activeAdmins().map(p=>`<option value="${p.id}" ${p.id===id?'selected':''}>${esc(p.name)}</option>`).join('')}</select>`}
+function mentorSelectHtml(id){return`<select class="select readable-select" data-filter="selectedMentor">${activeMentors().map(p=>`<option value="${p.id}" ${p.id===id?'selected':''}>${esc(p.name)}</option>`).join('')}</select>`}
+function salaryBreakdownRows(stats){
+  const rows=[['Оплата смен',stats.shiftPay,`${stats.shifts} × ${salaryMoney(stats.rates.shiftRate)}`]];
+  if(stats.legacy)rows.push(['Комиссия с продаж',stats.commission,`${stats.salesCount} продаж · исторический расчёт из таблицы`]);
+  else{rows.push([`Комиссия · групповые ${Math.round(stats.rates.groupRate*100)}%`,stats.groupCommission,stats.groupRevenue?`с ${salaryMoney(stats.groupRevenue)}`:'нет продаж']);rows.push([`Комиссия · ИТ ${Math.round(stats.rates.itRate*100)}%`,stats.itCommission,stats.itRevenue?`с ${salaryMoney(stats.itRevenue)}`:'нет продаж'])}
+  rows.push(['Бонус за обязательные задачи',stats.bonus,stats.required?`${stats.requiredDone}/${stats.required} выполнено`:'обязательные задачи не назначены'],['Премии',stats.premiums,'ручные начисления'],['Корректировки',stats.corrections,'могут быть со знаком минус'],['Штрафы',-stats.fines,'вычитаются из зарплаты']);
+  return rows;
+}
+function adminMotivationCard(stats){const tiers=stats.rates.bonusTiers||[];return`<section class="card pad payroll-motivation"><div class="card-head"><div><h3>Как считается зарплата</h3><p>Правила из таблицы «ЗП и задачи админов» перенесены в систему</p></div>${currentRole==='owner'?`<button class="btn btn-small btn-ghost" data-action="editAdminRates" data-id="${stats.adminId}">Изменить ставки</button>`:''}</div><div class="motivation-grid"><div><span>Смена</span><b>${salaryMoney(stats.rates.shiftRate)}</b></div><div><span>Групповая продажа</span><b>${Math.round(stats.rates.groupRate*100)}%</b></div><div><span>ИТ</span><b>${Math.round(stats.rates.itRate*100)}%</b></div><div class="${stats.bonusEligible?'good':'attention'}"><span>Бонус</span><b>${stats.required?`${stats.requiredDone}/${stats.required}`:'нет обяз. задач'}</b></div></div><div class="bonus-tiers">${tiers.map(t=>`<div class="bonus-tier ${stats.clubForecast>=Number(t.from||0)&&(t.to==null||stats.clubForecast<=Number(t.to))?'active':''}"><span>${esc(t.label||'Уровень')}</span><b>${salaryMoney(t.amount)}</b></div>`).join('')}</div><p class="readable-note">Бонус начисляется только при выполнении всех обязательных задач месяца. Уровень бонуса зависит от общей выручки клуба.</p></section>`}
+function renderAdminSchedule(stats){
+  const cells=calendarData(stats.key);return`<section class="card pad"><div class="card-head"><div><h3>График смен по дням</h3><p>Продажа автоматически засчитывает смену. Будущие смены по графику отмечены отдельно.</p></div>${canManageAdminPayroll()?`<button class="btn btn-small btn-ghost" data-action="addAdminShift" data-admin="${stats.adminId}">+ Смена / график</button>`:''}</div><div class="salary-calendar-week"><span>Пн</span><span>Вт</span><span>Ср</span><span>Чт</span><span>Пт</span><span>Сб</span><span>Вс</span></div><div class="salary-calendar">${cells.map(c=>{const d=stats.dailyMap.get(c.date),hasShift=d&&(d.totalShift||d.planned),cls=[c.off?'off':'',c.date===today()?'today':'',d?.totalShift?'worked':'',d?.planned&&!d?.totalShift?'planned':''].filter(Boolean).join(' ');return`<div class="salary-day ${cls}"><div class="salary-date"><b>${c.day}</b>${hasShift?`<span>${d.totalShift?'Смена':'План'}</span>`:''}</div>${d?`<small>${d.sales?`${d.sales} прод. · ${compactMoney(d.revenue)}`:d.planned?'по графику':d.tasks?`задачи ${d.done}/${d.tasks}`:''}</small>${d.commission?`<em>+${salaryMoney(d.commission)}</em>`:''}`:'<small>—</small>'}</div>`}).join('')}</div></section>`;
+}
+function adminHistoryHtml(stats,manage){
+  const rows=[];
+  rows.push(...stats.salesEntries.slice(0,6).map(s=>`<div class="compact-item"><i class="item-dot"></i><div class="item-main"><b>${s.type==='group'?'Групповая':'ИТ'} · ${salaryMoney(s.amount)}</b><small>${formatDate(s.date)}${s.client?` · ${esc(s.client)}`:''}</small></div>${manage?`<button class="task-delete" data-action="deleteAdminSale" data-id="${s.id}">${ICONS.trash}</button>`:''}</div>`));
+  rows.push(...stats.adjustmentEntries.slice(0,5).map(a=>`<div class="compact-item"><i class="item-dot ${a.type==='fine'?'red':''}"></i><div class="item-main"><b>${a.type==='premium'?'Премия':a.type==='fine'?'Штраф':'Корректировка'} · ${salaryMoney(a.type==='fine'?-Math.abs(a.amount):a.amount)}</b><small>${formatDate(a.date)} · ${esc(a.note||'без комментария')}</small></div>${manage?`<button class="task-delete" data-action="deleteAdminAdjustment" data-id="${a.id}">${ICONS.trash}</button>`:''}</div>`));
+  if(stats.legacy)rows.push(`<div class="compact-item"><i class="item-dot"></i><div class="item-main"><b>Исторические данные августа 2026</b><small>Перенесены из таблицы «ЗП и задачи админов Extreme Kids Тропарёво»</small></div></div>`);
+  return rows.length?rows.join(''):'<div class="empty">Пока нет продаж и начислений в журнале.</div>';
+}
+function renderAdmin(){
+  const adminId=adminViewerId(),p=person(adminId),stats=adminMonthStats(adminId),manage=canManageAdminPayroll(),selector=!isPersonalRole()&&['owner','manager'].includes(currentRole)?adminSelectHtml(adminId):'';
+  const actions=`${selector}${manage?`<button class="btn btn-ghost" data-action="addAdminSale" data-admin="${adminId}">+ Продажа</button><button class="btn btn-primary" data-action="addAdminAdjustment" data-admin="${adminId}">+ Начисление</button>`:''}`;
+  const tasks=tasksForMonth(stats.key).filter(t=>t.ownerId===adminId).sort(sortByDate);
+  return`<div class="page readable-page">${pageHead('ЛИЧНЫЙ КАБИНЕТ АДМИНИСТРАТОРА',`${p.name} · зарплата и задачи`,`${currentMonth().label}: график, продажи, мотивация и прогноз зарплаты`,actions)}
+  <section class="card payroll-hero"><div><div class="eyebrow">НАЧИСЛЕНО СЕЙЧАС</div><div class="payroll-hero-value">${salaryMoney(stats.total)}</div><p>Прогноз к концу месяца: <b>${salaryMoney(stats.forecastTotal)}</b>${stats.required&&!stats.bonusEligible?' · при выполнении обязательных задач':''}</p></div><div class="payroll-forecast"><span>Прогноз смен</span><b>${stats.forecastShifts}</b><small>сейчас ${stats.shifts}</small></div></section>
+  <div class="grid-4">${metricCard('Моя выручка',compactMoney(stats.revenue),`${stats.salesCount} продаж`,'revenue')}${metricCard('Комиссия',salaryMoney(stats.commission),`прогноз ${salaryMoney(stats.projectedCommission??stats.commission)}`,'analytics')}${metricCard('Смены',String(stats.shifts),`прогноз ${stats.forecastShifts} · ставка ${salaryMoney(stats.rates.shiftRate)}`,'calendar')}${metricCard('Задачи',pct(stats.taskProgress),`${stats.tasksDone}/${stats.tasks} · обязательные ${stats.requiredDone}/${stats.required}`,'tasks',stats.taskProgress)}</div>
+  <div class="grid-main">${adminMotivationCard(stats)}<section class="card pad"><div class="card-head"><div><h3>Расчёт зарплаты</h3><p>Все составляющие видны отдельно</p></div></div><div class="salary-breakdown">${salaryBreakdownRows(stats).map(([label,value,note])=>`<div class="salary-row"><div><b>${esc(label)}</b><small>${esc(note)}</small></div><strong class="${Number(value)<0?'negative':''}">${salaryMoney(value)}</strong></div>`).join('')}<div class="salary-row total"><div><b>Итоговая зарплата</b><small>на текущий момент</small></div><strong>${salaryMoney(stats.total)}</strong></div></div></section></div>
+  ${renderAdminSchedule(stats)}
+  <div class="grid-main"><section class="card pad"><div class="card-head"><div><h3>Мои задачи</h3><p>Обязательные задачи влияют на бонус</p></div><button class="btn btn-small btn-ghost" data-view="tasks">Все задачи</button></div><div class="compact-list">${tasks.length?tasks.map(t=>`<div class="compact-item" data-action="editTask" data-id="${t.id}"><i class="item-dot ${isOverdue(t)?'red':''}"></i><div class="item-main"><b>${esc(t.title)}</b><small>${formatDateShort(t.deadline)} · ${esc(statusLabel(t.status))}</small></div>${taskIsRequired(t)?'<span class="pill">Обязательная</span>':''}</div>`).join(''):'<div class="empty"><b>Задач нет</b>На выбранный месяц задачи не назначены.</div>'}</div></section>
+  <section class="card pad"><div class="card-head"><div><h3>Продажи и начисления</h3><p>История, из которой собирается зарплата</p></div></div><div class="compact-list payroll-history">${adminHistoryHtml(stats,manage)}</div></section></div></div>`;
+}
+
+function renderMentor(){
+  const mentorId=mentorViewerId(),p=person(mentorId),gs=activeGroups().filter(g=>g.mentorId===mentorId),ls=loadStats(gs),tasks=currentMonthTasks().filter(t=>t.ownerId===mentorId&&!statusDone(t.status)),recs=state.recommendations.filter(r=>r.mentorId===mentorId&&!r.deletedAt),pay=mentorPayrollStats(mentorId),selector=!isPersonalRole()&&['owner','manager','stas'].includes(currentRole)?mentorSelectHtml(mentorId):'';
+  const actions=`${selector}<button class="btn btn-ghost" data-action="addRecommendation" data-mentor="${mentorId}">+ Рекомендация</button>${canManageMentorPayroll()?`<button class="btn btn-primary" data-action="addMentorPayment" data-mentor="${mentorId}">+ Начисление ЗП</button>`:''}`;
+  return`<div class="page readable-page">${pageHead('ЛИЧНЫЙ КАБИНЕТ НАСТАВНИКА',`${p.name} · работа и зарплата`,`${currentMonth().label}: группы, задачи, рекомендации и начисления`,actions)}
+  <section class="card payroll-hero mentor-pay-hero"><div><div class="eyebrow">МОЯ ЗАРПЛАТА ЗА МЕСЯЦ</div><div class="payroll-hero-value">${salaryMoney(pay.total)}</div><p>${pay.count?`${pay.count} начислений · выплачено ${salaryMoney(pay.paid)}`:'Роман ещё не добавил начисления за выбранный месяц'}</p></div><div class="payroll-forecast"><span>Группы</span><b>${gs.length}</b><small>${ls.students} детей</small></div></section>
+  <div class="grid-4">${metricCard('Начислено',salaryMoney(pay.total),`${pay.count} позиций`,'revenue')}${metricCard('Выплачено',salaryMoney(pay.paid),`к выплате ${salaryMoney(pay.planned)}`,'analytics')}${metricCard('Загрузка',pct(ls.load),`${ls.students}/${ls.capacity} мест`,'users',ls.load)}${metricCard('Открытые задачи',String(tasks.length),'Ближайшие дедлайны','tasks')}</div>
+  <div class="grid-main"><section class="card pad"><div class="card-head"><div><h3>За что начислена зарплата</h3><p>Каждая сумма и комментарий Романа отображаются отдельно</p></div>${canManageMentorPayroll()?`<button class="btn btn-small btn-ghost" data-action="addMentorPayment" data-mentor="${mentorId}">+ Добавить</button>`:''}</div><div class="salary-entry-list">${pay.entries.length?pay.entries.map(e=>`<div class="salary-entry"><div><span>${formatDate(e.date)} · ${esc(e.category||'Начисление')}</span><b>${esc(e.reason||'Без описания')}</b><small>${e.status==='paid'?'Выплачено':'Начислено к выплате'}</small></div><strong class="${Number(e.amount)<0?'negative':''}">${salaryMoney(e.amount)}</strong>${canManageMentorPayroll()?`<button class="task-delete" data-action="deleteMentorPayment" data-id="${e.id}">${ICONS.trash}</button>`:''}</div>`).join(''):'<div class="empty"><b>Начислений пока нет</b>После добавления суммы Романом она появится здесь.</div>'}</div></section>
+  <section class="card pad"><div class="card-head"><div><h3>Мои задачи</h3><p>Ближайшие дедлайны</p></div></div><div class="compact-list">${tasks.sort(sortByDate).slice(0,7).map(t=>`<div class="compact-item" data-action="editTask" data-id="${t.id}"><i class="item-dot ${isOverdue(t)?'red':''}"></i><div class="item-main"><b>${esc(t.title)}</b><small>${formatDateShort(t.deadline)} · ${esc(statusLabel(t.status))}</small></div></div>`).join('')||'<div class="empty">Задач нет</div>'}</div></section></div>
+  <section class="card pad"><div class="card-head"><div><h3>Мои группы</h3><p>День, время, загрузка и свободные места</p></div></div>${gs.length?groupsMiniTable(gs):'<div class="empty"><b>Группы ещё не назначены</b>Роман или руководитель может добавить группы этому наставнику.</div>'}</section>
+  <section class="card pad"><div class="card-head"><div><h3>Рекомендации детям</h3><p>Повышение уровня, вторая тренировка, спорт-группа или индивидуальная</p></div></div><div class="compact-list">${recs.map(r=>`<div class="compact-item"><i class="item-dot"></i><div class="item-main"><b>${esc(r.childName)}</b><small>${esc(r.recommendation)} · ${esc(statusLabel(r.status))}</small></div><div class="table-actions"><button data-action="editRecommendation" data-id="${r.id}">${ICONS.edit}</button></div></div>`).join('')||'<div class="empty"><b>Рекомендаций пока нет</b>Передавайте администраторам следующий шаг ребёнка.</div>'}</div></section></div>`;
+}
+
+function renderPayroll(){
+  const key=state.settings.currentMonth,admins=activeAdmins().map(p=>({p,s:adminMonthStats(p.id,key)})),mentors=activeMentors().map(p=>({p,s:mentorPayrollStats(p.id,key),groups:activeGroups().filter(g=>g.mentorId===p.id)})),adminFund=sum(admins,x=>x.s.total),adminForecast=sum(admins,x=>x.s.forecastTotal),mentorFund=sum(mentors,x=>x.s.total),manageMentors=canManageMentorPayroll();
+  return`<div class="page readable-page">${pageHead('ЗАРПЛАТА И МОТИВАЦИЯ','ЗП команды',`${currentMonth().label}: прозрачный расчёт администраторов и начисления наставникам`,`${manageMentors?'<button class="btn btn-ghost" data-action="addMentor">+ Наставник</button><button class="btn btn-primary" data-action="addMentorPayment">+ Начисление наставнику</button>':''}`)}
+  <div class="grid-4">${metricCard('ЗП администраторов',salaryMoney(adminFund),`прогноз ${salaryMoney(adminForecast)}`,'revenue')}${metricCard('ЗП наставников',salaryMoney(mentorFund),`${sum(mentors,x=>x.s.count)} начислений`,'users')}${metricCard('Общий фонд ЗП',salaryMoney(adminFund+mentorFund),`прогноз с админами ${salaryMoney(adminForecast+mentorFund)}`,'analytics')}${metricCard('Наставников',String(mentors.length),'активных кабинетов','mentor')}</div>
+  <section class="card pad"><div class="card-head"><div><h3>Администраторы · автоматический расчёт</h3><p>Смена 2 500 ₽, групповые 7%, ИТ 3%; бонус — при выполнении всех обязательных задач</p></div>${currentRole==='owner'?'<button class="btn btn-small btn-ghost" data-action="editAdminRules">Настроить мотивацию</button>':''}</div><div class="table-wrap"><table class="data-table payroll-table"><thead><tr><th>Администратор</th><th>Выручка</th><th>Смены</th><th>Комиссия</th><th>Задачи</th><th>Бонус</th><th>ЗП сейчас</th><th>Прогноз</th><th></th></tr></thead><tbody>${admins.map(({p,s})=>`<tr><td><div class="table-title"><span class="avatar small">${esc(p.avatar||p.name[0])}</span><div><b>${esc(p.name)}</b><small>${Math.round(s.rates.groupRate*100)}% / ${Math.round(s.rates.itRate*100)}% · смена ${salaryMoney(s.rates.shiftRate)}</small></div></div></td><td>${salaryMoney(s.revenue)}</td><td>${s.shifts} → ${s.forecastShifts}</td><td>${salaryMoney(s.commission)}</td><td>${s.tasksDone}/${s.tasks}${s.required?` · обяз. ${s.requiredDone}/${s.required}`:''}</td><td>${salaryMoney(s.bonus)}${!s.bonusEligible&&s.bonusPotential?`<small class="table-sub">возможно ${salaryMoney(s.bonusPotential)}</small>`:''}</td><td><b>${salaryMoney(s.total)}</b></td><td><b>${salaryMoney(s.forecastTotal)}</b></td><td><div class="table-actions"><button data-action="openAdminCabinet" data-id="${p.id}" title="Открыть кабинет">${ICONS.edit}</button>${canManageAdminPayroll()?`<button data-action="addAdminSale" data-admin="${p.id}" title="Добавить продажу">${ICONS.plus}</button>`:''}<button data-action="copyPersonLink" data-role="admin" data-id="${p.id}" title="Скопировать личную ссылку">${ICONS.copy}</button></div></td></tr>`).join('')}</tbody></table></div></section>
+  <section class="card pad"><div class="card-head"><div><h3>Наставники · начисления Романа</h3><p>Роман указывает сумму и за что она начислена; наставник видит это в своём кабинете</p></div>${manageMentors?'<button class="btn btn-small btn-primary" data-action="addMentorPayment">+ Начисление</button>':''}</div><div class="table-wrap"><table class="data-table payroll-table"><thead><tr><th>Наставник</th><th>Направление</th><th>Группы</th><th>Начислений</th><th>Сумма месяца</th><th>Последнее начисление</th><th></th></tr></thead><tbody>${mentors.map(({p,s,groups})=>`<tr><td><div class="table-title"><span class="avatar small">${esc(p.avatar||p.name[0])}</span><div><b>${esc(p.name)}</b><small>${esc(p.title||'Наставник')}</small></div></div></td><td>${esc(p.area||'—')}</td><td>${groups.length}</td><td>${s.count}</td><td><b>${salaryMoney(s.total)}</b></td><td>${s.entries[0]?`${formatDateShort(s.entries[0].date)} · ${esc(s.entries[0].reason||s.entries[0].category||'Начисление')}`:'—'}</td><td><div class="table-actions"><button data-action="openMentorCabinet" data-id="${p.id}" title="Открыть кабинет">${ICONS.edit}</button>${manageMentors?`<button data-action="addMentorPayment" data-mentor="${p.id}" title="Начислить зарплату">${ICONS.plus}</button>`:''}<button data-action="copyPersonLink" data-role="mentor" data-id="${p.id}" title="Скопировать личную ссылку">${ICONS.copy}</button>${canManageMentors()&&p.id!=='stas'?`<button data-action="archiveMentor" data-id="${p.id}" title="Удалить наставника">${ICONS.trash}</button>`:''}</div></td></tr>`).join('')}</tbody></table></div></section>
+  ${canManageMentors()?renderArchivedMentors():''}</div>`;
+}
+function renderArchivedMentors(){const list=(state.people||[]).filter(p=>(p.role==='mentor'||p.id==='stas')&&(p.active===false||p.archivedAt));return list.length?`<section class="card pad"><div class="card-head"><div><h3>Удалённые наставники</h3><p>История начислений сохранена; кабинет можно восстановить</p></div></div><div class="compact-list">${list.map(p=>`<div class="compact-item"><span class="avatar small">${esc(p.avatar||p.name[0])}</span><div class="item-main"><b>${esc(p.name)}</b><small>${esc(p.area||'Наставник')}</small></div><button class="btn btn-small btn-ghost" data-action="restoreMentor" data-id="${p.id}">Восстановить</button></div>`).join('')}</div></section>`:''}
+
+function appendBeforePageClose(html,extra){const i=html.lastIndexOf('</div>');return i<0?html+extra:html.slice(0,i)+extra+html.slice(i)}
+const __renderSettingsPayrollBase=renderSettings;
+renderSettings=function(){
+  const base=__renderSettingsPayrollBase();if(currentRole!=='owner')return base;
+  const extra=`<section class="card settings-block span-2 readable-settings"><h3>Размер и читаемость интерфейса</h3><p>По умолчанию включён комфортный масштаб 110%: текст крупнее, контраст мягче, строки свободнее.</p><div class="scale-buttons">${[[1,'100%'],[1.1,'110% · комфорт'],[1.2,'120% · крупно']].map(([v,l])=>`<button class="btn ${Math.abs((state.settings.uiScale||1.1)-v)<.01?'btn-primary':'btn-ghost'}" data-action="setUiScale" data-value="${v}">${l}</button>`).join('')}</div></section><section class="card settings-block span-2"><h3>Персональные ссылки сотрудников</h3><p>Каждый администратор и наставник получает собственный кабинет. Полная ссылка содержит ключ общей базы — отправляйте её только конкретному сотруднику.</p><div class="personal-links-grid"><div><h4>Администраторы</h4><div class="compact-list">${activeAdmins().map(p=>`<div class="compact-item"><span class="avatar small">${esc(p.avatar||p.name[0])}</span><div class="item-main"><b>${esc(p.name)}</b><small>Зарплата, график и задачи</small></div><button class="btn btn-small btn-ghost" data-action="copyPersonLink" data-role="admin" data-id="${p.id}">Копировать</button></div>`).join('')}</div></div><div><h4>Наставники</h4><div class="compact-list">${activeMentors().map(p=>`<div class="compact-item"><span class="avatar small">${esc(p.avatar||p.name[0])}</span><div class="item-main"><b>${esc(p.name)}</b><small>Группы, задачи и начисления</small></div><button class="btn btn-small btn-ghost" data-action="copyPersonLink" data-role="mentor" data-id="${p.id}">Копировать</button></div>`).join('')}</div></div></div></section>`;
+  return appendBeforePageClose(base,extra);
+};
+
+const __taskModalPayrollBase=taskModal;
+taskModal=function(item=null,owner=''){
+  __taskModalPayrollBase(item,owner);const form=$('#taskForm');if(!form||form.querySelector('[name="required"]'))return;const actions=form.querySelector('.form-actions');if(!actions)return;const label=document.createElement('label');label.className='check span-2 mandatory-task-check';label.innerHTML=`<input type="checkbox" name="required" ${taskIsRequired(item)?'checked':''}> Обязательная задача — влияет на бонус администратора`;actions.before(label);
+};
+
+function adminSaleModal(item=null,adminId=adminViewerId()){
+  const rates=adminRates(adminId),s=item||{id:'',adminId,date:today().startsWith(state.settings.currentMonth)?today():state.settings.currentMonth+'-01',type:'group',client:'',amount:0,note:'',countInRevenue:true};
+  openModal({title:item?'Редактировать продажу':'Добавить продажу администратора',subtitle:'Продажа участвует в комиссии и автоматически засчитывает смену',body:`<form id="adminSaleForm" data-id="${esc(s.id||'')}" class="form-grid"><div class="field"><label>Администратор</label><select class="select" name="adminId">${activeAdmins().map(p=>`<option value="${p.id}" ${p.id===s.adminId?'selected':''}>${esc(p.name)}</option>`).join('')}</select></div><div class="field"><label>Дата</label><input class="input" type="date" name="date" value="${esc(s.date)}" required></div><div class="field"><label>Тип продажи</label><select class="select" name="type"><option value="group" ${s.type==='group'?'selected':''}>Групповой абонемент · ${Math.round(rates.groupRate*100)}%</option><option value="it" ${s.type==='it'?'selected':''}>ИТ · ${Math.round(rates.itRate*100)}%</option></select></div><div class="field"><label>Сумма продажи</label><input class="input" type="number" min="0" step="0.01" name="amount" value="${Number(s.amount)||''}" required></div><div class="field span-2"><label>Клиент</label><input class="input" name="client" value="${esc(s.client||'')}" placeholder="Имя ребёнка или родителя"></div><div class="field span-2"><label>Комментарий</label><input class="input" name="note" value="${esc(s.note||'')}" placeholder="Абонемент, период, особые условия"></div><label class="check span-2"><input type="checkbox" name="countInRevenue" ${s.countInRevenue!==false?'checked':''}> Добавить эту продажу в общую выручку клуба</label>${formActions(item?'Сохранить':'Добавить продажу')}</form>`});
+}
+function adminShiftModal(item=null,adminId=adminViewerId()){
+  const s=item||{id:'',adminId,date:today().startsWith(state.settings.currentMonth)?today():state.settings.currentMonth+'-01',status:'worked',note:''};openModal({title:item?'Редактировать смену':'Добавить смену в график',subtitle:'Смена с продажей уже считается автоматически; вручную добавляйте дни без продаж или будущий график',body:`<form id="adminShiftForm" data-id="${esc(s.id||'')}" class="form-grid"><div class="field"><label>Администратор</label><select class="select" name="adminId">${activeAdmins().map(p=>`<option value="${p.id}" ${p.id===s.adminId?'selected':''}>${esc(p.name)}</option>`).join('')}</select></div><div class="field"><label>Дата</label><input class="input" type="date" name="date" value="${esc(s.date)}" required></div><div class="field span-2"><label>Статус</label><select class="select" name="status"><option value="worked" ${s.status==='worked'?'selected':''}>Отработана вручную · засчитать в ЗП</option><option value="planned" ${s.status==='planned'?'selected':''}>По графику · учесть в прогнозе</option></select></div><div class="field span-2"><label>Комментарий</label><input class="input" name="note" value="${esc(s.note||'')}" placeholder="Причина ручной смены или примечание к графику"></div>${formActions(item?'Сохранить':'Добавить смену')}</form>`});
+}
+function adminAdjustmentModal(item=null,adminId=adminViewerId()){
+  const a=item||{id:'',adminId,date:today().startsWith(state.settings.currentMonth)?today():state.settings.currentMonth+'-01',type:'premium',amount:0,note:''};openModal({title:item?'Редактировать начисление':'Премия, штраф или корректировка',subtitle:'Ручные начисления сразу отражаются в кабинете администратора',body:`<form id="adminAdjustmentForm" data-id="${esc(a.id||'')}" class="form-grid"><div class="field"><label>Администратор</label><select class="select" name="adminId">${activeAdmins().map(p=>`<option value="${p.id}" ${p.id===a.adminId?'selected':''}>${esc(p.name)}</option>`).join('')}</select></div><div class="field"><label>Дата</label><input class="input" type="date" name="date" value="${esc(a.date)}" required></div><div class="field"><label>Тип</label><select class="select" name="type"><option value="premium" ${a.type==='premium'?'selected':''}>Премия</option><option value="fine" ${a.type==='fine'?'selected':''}>Штраф</option><option value="correction" ${a.type==='correction'?'selected':''}>Корректировка (+/−)</option></select></div><div class="field"><label>Сумма</label><input class="input" type="number" step="0.01" name="amount" value="${Number(a.amount)||''}" required></div><div class="field span-2"><label>За что</label><textarea class="textarea" name="note" required>${esc(a.note||'')}</textarea></div>${formActions(item?'Сохранить':'Добавить')}</form>`});
+}
+function mentorPaymentModal(item=null,mentorId=mentorViewerId()){
+  const e=item||{id:'',mentorId,date:today().startsWith(state.settings.currentMonth)?today():state.settings.currentMonth+'-01',category:'Тренировки',reason:'',amount:0,status:'accrued'};openModal({title:item?'Редактировать начисление':'Начислить зарплату наставнику',subtitle:'Сумма и описание сразу появятся в личном кабинете наставника',body:`<form id="mentorPaymentForm" data-id="${esc(e.id||'')}" class="form-grid"><div class="field"><label>Наставник</label><select class="select" name="mentorId">${activeMentors().map(p=>`<option value="${p.id}" ${p.id===e.mentorId?'selected':''}>${esc(p.name)}</option>`).join('')}</select></div><div class="field"><label>Дата</label><input class="input" type="date" name="date" value="${esc(e.date)}" required></div><div class="field"><label>Категория</label><select class="select" name="category">${['Тренировки','Индивидуальные тренировки','Лагерь / сборы','Мероприятие','Премия','Штраф / корректировка','Другое'].map(v=>`<option ${e.category===v?'selected':''}>${v}</option>`).join('')}</select></div><div class="field"><label>Сумма</label><input class="input" type="number" step="0.01" name="amount" value="${Number(e.amount)||''}" required></div><div class="field span-2"><label>За что начислено</label><textarea class="textarea" name="reason" placeholder="Количество тренировок, мероприятие, премия и т. д." required>${esc(e.reason||'')}</textarea></div><div class="field span-2"><label>Статус</label><select class="select" name="status"><option value="accrued" ${e.status!=='paid'?'selected':''}>Начислено к выплате</option><option value="paid" ${e.status==='paid'?'selected':''}>Выплачено</option></select></div>${formActions(item?'Сохранить':'Начислить')}</form>`});
+}
+function mentorPersonModal(item=null){const p=item||{id:'',name:'',area:'',title:'Наставник',avatar:''};openModal({title:item?'Редактировать наставника':'Добавить наставника',subtitle:'После сохранения появится отдельный кабинет и персональная ссылка',body:`<form id="mentorPersonForm" data-id="${esc(p.id||'')}" class="form-grid"><div class="field span-2"><label>Имя</label><input class="input" name="name" value="${esc(p.name||'')}" required></div><div class="field"><label>Направление</label><input class="input" name="area" value="${esc(p.area||'')}" placeholder="Ролики, скейт, BMX…"></div><div class="field"><label>Должность</label><input class="input" name="title" value="${esc(p.title||'Наставник')}"></div><div class="field"><label>Буква на аватаре</label><input class="input" name="avatar" maxlength="3" value="${esc(p.avatar||'')}"></div>${formActions(item?'Сохранить':'Добавить наставника')}</form>`});}
+function adminRulesModal(){const r=state.settings.adminCompensation||DEFAULT_ADMIN_COMPENSATION,t=r.bonusTiers||DEFAULT_ADMIN_COMPENSATION.bonusTiers;openModal({title:'Система мотивации администраторов',subtitle:'Значения по умолчанию для всей команды',body:`<form id="adminRulesForm" class="form-grid"><div class="field"><label>Ставка за смену</label><input class="input" type="number" min="0" name="shiftRate" value="${r.shiftRate}"></div><div class="field"><label>Групповые, %</label><input class="input" type="number" min="0" max="100" step="0.1" name="groupRate" value="${r.groupRate*100}"></div><div class="field"><label>ИТ, %</label><input class="input" type="number" min="0" max="100" step="0.1" name="itRate" value="${r.itRate*100}"></div><div class="field"><label>Бонус до 2,5 млн</label><input class="input" type="number" min="0" name="bonus1" value="${t[0]?.amount||10000}"></div><div class="field"><label>Бонус 2,5–3,5 млн</label><input class="input" type="number" min="0" name="bonus2" value="${t[1]?.amount||12500}"></div><div class="field"><label>Бонус от 3,5 млн</label><input class="input" type="number" min="0" name="bonus3" value="${t[2]?.amount||15000}"></div>${formActions()}</form>`});}
+function adminRatesModal(adminId){const p=person(adminId),r=adminRates(adminId);openModal({title:`Ставки · ${p.name}`,subtitle:'Персональные ставки перекрывают общие настройки',body:`<form id="adminRatesForm" data-id="${adminId}" class="form-grid"><div class="field"><label>Ставка за смену</label><input class="input" type="number" min="0" name="shiftRate" value="${r.shiftRate}"></div><div class="field"><label>Групповые, %</label><input class="input" type="number" min="0" max="100" step="0.1" name="groupRate" value="${r.groupRate*100}"></div><div class="field"><label>ИТ, %</label><input class="input" type="number" min="0" max="100" step="0.1" name="itRate" value="${r.itRate*100}"></div>${formActions()}</form>`});}
+
+function ensureMonthForDate(date){const key=monthKeyFromDate(date);if(!key)return currentMonth();if(!state.months[key])state.months[key]={key,label:monthLabel(key),minimum:state.settings.minimumRevenue||2500000,target:state.settings.normalRevenue||3000000,stretch:state.settings.strongRevenue||3500000,fact:0,daily:[],focus:'',loadTarget:80,updatedAt:nowIso()};return state.months[key]}
+function removeLinkedRevenue(sourceId){for(const m of Object.values(state.months||{})){m.daily=(m.daily||[]).filter(r=>r.sourceId!==sourceId);if(m.daily.length)m.fact=sum(m.daily,r=>r.amount);m.updatedAt=nowIso()}}
+function syncSaleRevenue(sale){removeLinkedRevenue(sale.id);if(!sale.countInRevenue||sale.deletedAt)return;const m=ensureMonthForDate(sale.date);m.daily=m.daily||[];m.daily.push({id:`rev_${sale.id}`,date:sale.date,amount:Number(sale.amount)||0,note:`Продажа ${person(sale.adminId).name} · ${sale.type==='group'?'групповой':'ИТ'}${sale.client?' · '+sale.client:''}`,source:'admin-sale',sourceId:sale.id,updatedAt:nowIso()});m.fact=sum(m.daily,r=>r.amount);m.updatedAt=nowIso()}
+
+const __handleSubmitPayrollBase=handleSubmit;
+handleSubmit=function(e){
+  const f=e.target;if(!(f instanceof HTMLFormElement))return __handleSubmitPayrollBase(e);const v=formValues(f),stamp=nowIso();
+  if(f.id==='adminSaleForm'){
+    e.preventDefault();const key=monthKeyFromDate(v.date)||state.settings.currentMonth,ops=adminOpsMonth(key),old=Object.values(state.adminOperationsByMonth).flatMap(x=>x.sales||[]).find(x=>x.id===f.dataset.id),rates=adminRates(v.adminId),item={...(old||{}),id:old?.id||id('asale'),adminId:v.adminId,date:v.date,type:v.type,client:v.client,amount:num(v.amount),note:v.note,countInRevenue:f.elements.countInRevenue.checked,rate:v.type==='group'?rates.groupRate:rates.itRate,updatedAt:stamp,createdAt:old?.createdAt||stamp};if(old&&monthKeyFromDate(old.date)!==key){const oldOps=adminOpsMonth(monthKeyFromDate(old.date));oldOps.sales=oldOps.sales.filter(x=>x.id!==old.id)}upsert(ops.sales,item);syncSaleRevenue(item);closeModal();touch(`Продажа ${person(item.adminId).name}: ${salaryMoney(item.amount)}`);return;
+  }
+  if(f.id==='adminShiftForm'){
+    e.preventDefault();const key=monthKeyFromDate(v.date)||state.settings.currentMonth,ops=adminOpsMonth(key),old=Object.values(state.adminOperationsByMonth).flatMap(x=>x.shifts||[]).find(x=>x.id===f.dataset.id),item={...(old||{}),id:old?.id||id('ashift'),adminId:v.adminId,date:v.date,status:v.status,note:v.note,updatedAt:stamp,createdAt:old?.createdAt||stamp};if(old&&monthKeyFromDate(old.date)!==key){const oldOps=adminOpsMonth(monthKeyFromDate(old.date));oldOps.shifts=oldOps.shifts.filter(x=>x.id!==old.id)}upsert(ops.shifts,item);closeModal();touch(`Смена ${person(item.adminId).name}: ${formatDate(item.date)}`);return;
+  }
+  if(f.id==='adminAdjustmentForm'){
+    e.preventDefault();const key=monthKeyFromDate(v.date)||state.settings.currentMonth,ops=adminOpsMonth(key),old=Object.values(state.adminOperationsByMonth).flatMap(x=>x.adjustments||[]).find(x=>x.id===f.dataset.id),item={...(old||{}),id:old?.id||id('aadj'),adminId:v.adminId,date:v.date,type:v.type,amount:num(v.amount),note:v.note,updatedAt:stamp,createdAt:old?.createdAt||stamp};if(old&&monthKeyFromDate(old.date)!==key){const oldOps=adminOpsMonth(monthKeyFromDate(old.date));oldOps.adjustments=oldOps.adjustments.filter(x=>x.id!==old.id)}upsert(ops.adjustments,item);closeModal();touch(`Начисление ${person(item.adminId).name}: ${salaryMoney(item.amount)}`);return;
+  }
+  if(f.id==='mentorPaymentForm'){
+    e.preventDefault();if(!canManageMentorPayroll())return;const old=state.mentorPayroll.find(x=>x.id===f.dataset.id),item={...(old||{}),id:old?.id||id('mpay'),mentorId:v.mentorId,date:v.date,category:v.category,reason:v.reason,amount:num(v.amount),status:v.status,updatedAt:stamp,createdAt:old?.createdAt||stamp};upsert(state.mentorPayroll,item);closeModal();touch(`ЗП ${person(item.mentorId).name}: ${salaryMoney(item.amount)}`);return;
+  }
+  if(f.id==='mentorPersonForm'){
+    e.preventDefault();if(!canManageMentors())return;const old=state.people.find(x=>x.id===f.dataset.id),item={...(old||{}),id:old?.id||`mentor_${Date.now().toString(36)}_${crypto.getRandomValues(new Uint32Array(1))[0].toString(36)}`,name:v.name,role:'mentor',title:v.title||'Наставник',area:v.area,avatar:(v.avatar||v.name||'Н').trim().slice(0,3),active:true,archivedAt:null,updatedAt:stamp,createdAt:old?.createdAt||stamp};upsert(state.people,item);state.ui.selectedMentor=item.id;closeModal();touch(`Наставник: ${item.name}`);setView('payroll');return;
+  }
+  if(f.id==='adminRulesForm'){
+    e.preventDefault();if(currentRole!=='owner')return;state.settings.adminCompensation={shiftRate:num(v.shiftRate),groupRate:num(v.groupRate)/100,itRate:num(v.itRate)/100,bonusTiers:[{id:'base',from:0,to:2499999.99,amount:num(v.bonus1),label:'до 2,5 млн ₽'},{id:'target',from:2500000,to:3499999.99,amount:num(v.bonus2),label:'2,5–3,5 млн ₽'},{id:'strong',from:3500000,to:null,amount:num(v.bonus3),label:'от 3,5 млн ₽'}]};closeModal();touch('Обновлена система мотивации администраторов');return;
+  }
+  if(f.id==='adminRatesForm'){
+    e.preventDefault();if(currentRole!=='owner')return;const p=state.people.find(x=>x.id===f.dataset.id);if(p){p.adminPay={shiftRate:num(v.shiftRate),groupRate:num(v.groupRate)/100,itRate:num(v.itRate)/100};p.updatedAt=stamp}closeModal();touch(`Обновлены ставки ${p?.name||''}`);return;
+  }
+  return __handleSubmitPayrollBase(e);
+};
+
+function softDeleteAdminRecord(collection,idValue,label){const item=collection.find(x=>x.id===idValue);if(!item)return;if(!confirm(`Удалить «${label}»?`))return;item.deletedAt=nowIso();item.updatedAt=nowIso();if(collection===Object.values(state.adminOperationsByMonth).flatMap(x=>x.sales||[]))removeLinkedRevenue(item.id);touch(`Удалено: ${label}`)}
+function findAdminRecord(type,idValue){for(const m of Object.values(state.adminOperationsByMonth||{})){const list=m[type]||[],item=list.find(x=>x.id===idValue);if(item)return{m,list,item}}return null}
+const __handleClickPayrollBase=handleClick;
+handleClick=function(e){
+  const el=e.target.closest('[data-action]');if(el){const a=el.dataset.action;
+    if(a==='addAdminSale'){if(canManageAdminPayroll())adminSaleModal(null,el.dataset.admin||adminViewerId());return}
+    if(a==='addAdminShift'){if(canManageAdminPayroll())adminShiftModal(null,el.dataset.admin||adminViewerId());return}
+    if(a==='addAdminAdjustment'){if(canManageAdminPayroll())adminAdjustmentModal(null,el.dataset.admin||adminViewerId());return}
+    if(a==='deleteAdminSale'){if(!canManageAdminPayroll())return;const found=findAdminRecord('sales',el.dataset.id);if(found&&confirm('Удалить продажу?')){found.item.deletedAt=nowIso();found.item.updatedAt=nowIso();removeLinkedRevenue(found.item.id);touch('Продажа удалена')}return}
+    if(a==='deleteAdminAdjustment'){if(!canManageAdminPayroll())return;const found=findAdminRecord('adjustments',el.dataset.id);if(found&&confirm('Удалить начисление?')){found.item.deletedAt=nowIso();found.item.updatedAt=nowIso();touch('Начисление удалено')}return}
+    if(a==='openAdminCabinet'){state.ui.selectedAdmin=el.dataset.id;persistLocal();setView('admin');return}
+    if(a==='openMentorCabinet'){state.ui.selectedMentor=el.dataset.id;persistLocal();setView('mentor');return}
+    if(a==='addMentorPayment'){if(canManageMentorPayroll())mentorPaymentModal(null,el.dataset.mentor||mentorViewerId());return}
+    if(a==='deleteMentorPayment'){if(!canManageMentorPayroll())return;const item=state.mentorPayroll.find(x=>x.id===el.dataset.id);if(item&&confirm('Удалить начисление наставнику?')){item.deletedAt=nowIso();item.updatedAt=nowIso();touch('Начисление наставнику удалено')}return}
+    if(a==='addMentor'){if(canManageMentors())mentorPersonModal();return}
+    if(a==='archiveMentor'){if(!canManageMentors())return;const p=state.people.find(x=>x.id===el.dataset.id);if(p&&confirm(`Удалить наставника «${p.name}»? История зарплаты сохранится.`)){p.active=false;p.archivedAt=nowIso();p.updatedAt=nowIso();touch(`Наставник удалён: ${p.name}`)}return}
+    if(a==='restoreMentor'){if(!canManageMentors())return;const p=state.people.find(x=>x.id===el.dataset.id);if(p){p.active=true;p.archivedAt=null;p.updatedAt=nowIso();touch(`Наставник восстановлен: ${p.name}`)}return}
+    if(a==='copyPersonLink'){copyText(personalRoleLink(el.dataset.role,el.dataset.id),`Личная ссылка ${person(el.dataset.id).name} скопирована`);return}
+    if(a==='editAdminRules'){if(currentRole==='owner')adminRulesModal();return}
+    if(a==='editAdminRates'){if(currentRole==='owner')adminRatesModal(el.dataset.id);return}
+    if(a==='setUiScale'){state.settings.uiScale=clamp(Number(el.dataset.value)||1.1,1,1.22);applyUiScale();persistLocal();renderCurrentView();toast('Масштаб интерфейса изменён');return}
+  }
+  return __handleClickPayrollBase(e);
+};
+
+const __handleChangePayrollBase=handleChange;
+handleChange=function(e){const el=e.target;if(el.dataset.filter==='selectedAdmin'){state.ui.selectedAdmin=el.value;persistLocal();renderProfile();renderCurrentView();return}return __handleChangePayrollBase(e)};
+
+const __renderCurrentViewPayrollBase=renderCurrentView;
+renderCurrentView=function(){if(currentView==='payroll'){if(!allowedView('payroll'))currentView=roleInfo().start;else{$('#pageTitle').textContent='ЗП и мотивация';$('#pages').innerHTML=renderPayroll();renderNav();animateNumbers();return}}return __renderCurrentViewPayrollBase()};
+
+const __bootPayrollBase=boot;
+boot=async function(){const result=await __bootPayrollBase();applyUiScale();if(credentials.requestedView&&allowedView(credentials.requestedView))setTimeout(()=>setView(credentials.requestedView),30);setTimeout(()=>{if(window.EKGrowthOS)window.EKGrowthOS={...window.EKGrowthOS,adminStats:(id,key)=>adminMonthStats(id,key),mentorPayroll:(id,key)=>mentorPayrollStats(id,key),personalLink:personalRoleLink,payrollBuild:PAYROLL_EXTENSION_BUILD}},40);return result};
+// PAYROLL_TEAM_READABILITY_V1_END
 
 document.addEventListener('click',handleClick);
 document.addEventListener('submit',handleSubmit);
