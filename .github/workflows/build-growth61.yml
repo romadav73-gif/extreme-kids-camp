@@ -1,6 +1,6 @@
 name: Build and verify EXTREME KIDS Growth OS 6.1
 
-# Verification run after one-line renderer pattern fix.
+# Verification run with stable local HTTP probe.
 on:
   push:
     branches: [main]
@@ -59,7 +59,8 @@ jobs:
           "$chrome" --headless=new --no-sandbox --disable-gpu --disable-dev-shm-usage --ignore-certificate-errors --remote-debugging-address=127.0.0.1 --remote-debugging-port=9222 --user-data-dir=/tmp/growth61-browser-1 about:blank >/tmp/growth61-browser-1.log 2>&1 &
           "$chrome" --headless=new --no-sandbox --disable-gpu --disable-dev-shm-usage --ignore-certificate-errors --remote-debugging-address=127.0.0.1 --remote-debugging-port=9223 --user-data-dir=/tmp/growth61-browser-2 about:blank >/tmp/growth61-browser-2.log 2>&1 &
           sleep 2
-          curl --fail --silent http://127.0.0.1:8765/v6.1.html | grep -q 'Growth OS 6.0'
+          curl --fail --silent --output /tmp/growth61-page.html http://127.0.0.1:8765/v6.1.html
+          grep -q 'Growth OS 6.0' /tmp/growth61-page.html
 
       - name: Test month filters, permissions, derived metrics and synchronization
         shell: bash
