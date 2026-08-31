@@ -31,6 +31,14 @@ jobs:
           python3 -m py_compile growth6-source/patch_payroll_v1.py
           python3 growth6-source/patch_payroll_v1.py
           python3 <<'PY'
+          from pathlib import Path
+          for name in ('growth6-source/v6.1.html','growth-os/index.html','growth61-live/index.html','growth-os-6/index.html'):
+              path = Path(name)
+              html = path.read_text(encoding='utf-8')
+              html = html.replace('<span>6.0</span>', '<span>6.1</span>')
+              path.write_text(html, encoding='utf-8')
+          PY
+          python3 <<'PY'
           import re
           from pathlib import Path
           html = Path('growth-os/index.html').read_text(encoding='utf-8')
@@ -57,24 +65,28 @@ jobs:
             local name="$1"
             local hash="$2"
             timeout 50s "$chrome" --headless=new --no-sandbox --disable-gpu --disable-dev-shm-usage --ignore-certificate-errors --virtual-time-budget=15000 --dump-dom "http://127.0.0.1:8765/#w=ek-payroll-${GITHUB_RUN_ID}&k=${key}&${hash}&t=release" >"/tmp/${name}.html" 2>"/tmp/${name}.log" || true
+            grep -Fq '<div class="app-shell" id="appShell">' "/tmp/${name}.html"
+            if grep -Fq 'id="bootText">Ошибка запуска' "/tmp/${name}.html"; then
+              echo "Runtime boot failed for ${name}"
+              exit 1
+            fi
           }
 
           run_dom owner 'r=owner&v=payroll'
-          grep -q 'ЗП команды' /tmp/owner.html
-          grep -q 'Администраторы · автоматический расчёт' /tmp/owner.html
-          grep -q 'Наставники · начисления Романа' /tmp/owner.html
-          ! grep -q 'Ошибка запуска' /tmp/owner.html
+          grep -Fq '<h1 id="pageTitle">ЗП и мотивация</h1>' /tmp/owner.html
+          grep -Fq 'Администраторы · автоматический расчёт' /tmp/owner.html
+          grep -Fq 'Наставники · начисления Романа' /tmp/owner.html
 
           run_dom admin 'r=admin&p=anya&v=admin'
-          grep -q 'зарплата и задачи' /tmp/admin.html
-          grep -q 'Прогноз к концу месяца' /tmp/admin.html
-          grep -q 'График смен по дням' /tmp/admin.html
-          ! grep -q 'Ошибка запуска' /tmp/admin.html
+          grep -Fq '<h1 id="pageTitle">Администратор</h1>' /tmp/admin.html
+          grep -Fq 'зарплата и задачи' /tmp/admin.html
+          grep -Fq 'Прогноз к концу месяца' /tmp/admin.html
+          grep -Fq 'График смен по дням' /tmp/admin.html
 
           run_dom mentor 'r=mentor&p=ivan&v=mentor'
-          grep -q 'МОЯ ЗАРПЛАТА ЗА МЕСЯЦ' /tmp/mentor.html
-          grep -q 'За что начислена зарплата' /tmp/mentor.html
-          ! grep -q 'Ошибка запуска' /tmp/mentor.html
+          grep -Fq '<h1 id="pageTitle">Наставник</h1>' /tmp/mentor.html
+          grep -Fq 'МОЯ ЗАРПЛАТА ЗА МЕСЯЦ' /tmp/mentor.html
+          grep -Fq 'За что начислена зарплата' /tmp/mentor.html
 
       - name: Commit ready site
         shell: bash
@@ -100,6 +112,8 @@ jobs:
           for name in owner admin mentor; do
             echo "--- ${name} chrome ---"
             cat "/tmp/${name}.log" || true
+            echo "--- ${name} rendered markers ---"
+            grep -E 'pageTitle|bootText|ЗП команды|зарплата и задачи|МОЯ ЗАРПЛАТА' "/tmp/${name}.html" | head -40 || true
             echo "--- ${name} DOM tail ---"
-            tail -120 "/tmp/${name}.html" || true
+            tail -80 "/tmp/${name}.html" || true
           done
