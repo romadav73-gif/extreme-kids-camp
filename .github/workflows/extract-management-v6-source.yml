@@ -1,0 +1,54 @@
+name: Extract management V8 source
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/extract-management-v6-source.yml
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  extract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Extract manager site source from pinned commit
+        shell: bash
+        run: |
+          set -euo pipefail
+          commit=32408ad6b5c6c0af052167a180ebd7fcc8ccd121
+          mkdir -p management-v6-source
+          : > management-v6-source/current.html
+          for i in $(seq -w 0 16); do
+            git show "$commit:management-v6/parts/p${i}.txt" >> management-v6-source/current.html
+          done
+          python3 <<'PY'
+          from pathlib import Path
+          import hashlib
+          p=Path('management-v6-source/current.html')
+          text=p.read_text(encoding='utf-8')
+          keys=['const API','function reportPage','function tasksPage','function staffPage','function render','async function load','async function save','fetch(API','tasks','admins','Sofia','Софа','manager','управля']
+          hits=[]
+          for i,line in enumerate(text.splitlines(),1):
+              for key in keys:
+                  if key in line:
+                      hits.append(f'{i}: {key}: {line[:260]}')
+          Path('management-v6-source/STRUCTURE.txt').write_text('\n'.join(hits)+'\n',encoding='utf-8')
+          Path('management-v6-source/SHA256.txt').write_text(hashlib.sha256(text.encode()).hexdigest()+'\n',encoding='utf-8')
+          print('bytes',len(text.encode()),'lines',len(text.splitlines()),'hits',len(hits))
+          PY
+      - name: Commit extracted source
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add management-v6-source/current.html management-v6-source/STRUCTURE.txt management-v6-source/SHA256.txt
+          git diff --cached --quiet && exit 0
+          git commit -m "Extract Sofia management site source"
+          git push
