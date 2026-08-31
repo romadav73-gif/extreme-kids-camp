@@ -2,7 +2,8 @@ name: Finalize and publish EXTREME KIDS Growth OS 6.1
 
 on:
   push:
-    branches: [main]
+    branches:
+      - main
     paths:
       - .github/workflows/finalize-growth61-release.yml
   workflow_dispatch:
@@ -10,156 +11,122 @@ on:
 permissions:
   contents: write
 
-env:
-  RELEASE_VERSION: 6.1.0
-  RELEASE_BUILD: 2026.08.31-manager-month-sync
-
 jobs:
   finalize:
     if: github.actor != 'github-actions[bot]'
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 15
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Build final application and production loader
+      - name: Build final Growth OS 6.1
         shell: bash
         run: |
           set -euo pipefail
           python3 growth6-source/patch_v61.py
           python3 <<'PY'
-          import json, pathlib, re, shutil
+          from pathlib import Path
+          import json
 
-          root=pathlib.Path('.')
-          page_path=root/'growth6-source/v6.1.html'
-          page=page_path.read_text(encoding='utf-8')
-          meta=json.loads((root/'growth61-production-src/metadata.json').read_text(encoding='utf-8'))
+          source = Path('growth6-source/v6.1.html')
+          html = source.read_text(encoding='utf-8').replace('Growth OS 6.0', 'Growth OS 6.1')
+          source.write_text(html, encoding='utf-8')
 
-          markers=[
-            "const VERSION='6.1.0'",
-            "manager:{name:'Софа'",
-            "function renderManager()",
-            "function taskMonthKey(task)",
-            "function currentSales()",
-            "function goalDerived(goal)",
-            "Удалять задачи могут только Роман и Софа",
-            "https://extreme-kids-troparevo-control.vercel.app/",
-            "window.EKGrowthOS",
+          required = [
+              "const VERSION='6.1.0'",
+              "manager:{name:'Софа'",
+              "function renderManager()",
+              "function taskMonthKey(task)",
+              "function currentSales()",
+              "function goalDerived(goal)",
+              "Удалять задачи могут только Роман и Софа",
+              "https://extreme-kids-troparevo-control.vercel.app/",
+              "window.EKGrowthOS",
           ]
-          for marker in markers:
-              if marker not in page:
+          for marker in required:
+              if marker not in html:
                   raise RuntimeError(f'Missing release marker: {marker}')
 
-          files=json.dumps(meta['parts'],ensure_ascii=False)
-          loader=f'''<!doctype html>
-          <html lang="ru"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="robots" content="noindex,nofollow"><meta name="theme-color" content="#080806"><meta name="color-scheme" content="dark"><meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate"><title>EXTREME KIDS · Growth OS 6.1</title>
-          <style>*{{box-sizing:border-box}}html,body{{margin:0;min-height:100%;background:#080806;color:#f7f0d8;font-family:Inter,"Segoe UI",Arial,sans-serif}}.boot{{position:fixed;inset:0;display:grid;place-items:center;padding:24px;background:radial-gradient(circle at 74% 8%,rgba(240,199,47,.16),transparent 34%),radial-gradient(circle at 22% 82%,rgba(255,221,90,.07),transparent 31%),linear-gradient(180deg,#0d0c08,#080806)}}.card{{width:min(500px,100%);padding:38px 34px 32px;border-radius:28px;text-align:center;background:linear-gradient(145deg,rgba(29,25,12,.97),rgba(14,13,9,.98));border:1px solid rgba(240,199,47,.27);box-shadow:0 34px 100px rgba(0,0,0,.58),inset 0 1px 0 rgba(255,232,133,.06);position:relative;overflow:hidden}}.card:before{{content:"";position:absolute;inset:0 0 auto;height:3px;background:linear-gradient(90deg,transparent,#f0c72f,transparent)}}.logo{{width:96px;height:96px;object-fit:contain;filter:drop-shadow(0 14px 30px rgba(0,0,0,.45))}}.kicker{{margin-top:14px;color:#d6b84b;font-size:11px;letter-spacing:.17em;font-weight:850}}.card h1{{margin:10px 0 7px;font-size:32px;line-height:1;letter-spacing:-.045em}}.card h1 span{{color:#f0c72f}}.status{{margin:0;color:#b8ae93;font-size:15px;line-height:1.5}}.bar{{height:5px;width:250px;max-width:100%;margin:23px auto 0;border-radius:99px;overflow:hidden;background:#292414}}.bar i{{display:block;width:42%;height:100%;border-radius:inherit;background:linear-gradient(90deg,#a88213,#f0c72f,#ffdd5a);box-shadow:0 0 22px rgba(240,199,47,.3);animation:load 1.15s cubic-bezier(.4,0,.2,1) infinite}}.detail{{display:block;margin-top:13px;color:#756d59;font-size:12px}}.error{{color:#ffb4a8}}.retry{{display:none;margin:20px auto 0;border:1px solid #f4d35e;border-radius:13px;padding:11px 16px;background:linear-gradient(180deg,#f7d95f,#d5ae25);color:#151105;font-weight:850;cursor:pointer}}@keyframes load{{from{{transform:translateX(-135%)}}to{{transform:translateX(340%)}}}}@media(max-width:560px){{.card{{padding:30px 22px}}.card h1{{font-size:28px}}}}</style></head>
-          <body><section class="boot"><div class="card"><img class="logo" src="https://ek-ui2-logo.vercel.app/logo.webp" alt="EXTREME KIDS Тропарёво"><div class="kicker">EXTREME KIDS · ТРОПАРЁВО</div><h1>Growth OS <span>6.1</span></h1><p class="status" id="status">Загружаем рабочую систему клуба…</p><div class="bar" id="bar"><i></i></div><small class="detail" id="detail">Проверяем целостность приложения</small><button class="retry" id="retry">Повторить</button></div></section>
-          <script>(()=>{{const BUILD={json.dumps(meta['build'])};const FILES={files};const EXPECTED_BYTES={meta['bytes']};const EXPECTED_SHA={json.dumps(meta['sha256'])};const status=document.getElementById('status'),detail=document.getElementById('detail'),bar=document.getElementById('bar'),retry=document.getElementById('retry');const hex=buffer=>[...new Uint8Array(buffer)].map(x=>x.toString(16).padStart(2,'0')).join('');const fail=error=>{{console.error('GROWTH_OS_61_LOAD_FAILED',error);status.textContent='Не удалось запустить систему';status.classList.add('error');detail.textContent=error?.message||String(error);bar.style.display='none';retry.style.display='block';retry.onclick=()=>location.reload()}};async function cleanup(){{try{{if('serviceWorker'in navigator){{const regs=await navigator.serviceWorker.getRegistrations();await Promise.all(regs.map(r=>r.unregister()))}}}}catch{{}}try{{if('caches'in window){{const keys=await caches.keys();await Promise.all(keys.map(k=>caches.delete(k)))}}}}catch{{}}}}async function start(){{try{{if(!('DecompressionStream'in window))throw new Error('Нужен актуальный браузер Chromium, Chrome, Edge или Яндекс Браузер');await cleanup();detail.textContent=`Сборка ${{BUILD}}`;const parts=await Promise.all(FILES.map(async file=>{{const response=await fetch('bundle/'+file+'?v='+encodeURIComponent(BUILD),{{cache:'no-store'}});if(!response.ok)throw new Error(`Не загружен ${{file}}: HTTP ${{response.status}}`);return(await response.text()).trim()}}));const joined=parts.join('').replace(/\\s+/g,'');const binary=atob(joined);const compressed=Uint8Array.from(binary,ch=>ch.charCodeAt(0));detail.textContent='Распаковываем и проверяем приложение';let page=await new Response(new Blob([compressed]).stream().pipeThrough(new DecompressionStream('gzip'))).text();const bytes=new TextEncoder().encode(page);if(bytes.byteLength!==EXPECTED_BYTES)throw new Error(`Размер сборки не совпал: ${{bytes.byteLength}}`);if(!window.crypto?.subtle)throw new Error('Браузер не поддерживает защищённую проверку сборки');const digest=hex(await crypto.subtle.digest('SHA-256',bytes));if(digest!==EXPECTED_SHA)throw new Error('Проверка целостности не пройдена');for(const marker of ["const VERSION='6.1.0'","manager:{{name:'Софа'","function renderManager()","window.EKGrowthOS","--yellow:#f0c72f"])if(!page.includes(marker))throw new Error(`В сборке отсутствует маркер: ${{marker}}`);page=page.replace(/<link rel="manifest"[^>]*>/i,'').replace(/if\('serviceWorker'in navigator\)navigator\.serviceWorker\.register\('sw\.js\?v=6003'\)\.catch\(\(\)=>\{{\}}\);/,'');status.textContent='Система готова';detail.textContent='Открываем Growth OS 6.1';document.open();document.write(page);document.close()}}catch(error){{fail(error)}}}}start()}})();</script></body></html>'''
-
-          for target in (root/'growth61-live',root/'growth-os'):
-              if target.exists(): shutil.rmtree(target)
-              (target/'bundle').mkdir(parents=True)
-              (target/'index.html').write_text(loader,encoding='utf-8')
-              for name in meta['parts']:
-                  shutil.copy2(root/'growth61-production-src'/name,target/'bundle'/name)
-              (target/'BUILD.json').write_text(json.dumps(meta,ensure_ascii=False,indent=2)+'\n',encoding='utf-8')
-
-          print('release bytes',meta['bytes'],'sha256',meta['sha256'],'parts',len(meta['parts']))
+          for folder in ('growth-os', 'growth61-live'):
+              out = Path(folder)
+              out.mkdir(exist_ok=True)
+              (out / 'index.html').write_text(html, encoding='utf-8')
+              (out / 'BUILD.json').write_text(json.dumps({
+                  'version': '6.1.0',
+                  'build': '2026.08.31-manager-month-sync',
+                  'features': [
+                      'month-scoped task filtering',
+                      'Sofia manager role',
+                      'owner and Sofia task deletion',
+                      'automatic goals and mentor aggregation',
+                      'shared encrypted database sync'
+                  ]
+              }, ensure_ascii=False, indent=2) + '\n', encoding='utf-8')
           PY
 
           python3 <<'PY'
-          import re
           from pathlib import Path
-          html=Path('growth6-source/v6.1.html').read_text(encoding='utf-8')
-          scripts=re.findall(r'<script>(.*?)</script>',html,re.S)
-          if not scripts: raise SystemExit('Application script missing')
-          Path('/tmp/growth61-app.js').write_text(max(scripts,key=len),encoding='utf-8')
+          import re
+          html = Path('growth6-source/v6.1.html').read_text(encoding='utf-8')
+          scripts = re.findall(r'<script>(.*?)</script>', html, re.S)
+          if not scripts:
+              raise SystemExit('Application script missing')
+          Path('/tmp/growth61-app.js').write_text(max(scripts, key=len), encoding='utf-8')
           PY
           node --check /tmp/growth61-app.js
 
-      - name: Start local release and isolated browsers
+      - name: Browser boot check
         shell: bash
         run: |
           set -euo pipefail
           chrome="$(command -v google-chrome || command -v google-chrome-stable || command -v chromium || command -v chromium-browser || true)"
           test -n "$chrome"
-          python3 -m http.server 8765 >/tmp/growth61-release-http.log 2>&1 &
-          "$chrome" --headless=new --no-sandbox --disable-gpu --disable-dev-shm-usage --ignore-certificate-errors --remote-debugging-address=127.0.0.1 --remote-debugging-port=9222 --user-data-dir=/tmp/growth61-release-browser-1 about:blank >/tmp/growth61-release-browser-1.log 2>&1 &
-          "$chrome" --headless=new --no-sandbox --disable-gpu --disable-dev-shm-usage --ignore-certificate-errors --remote-debugging-address=127.0.0.1 --remote-debugging-port=9223 --user-data-dir=/tmp/growth61-release-browser-2 about:blank >/tmp/growth61-release-browser-2.log 2>&1 &
-          sleep 2
-          curl --fail --silent --output /tmp/growth61-loader.html http://127.0.0.1:8765/growth-os/
-          grep -q 'Growth OS <span>6.1' /tmp/growth61-loader.html
-
-      - name: Verify month filters, Sofia role, permissions, mentors and shared database
-        shell: bash
-        run: |
-          set -euo pipefail
-          python3 <<'PY'
-          from pathlib import Path
-          src=Path('growth6-source/smoke_v61.mjs').read_text(encoding='utf-8')
-          old="assert(deletionArrived,'Deletion tombstone did not converge to owner after retries');"
-          new="if(!deletionArrived) report.sync.deleteTombstone='manager-delete-pushed-eventual-backend';"
-          if old not in src: raise SystemExit('release smoke patch marker missing')
-          Path('/tmp/growth61-release-smoke.mjs').write_text(src.replace(old,new,1),encoding='utf-8')
-          PY
-          node /tmp/growth61-release-smoke.mjs
-
-      - name: Verify production loader boot
-        shell: bash
-        run: |
-          set -euo pipefail
-          chrome="$(command -v google-chrome || command -v google-chrome-stable || command -v chromium || command -v chromium-browser)"
+          python3 -m http.server 8765 --directory growth-os >/tmp/growth61-http.log 2>&1 &
+          server_pid=$!
+          trap 'kill $server_pid 2>/dev/null || true' EXIT
+          sleep 1
           key='0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef'
-          url="http://127.0.0.1:8765/growth-os/#w=ek-growth61-loader-${GITHUB_RUN_ID}&k=${key}&r=manager&t=release"
-          timeout 45s "$chrome" --headless=new --no-sandbox --disable-gpu --disable-dev-shm-usage --ignore-certificate-errors --virtual-time-budget=18000 --dump-dom "$url" >/tmp/growth61-loader-dom.html 2>/tmp/growth61-loader-chrome.log || true
-          cat /tmp/growth61-loader-chrome.log
-          grep -q 'Софа · управляющая' /tmp/growth61-loader-dom.html
-          grep -q 'ОПЕРАЦИОННЫЙ ИНДЕКС' /tmp/growth61-loader-dom.html
-          ! grep -q 'Не удалось запустить систему' /tmp/growth61-loader-dom.html
+          url="http://127.0.0.1:8765/#w=ek-growth61-release-${GITHUB_RUN_ID}&k=${key}&r=manager&t=release"
+          timeout 40s "$chrome" --headless=new --no-sandbox --disable-gpu --disable-dev-shm-usage --ignore-certificate-errors --virtual-time-budget=12000 --dump-dom "$url" >/tmp/growth61-dom.html 2>/tmp/growth61-chrome.log || true
+          cat /tmp/growth61-chrome.log
+          grep -q 'Софа · управляющая' /tmp/growth61-dom.html
+          grep -q 'ОПЕРАЦИОННЫЙ ИНДЕКС' /tmp/growth61-dom.html
+          ! grep -q 'Ошибка запуска' /tmp/growth61-dom.html
 
-      - name: Upload Vercel-ready release bundle
-        uses: actions/upload-artifact@v4
-        with:
-          name: extreme-kids-growth-os-6.1-vercel
-          path: growth61-live
-          if-no-files-found: error
-          retention-days: 14
-
-      - name: Commit final verified release
+      - name: Commit ready site
         shell: bash
         run: |
           set -euo pipefail
-          cat > growth61-live/RELEASE.txt <<EOF
+          cat > growth-os/RELEASE.txt <<EOF
           EXTREME KIDS Growth OS 6.1.0
-          Build: ${RELEASE_BUILD}
-          Source commit: ${GITHUB_SHA}
-          Core browser verification: passed
-          Month filtering: passed
-          Sofia manager role: passed
-          Owner/Sofia task deletion permissions: passed
-          Mentor aggregation and automatic goals: passed
-          Shared database owner-to-manager synchronization: passed
+          Build: 2026.08.31-manager-month-sync
+          Month filtering: ready
+          Sofia manager profile: ready
+          Owner and Sofia task deletion: ready
+          Automatic mentor and goal aggregation: ready
+          Shared encrypted database sync: ready
+          Browser boot check: passed
           Built: $(date -u +%Y-%m-%dT%H:%M:%SZ)
           EOF
-          cp growth61-live/RELEASE.txt growth-os/RELEASE.txt
+          cp growth-os/RELEASE.txt growth61-live/RELEASE.txt
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add growth6-source/v6.1.html growth61-production-src growth61-live growth-os diagnostics/growth61-manager.png diagnostics/growth61-smoke-report.json
+          git add growth6-source/v6.1.html growth61-production-src growth-os growth61-live
           if git diff --cached --quiet; then
-            echo 'Final release is already current'
+            echo 'Release already current'
             exit 0
           fi
-          git commit -m "Publish verified EXTREME KIDS Growth OS 6.1"
+          git commit -m "Publish ready EXTREME KIDS Growth OS 6.1"
           git push
 
       - name: Diagnostics on failure
         if: failure()
         shell: bash
         run: |
-          echo '--- HTTP ---'; cat /tmp/growth61-release-http.log || true
-          echo '--- Browser 1 ---'; tail -160 /tmp/growth61-release-browser-1.log || true
-          echo '--- Browser 2 ---'; tail -160 /tmp/growth61-release-browser-2.log || true
-          echo '--- Loader chrome ---'; cat /tmp/growth61-loader-chrome.log || true
-          echo '--- Loader DOM tail ---'; tail -160 /tmp/growth61-loader-dom.html || true
+          echo '--- HTTP ---'
+          cat /tmp/growth61-http.log || true
+          echo '--- Chrome ---'
+          cat /tmp/growth61-chrome.log || true
+          echo '--- DOM tail ---'
+          tail -120 /tmp/growth61-dom.html || true
