@@ -145,6 +145,12 @@ ensure_state = r'''function ensureState(raw){
 }'''
 sub_once(r"function ensureState\(raw\)\{.*?\n\}\nfunction loadLocal", ensure_state + "\nfunction loadLocal", "ensureState")
 
+replace_once(
+    "function newer(a,b){return String(a?.updatedAt||a?.meta?.updatedAt||'')>=String(b?.updatedAt||b?.meta?.updatedAt||'')?a:b}",
+    "function newer(a,b){if(a?.deletedAt&&!b?.deletedAt)return a;if(b?.deletedAt&&!a?.deletedAt)return b;return String(a?.deletedAt||a?.updatedAt||a?.meta?.updatedAt||'')>=String(b?.deletedAt||b?.updatedAt||b?.meta?.updatedAt||'')?a:b}",
+    "tombstone precedence",
+)
+
 merge_state = r'''function mergeStates(local,remote){
  if(!remote)return local;if(!local)return remote;
  const base=newer(local,remote)===local?clone(local):clone(remote);

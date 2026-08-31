@@ -139,8 +139,13 @@ assert(!(await mentor.evaluate(`window.EKGrowthOS.canDeleteTask()`)), 'mentor un
 assert((await mentor.evaluate(`document.querySelectorAll('.task-delete').length`)) === 0, 'mentor sees task delete buttons');
 report.checks.mentorDeleteDenied = true;
 
-await owner.evaluate(`window.EKGrowthOS.sync()`, true);
-await owner.wait(`Boolean(window.EKGrowthOS.getState().tasks.find(t=>t.id==='ci_sep')?.deletedAt)`, 15000);
+let deletionArrived=false;
+for(let attempt=0;attempt<5&&!deletionArrived;attempt++){
+  await owner.evaluate(`window.EKGrowthOS.sync()`, true);
+  await sleep(650);
+  deletionArrived=await owner.evaluate(`Boolean(window.EKGrowthOS.getState().tasks.find(t=>t.id==='ci_sep')?.deletedAt)`);
+}
+assert(deletionArrived,'Deletion tombstone did not converge to owner after retries');
 report.sync.deleteTombstone = true;
 
 mkdirSync('diagnostics', { recursive: true });
