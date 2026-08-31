@@ -1,0 +1,39 @@
+name: Fix Growth OS 6.1 one-line function patterns
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/fix-growth61-function-patterns.yml
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  fix:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Relax one-line function boundaries
+        shell: bash
+        run: |
+          python3 <<'PY'
+          from pathlib import Path
+          p=Path('growth6-source/patch_v61.py')
+          s=p.read_text(encoding='utf-8')
+          replacements={
+            r'function renderGoals\(\)\{.*?\n\}\n\nconst TASK_COLUMNS':r'function renderGoals\(\)\{.*?\}\n\nconst TASK_COLUMNS',
+            r'function renderTasks\(\)\{.*?\n\}\n\nfunction calendarData':r'function renderTasks\(\)\{.*?\}\n\nfunction calendarData',
+          }
+          for old,new in replacements.items():
+              if old not in s: raise SystemExit(f'pattern missing: {old}')
+              s=s.replace(old,new,1)
+          p.write_text(s,encoding='utf-8')
+          PY
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add growth6-source/patch_v61.py
+          git commit -m "Fix Growth OS 6.1 one-line renderer patterns"
+          git push
