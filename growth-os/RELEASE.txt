@@ -1,8 +1,3 @@
-EXTREME KIDS Growth OS 6.1.0
-Build: 2026.08.31-payroll-team-readability
-Administrator salary automation: ready
-Administrator personal cabinets and salary forecast: ready
-Mentor payroll and personal cabinets: ready
-Dynamic mentor management: ready
-Comfort readability mode: ready
-Uploaded workbook motivation rules: integrated
+EXTREME KIDS Growth OS 6.2 Attendance Intelligence
+Build: 2026.09.01-weekly-attendance-intelligence
+SHA256: c1c69e193889970884388f46024577f3ae9448556ffebcadd8dae3fafebf322d

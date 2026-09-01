@@ -1,15 +1,17 @@
 {
-  "version": "6.1.0",
-  "build": "2026.08.31-payroll-team-readability",
+  "compatibilityVersion": "6.1.0",
+  "featureVersion": "6.2-attendance",
+  "build": "2026.09.01-weekly-attendance-intelligence",
+  "sha256": "c1c69e193889970884388f46024577f3ae9448556ffebcadd8dae3fafebf322d",
+  "source": "growth-os-6/index.html",
   "features": [
-    "administrator salary and motivation rules from uploaded workbook",
-    "administrator salary forecast and shift calendar",
-    "personal administrator cabinets",
-    "owner-managed mentor payroll entries",
-    "personal mentor cabinets with payroll breakdown",
-    "dynamic mentor add, archive and restore",
-    "personal staff access links",
-    "readability scale 100, 110 and 120 percent",
-    "mandatory tasks linked to administrator bonus"
+    "weekly-attendance",
+    "enrollment-vs-attendance-vs-density",
+    "absence-reasons",
+    "mentor-weekly-metrics",
+    "attendance-forecast",
+    "automatic-follow-up-tasks",
+    "weekly-archives",
+    "shared-sync"
   ]
 }
