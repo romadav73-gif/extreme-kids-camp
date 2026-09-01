@@ -1,0 +1,4 @@
+EXTREME KIDS Growth OS
+Feature release: 6.2-attendance
+Build: 2026.09.01-weekly-attendance-intelligence
+Published: 2026-09-01
