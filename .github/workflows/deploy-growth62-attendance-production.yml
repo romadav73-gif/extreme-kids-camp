@@ -1,0 +1,240 @@
+name: Deploy Growth OS 6.2 attendance to production
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+    paths:
+      - "growth-os-6/index.html"
+      - ".github/workflows/deploy-growth62-attendance-production.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: growth62-attendance-production
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      PROD_URL: https://extreme-kids-roller-control-v6.vercel.app
+      PROJECT_NAME: extreme-kids-roller-control-v6
+      DEFAULT_PROJECT_ID: prj_ZK7LWYYXFITMVj2A70McmSzCSupF
+      DEFAULT_TEAM_ID: team_NfdY7suD4zbSAcH4V65X2zDP
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Validate Growth OS 6.2 source
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -s growth-os-6/index.html
+          grep -Fq "Growth OS 6.2 Attendance" growth-os-6/index.html
+          grep -Fq "ATTENDANCE_EXTENSION_BUILD='2026.09.01-weekly-attendance-intelligence'" growth-os-6/index.html
+          grep -Fq "Посещаемость" growth-os-6/index.html
+          grep -Fq "attendanceWeekArchives" growth-os-6/index.html
+          grep -Fq "function renderPayroll()" growth-os-6/index.html
+
+      - name: Prepare production bundle
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          from pathlib import Path
+          import re
+
+          source = Path("growth-os-6/index.html").read_text(encoding="utf-8")
+          source = re.sub(r'<link\s+rel=["\']manifest["\'][^>]*>', '', source, count=1, flags=re.I)
+          source = source.replace('<span>6.0</span>', '<span>6.2</span>')
+          source = source.replace('<span>6.1</span>', '<span>6.2</span>')
+          source = source.replace("const VERSION='6.1.0';", "const VERSION='6.2.0';")
+          source = source.replace("const BUILD='2026.08.31-payroll-team-readability';", "const BUILD='2026.09.01-weekly-attendance-intelligence';")
+          Path("/tmp/index.html").write_text(source, encoding="utf-8")
+
+          config = '''{
+            "headers": [
+              {
+                "source": "/(.*)",
+                "headers": [
+                  {"key": "Cache-Control", "value": "public, max-age=0, must-revalidate"},
+                  {"key": "X-Robots-Tag", "value": "noindex, nofollow"},
+                  {"key": "Referrer-Policy", "value": "no-referrer"}
+                ]
+              }
+            ]
+          }'''
+          Path("/tmp/vercel.json").write_text(config, encoding="utf-8")
+          PY
+          grep -Fq "const VERSION='6.2.0'" /tmp/index.html
+          grep -Fq "2026.09.01-weekly-attendance-intelligence" /tmp/index.html
+
+      - name: Resolve Vercel credentials
+        shell: bash
+        env:
+          TOKEN_PRIMARY: ${{ secrets.VERCEL_TOKEN }}
+          TOKEN_ACCESS: ${{ secrets.VERCEL_ACCESS_TOKEN }}
+          TOKEN_API: ${{ secrets.VERCEL_API_TOKEN }}
+          PROJECT_SECRET: ${{ secrets.VERCEL_PROJECT_ID }}
+          TEAM_SECRET: ${{ secrets.VERCEL_TEAM_ID }}
+          ORG_SECRET: ${{ secrets.VERCEL_ORG_ID }}
+        run: |
+          set -euo pipefail
+          TOKEN="${TOKEN_PRIMARY:-${TOKEN_ACCESS:-${TOKEN_API:-}}}"
+          if [ -z "$TOKEN" ]; then
+            echo "::error::Vercel token is not configured in GitHub Actions secrets"
+            exit 1
+          fi
+          TEAM_ID="${TEAM_SECRET:-${ORG_SECRET:-$DEFAULT_TEAM_ID}}"
+          PROJECT_ID="${PROJECT_SECRET:-$DEFAULT_PROJECT_ID}"
+          echo "::add-mask::$TOKEN"
+          echo "VERCEL_TOKEN=$TOKEN" >> "$GITHUB_ENV"
+          echo "VERCEL_TEAM_ID=$TEAM_ID" >> "$GITHUB_ENV"
+          echo "VERCEL_PROJECT_ID=$PROJECT_ID" >> "$GITHUB_ENV"
+
+      - name: Build Vercel deployment payload
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          from pathlib import Path
+          import base64
+          import json
+          import os
+
+          def inline(path: str, deploy_path: str) -> dict:
+              data = base64.b64encode(Path(path).read_bytes()).decode("ascii")
+              return {"file": deploy_path, "data": data, "encoding": "base64"}
+
+          payload = {
+              "name": os.environ["PROJECT_NAME"],
+              "project": os.environ["VERCEL_PROJECT_ID"],
+              "target": "production",
+              "files": [
+                  inline("/tmp/index.html", "index.html"),
+                  inline("/tmp/vercel.json", "vercel.json"),
+              ],
+              "meta": {
+                  "release": "growth-os-6.2-attendance",
+                  "githubSha": os.environ.get("GITHUB_SHA", ""),
+              },
+              "gitMetadata": {
+                  "remoteUrl": "https://github.com/romadav73-gif/extreme-kids-camp",
+                  "commitRef": os.environ.get("GITHUB_REF_NAME", "main"),
+                  "commitSha": os.environ.get("GITHUB_SHA", ""),
+                  "commitMessage": "Deploy Growth OS 6.2 weekly attendance",
+                  "ci": True,
+                  "ciType": "github-actions",
+              },
+              "projectSettings": {
+                  "framework": None,
+                  "skipGitConnectDuringLink": True,
+              },
+          }
+          Path("/tmp/deployment-payload.json").write_text(
+              json.dumps(payload, ensure_ascii=False, separators=(",", ":")),
+              encoding="utf-8",
+          )
+          print(f"Payload: {Path('/tmp/deployment-payload.json').stat().st_size} bytes")
+          PY
+
+      - name: Create production deployment
+        shell: bash
+        run: |
+          set -euo pipefail
+          ENDPOINT="https://api.vercel.com/v13/deployments?forceNew=1&skipAutoDetectionConfirmation=1&teamId=${VERCEL_TEAM_ID}"
+          HTTP_CODE=$(curl --silent --show-error \
+            --output /tmp/deployment-response.json \
+            --write-out '%{http_code}' \
+            --request POST "$ENDPOINT" \
+            --header "Authorization: Bearer ${VERCEL_TOKEN}" \
+            --header "Content-Type: application/json" \
+            --data-binary @/tmp/deployment-payload.json)
+          if [[ ! "$HTTP_CODE" =~ ^2 ]]; then
+            echo "::error::Vercel deployment request failed with HTTP $HTTP_CODE"
+            cat /tmp/deployment-response.json
+            exit 1
+          fi
+          DEPLOYMENT_ID=$(python - <<'PY'
+          import json
+          body=json.load(open('/tmp/deployment-response.json', encoding='utf-8'))
+          print(body.get('id') or '')
+          PY
+          )
+          DEPLOYMENT_URL=$(python - <<'PY'
+          import json
+          body=json.load(open('/tmp/deployment-response.json', encoding='utf-8'))
+          print(body.get('url') or '')
+          PY
+          )
+          test -n "$DEPLOYMENT_ID" || { cat /tmp/deployment-response.json; exit 1; }
+          echo "DEPLOYMENT_ID=$DEPLOYMENT_ID" >> "$GITHUB_ENV"
+          echo "DEPLOYMENT_URL=$DEPLOYMENT_URL" >> "$GITHUB_ENV"
+          echo "Created deployment: $DEPLOYMENT_ID ($DEPLOYMENT_URL)"
+
+      - name: Wait for Vercel READY
+        shell: bash
+        run: |
+          set -euo pipefail
+          READY=0
+          for attempt in $(seq 1 72); do
+            HTTP_CODE=$(curl --silent --show-error \
+              --output /tmp/deployment-status.json \
+              --write-out '%{http_code}' \
+              "https://api.vercel.com/v13/deployments/${DEPLOYMENT_ID}?teamId=${VERCEL_TEAM_ID}" \
+              --header "Authorization: Bearer ${VERCEL_TOKEN}")
+            if [[ ! "$HTTP_CODE" =~ ^2 ]]; then
+              echo "Status request HTTP $HTTP_CODE"
+              cat /tmp/deployment-status.json
+              sleep 5
+              continue
+            fi
+            STATUS=$(python - <<'PY'
+          import json
+          body=json.load(open('/tmp/deployment-status.json', encoding='utf-8'))
+          print(body.get('readyState') or body.get('status') or body.get('state') or 'UNKNOWN')
+          PY
+            )
+            echo "Attempt $attempt: $STATUS"
+            case "$STATUS" in
+              READY)
+                READY=1
+                break
+                ;;
+              ERROR|CANCELED|CANCELLED)
+                cat /tmp/deployment-status.json
+                exit 1
+                ;;
+            esac
+            sleep 5
+          done
+          test "$READY" = "1" || { echo "::error::Deployment did not become READY"; exit 1; }
+
+      - name: Verify stable production domain
+        shell: bash
+        run: |
+          set -euo pipefail
+          VERIFIED=0
+          for attempt in $(seq 1 60); do
+            URL="${PROD_URL}/?release=${GITHUB_SHA}-${attempt}"
+            if curl --silent --show-error --fail --location \
+              --header 'Cache-Control: no-cache' \
+              "$URL" --output /tmp/production.html; then
+              if grep -Fq "Growth OS 6.2 Attendance" /tmp/production.html \
+                && grep -Fq "ATTENDANCE_EXTENSION_BUILD='2026.09.01-weekly-attendance-intelligence'" /tmp/production.html \
+                && grep -Fq "Посещаемость" /tmp/production.html \
+                && grep -Fq "attendanceWeekArchives" /tmp/production.html; then
+                VERIFIED=1
+                echo "Stable production is running Growth OS 6.2 attendance"
+                break
+              fi
+            fi
+            echo "Waiting for production alias ($attempt/60)"
+            sleep 5
+          done
+          test "$VERIFIED" = "1" || { echo "::error::Stable domain did not switch to Growth OS 6.2 attendance"; exit 1; }
