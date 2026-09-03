@@ -1,19 +1,22 @@
 {
   "compatibilityVersion": "6.1.0",
-  "featureVersion": "6.3.1-management-groups",
-  "build": "2026.09.03-management-all-groups",
-  "sha256": "e2406fa7d5bb8e1a952b51810a237ebdc9c0148c16b51c4b49bb435933d3b9a5",
+  "featureVersion": "6.4-management-board",
+  "build": "2026.09.03-up-docs-meeting",
+  "sha256": "fe99aa080209b658225ffb7df5a83463753daa1c8a7bd003a3a6d5496d555136",
   "source": "growth-os-6/index.html",
   "features": [
     "task-scope-by-person",
-    "all-task-access-owner-manager-stas-ivan",
-    "management-all-groups-owner-manager-stas-ivan",
+    "management-all-task-access-roman-sofa-stanislav-ivan",
+    "management-all-groups-roman-sofa-stanislav-ivan",
     "mentor-own-groups-only",
+    "management-board-role-model",
+    "employee-documents-and-duties-view-only",
+    "management-documents-and-duties-write-access",
+    "management-meeting-agenda",
+    "management-meeting-stopwatch",
     "owner-managed-mentors",
     "owner-managed-admins",
     "dynamic-personal-cabinets",
-    "personal-admin-task-focus",
-    "staff-cabinet-management",
     "attendance-and-payroll-preserved"
   ]
 }
