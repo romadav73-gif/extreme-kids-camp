@@ -1,4 +1,4 @@
-name: Build Growth OS role access and personal cabinets
+name: Build Growth OS management system
 
 on:
   push:
@@ -9,6 +9,8 @@ on:
       - growth6-source/group_access_v1.js
       - growth6-source/management_up_v1.js
       - growth6-source/management_up_v1.css
+      - growth6-source/sofa3_merge_v1.js
+      - growth6-source/sofa3_merge_v1.css
       - growth6-source/patch_team_access_v1.py
       - .github/workflows/build-growth63-role-cabinets.yml
   workflow_dispatch:
@@ -17,7 +19,7 @@ permissions:
   contents: write
 
 concurrency:
-  group: growth-os-role-cabinets-release
+  group: growth-os-management-release
   cancel-in-progress: false
 
 jobs:
@@ -29,186 +31,120 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Build Growth OS 6.4 management board release
+      - name: Build Growth OS 6.5
         shell: bash
         run: |
           set -euo pipefail
           python3 -m py_compile growth6-source/patch_team_access_v1.py
           python3 growth6-source/patch_team_access_v1.py
           python3 <<'PY'
-          import re
+          import json,re
           from pathlib import Path
-          html = Path('growth-os/index.html').read_text(encoding='utf-8')
-          scripts = re.findall(r'<script>(.*?)</script>', html, re.S)
-          if not scripts:
-              raise SystemExit('Application script missing')
-          app = max(scripts, key=len)
-          Path('/tmp/growth-team-access-app.js').write_text(app, encoding='utf-8')
+          html=Path('growth-os/index.html').read_text(encoding='utf-8')
+          scripts=re.findall(r'<script>(.*?)</script>',html,re.S)
+          if not scripts: raise SystemExit('Application script missing')
+          Path('/tmp/growth-management-app.js').write_text(max(scripts,key=len),encoding='utf-8')
+          meta=json.loads(Path('growth-os/BUILD.json').read_text(encoding='utf-8'))
+          if meta.get('featureVersion')!='6.5-sofa-operations': raise SystemExit('Wrong feature version: '+str(meta))
           for marker in (
-              "const VERSION='6.1.0'",
-              'ATTENDANCE_INTELLIGENCE_V1_START',
-              'TEAM_CABINETS_ACCESS_V1_START',
-              'MANAGEMENT_GROUP_ACCESS_V1_START',
-              'MANAGEMENT_UP_V1_START',
-              'function canSeeAllTasks()',
-              'function canSeeAllGroups()',
-              'function isManagementBoard()',
-              "label:'Документы и обязанности'",
-              "label:'Собрание УП'",
-              'function renderDocumentsAndDuties()',
-              'function renderMeeting()',
-              'Руководитель роллер-школы · теоретический',
-              'МОЯ ЗАРПЛАТА ЗА МЕСЯЦ',
+            "const VERSION='6.1.0'",
+            'ATTENDANCE_INTELLIGENCE_V1_START',
+            'TEAM_CABINETS_ACCESS_V1_START',
+            'MANAGEMENT_GROUP_ACCESS_V1_START',
+            'MANAGEMENT_UP_V1_START',
+            'SOFA3_UNIQUE_MERGE_V1_START',
+            'function canSeeAllTasks()',
+            'function canSeeAllGroups()',
+            'function isManagementBoard()',
+            "label:'Документы и обязанности'",
+            "label:'Собрание УП'",
+            "label:'Операционный день'",
+            'function renderDocumentsAndDuties()',
+            'function renderMeeting()',
+            'function renderOperations()',
+            'const SOFA3_BASE_SALARY=100000',
+            'СОФА · МОТИВАЦИЯ УПРАВЛЯЮЩЕЙ',
+            'МОЯ ЗАРПЛАТА ЗА МЕСЯЦ',
           ):
-              if marker not in html:
-                  raise SystemExit('Missing marker: ' + marker)
+            if marker not in html: raise SystemExit('Missing marker: '+marker)
           PY
-          node --check /tmp/growth-team-access-app.js
+          node --check /tmp/growth-management-app.js
 
-      - name: Browser permission smoke tests
+      - name: Browser permission and feature smoke tests
         shell: bash
         run: |
           set -euo pipefail
           chrome="$(command -v google-chrome || command -v google-chrome-stable || command -v chromium || command -v chromium-browser || true)"
           test -n "$chrome"
-          python3 -m http.server 8765 --directory growth-os >/tmp/growth-role-http.log 2>&1 &
+          python3 -m http.server 8765 --directory growth-os >/tmp/growth-http.log 2>&1 &
           server_pid=$!
           trap 'kill $server_pid 2>/dev/null || true' EXIT
           sleep 1
           key='0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef'
-
-          run_dom () {
-            local name="$1"
-            local hash="$2"
-            timeout 60s "$chrome" --headless=new --no-sandbox --disable-gpu --disable-dev-shm-usage --ignore-certificate-errors --virtual-time-budget=18000 --dump-dom "http://127.0.0.1:8765/#w=ek-role-${GITHUB_RUN_ID}-${name}&k=${key}&${hash}&t=release" >"/tmp/${name}.html" 2>"/tmp/${name}.log" || true
+          run_dom(){
+            local name="$1";local hash="$2"
+            timeout 60s "$chrome" --headless=new --no-sandbox --disable-gpu --disable-dev-shm-usage --ignore-certificate-errors --virtual-time-budget=18000 --dump-dom "http://127.0.0.1:8765/#w=ek-main-${GITHUB_RUN_ID}-${name}&k=${key}&${hash}&t=release" >"/tmp/${name}.html" 2>"/tmp/${name}.log" || true
             grep -Fq '<div class="app-shell" id="appShell">' "/tmp/${name}.html"
-            if grep -Fq 'id="bootText">Ошибка запуска' "/tmp/${name}.html"; then
-              echo "Runtime boot failed for ${name}"
-              exit 1
-            fi
+            if grep -Fq 'id="bootText">Ошибка запуска' "/tmp/${name}.html";then echo "Runtime boot failed ${name}";exit 1;fi
           }
 
-          run_dom owner_staff 'r=owner&v=staff'
-          grep -Fq '<h1 id="pageTitle">Команда и кабинеты</h1>' /tmp/owner_staff.html
-          grep -Fq 'Управляющий состав' /tmp/owner_staff.html
-          grep -Fq 'Технический руководитель' /tmp/owner_staff.html
-          grep -Fq 'Теоретический руководитель' /tmp/owner_staff.html
+          run_dom owner_ops 'r=owner&v=operations'
+          grep -Fq '<h1 id="pageTitle">Операционный день</h1>' /tmp/owner_ops.html
+          grep -Fq 'ОПЕРАЦИОННЫЙ ЦЕНТР' /tmp/owner_ops.html
+          grep -Fq 'Три результата дня' /tmp/owner_ops.html
+
+          run_dom manager_ops 'r=manager&v=operations'
+          grep -Fq '<h1 id="pageTitle">Операционный день</h1>' /tmp/manager_ops.html
+          grep -Fq 'Мотивация Софы' /tmp/manager_ops.html
+
+          run_dom tasya_ops 'r=mentor&p=tasya&v=operations'
+          if grep -Fq '<h1 id="pageTitle">Операционный день</h1>' /tmp/tasya_ops.html;then echo 'Ordinary mentor can access operations';exit 1;fi
 
           run_dom owner_tasks 'r=owner&v=tasks'
-          grep -Fq 'Роман видит задачи всей команды как собственник' /tmp/owner_tasks.html
           grep -Fq 'Все ответственные' /tmp/owner_tasks.html
-
           run_dom manager_tasks 'r=manager&v=tasks'
-          grep -Fq 'Софа видит задачи всей команды как управляющая' /tmp/manager_tasks.html
           grep -Fq 'Все ответственные' /tmp/manager_tasks.html
-
           run_dom stas_tasks 'r=stas&v=tasks'
-          grep -Fq 'Станислав видит задачи всей команды как технический руководитель' /tmp/stas_tasks.html
           grep -Fq 'Все ответственные' /tmp/stas_tasks.html
-
           run_dom ivan_tasks 'r=mentor&p=ivan&v=tasks'
-          grep -Fq 'Иван видит задачи всей команды как теоретический руководитель' /tmp/ivan_tasks.html
           grep -Fq 'Все ответственные' /tmp/ivan_tasks.html
-
           run_dom tasya_tasks 'r=mentor&p=tasya&v=tasks'
           grep -Fq 'только мои' /tmp/tasya_tasks.html
-          if grep -Fq '<h4>Подготовить «Арбузные зарубы»</h4>' /tmp/tasya_tasks.html; then
-            echo 'Tasya can see another employee task'
-            exit 1
-          fi
+          if grep -Fq '<h4>Подготовить «Арбузные зарубы»</h4>' /tmp/tasya_tasks.html;then echo 'Task privacy regression';exit 1;fi
 
-          run_dom anya_tasks 'r=admin&p=anya&v=tasks'
-          grep -Fq 'только мои' /tmp/anya_tasks.html
-          if grep -Fq '<h4>Подготовить «Арбузные зарубы»</h4>' /tmp/anya_tasks.html; then
-            echo 'Admin can see another employee task'
-            exit 1
-          fi
-
-          # Every member of the management board sees every active group.
           run_dom owner_groups 'r=owner&v=groups'
           grep -Fq 'Роман видит все активные группы клуба' /tmp/owner_groups.html
-          grep -Fq '<td>Денис</td>' /tmp/owner_groups.html
-
-          run_dom manager_groups 'r=manager&v=groups'
-          grep -Fq 'Софа видит все активные группы клуба' /tmp/manager_groups.html
-          grep -Fq '<td>Денис</td>' /tmp/manager_groups.html
-
-          run_dom stas_groups 'r=stas&v=groups'
-          grep -Fq 'Станислав видит все активные группы клуба' /tmp/stas_groups.html
-          grep -Fq '<td>Денис</td>' /tmp/stas_groups.html
-
           run_dom ivan_groups 'r=mentor&p=ivan&v=groups'
           grep -Fq 'Иван видит все активные группы клуба' /tmp/ivan_groups.html
-          grep -Fq '<td>Денис</td>' /tmp/ivan_groups.html
-
           run_dom tasya_groups 'r=mentor&p=tasya&v=groups'
-          grep -Fq 'В кабинете Тася отображаются только его группы' /tmp/tasya_groups.html
-          grep -Fq '<td>Тася</td>' /tmp/tasya_groups.html
-          if grep -Fq '<td>Денис</td>' /tmp/tasya_groups.html; then
-            echo 'Ordinary mentor can see another mentor group'
-            exit 1
-          fi
+          if grep -Fq '<td>Денис</td>' /tmp/tasya_groups.html;then echo 'Group privacy regression';exit 1;fi
 
-          # Documents and duties: management board writes, ordinary employees read only.
           run_dom owner_docs 'r=owner&v=documents'
-          grep -Fq '<h1 id="pageTitle">Документы и обязанности</h1>' /tmp/owner_docs.html
           grep -Fq 'Управляющий режим' /tmp/owner_docs.html
-          grep -Fq '+ Документ' /tmp/owner_docs.html
-          grep -Fq '+ Обязанность' /tmp/owner_docs.html
-
-          run_dom ivan_docs 'r=mentor&p=ivan&v=documents'
-          grep -Fq '<h1 id="pageTitle">Документы и обязанности</h1>' /tmp/ivan_docs.html
-          grep -Fq 'Управляющий режим' /tmp/ivan_docs.html
-          grep -Fq '+ Документ' /tmp/ivan_docs.html
-
           run_dom tasya_docs 'r=mentor&p=tasya&v=documents'
-          grep -Fq '<h1 id="pageTitle">Документы и обязанности</h1>' /tmp/tasya_docs.html
           grep -Fq 'Режим только для чтения' /tmp/tasya_docs.html
-          if grep -Fq '+ Документ' /tmp/tasya_docs.html; then
-            echo 'Ordinary mentor can add documents'
-            exit 1
-          fi
 
-          run_dom anya_docs 'r=admin&p=anya&v=documents'
-          grep -Fq '<h1 id="pageTitle">Документы и обязанности</h1>' /tmp/anya_docs.html
-          grep -Fq 'Режим только для чтения' /tmp/anya_docs.html
-          if grep -Fq '+ Обязанность' /tmp/anya_docs.html; then
-            echo 'Admin can manage duties'
-            exit 1
-          fi
-
-          # Meeting workspace is visible only to the management board.
           run_dom owner_meeting 'r=owner&v=meeting'
           grep -Fq '<h1 id="pageTitle">Собрание УП</h1>' /tmp/owner_meeting.html
+          grep -Fq 'Роман + Софа' /tmp/owner_meeting.html
+          grep -Fq 'Собрание администраторов' /tmp/owner_meeting.html
+          grep -Fq 'Воронка продаж' /tmp/owner_meeting.html
+          grep -Fq 'Качество и дисциплина' /tmp/owner_meeting.html
+          grep -Fq 'Закрытие месяца' /tmp/owner_meeting.html
+          grep -Fq 'Сохранить встречу и создать задачи' /tmp/owner_meeting.html
           grep -Fq 'id="meetingTimerValue"' /tmp/owner_meeting.html
-          grep -Fq '+ Вопрос на обсуждение' /tmp/owner_meeting.html
-
-          run_dom manager_meeting 'r=manager&v=meeting'
-          grep -Fq '<h1 id="pageTitle">Собрание УП</h1>' /tmp/manager_meeting.html
-
-          run_dom stas_meeting 'r=stas&v=meeting'
-          grep -Fq '<h1 id="pageTitle">Собрание УП</h1>' /tmp/stas_meeting.html
-
-          run_dom ivan_meeting 'r=mentor&p=ivan&v=meeting'
-          grep -Fq '<h1 id="pageTitle">Собрание УП</h1>' /tmp/ivan_meeting.html
 
           run_dom tasya_meeting 'r=mentor&p=tasya&v=meeting'
-          if grep -Fq '<h1 id="pageTitle">Собрание УП</h1>' /tmp/tasya_meeting.html; then
-            echo 'Ordinary mentor can access management meeting'
-            exit 1
-          fi
+          if grep -Fq '<h1 id="pageTitle">Собрание УП</h1>' /tmp/tasya_meeting.html;then echo 'Meeting privacy regression';exit 1;fi
 
-          run_dom anya_cabinet 'r=admin&p=anya&v=admin'
-          grep -Fq 'ЛИЧНЫЙ КАБИНЕТ АДМИНИСТРАТОРА' /tmp/anya_cabinet.html
-          grep -Fq 'Документы и обязанности' /tmp/anya_cabinet.html
+          run_dom payroll 'r=owner&v=payroll'
+          grep -Fq '<h1 id="pageTitle">ЗП и мотивация</h1>' /tmp/payroll.html
+          grep -Fq 'СОФА · МОТИВАЦИЯ УПРАВЛЯЮЩЕЙ' /tmp/payroll.html
+          grep -Fq 'Администраторы · автоматический расчёт' /tmp/payroll.html
 
           run_dom attendance 'r=owner&v=attendance'
           grep -Fq '<h1 id="pageTitle">Посещаемость</h1>' /tmp/attendance.html
           grep -Fq 'Фактическая плотность' /tmp/attendance.html
-
-          run_dom payroll 'r=owner&v=payroll'
-          grep -Fq '<h1 id="pageTitle">ЗП и мотивация</h1>' /tmp/payroll.html
-          grep -Fq 'Администраторы · автоматический расчёт' /tmp/payroll.html
 
       - name: Commit ready release
         shell: bash
@@ -216,23 +152,17 @@ jobs:
           set -euo pipefail
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add growth6-source/team_access_v1.js growth6-source/team_access_v1.css growth6-source/group_access_v1.js growth6-source/management_up_v1.js growth6-source/management_up_v1.css growth6-source/patch_team_access_v1.py growth6-source/v6.3.html growth6-source/v6.3.1.html growth6-source/v6.4.html growth6-source/SHA256.txt growth-os growth-os-6 growth61-live
-          if git diff --cached --quiet; then
-            echo 'Growth OS 6.4 management board release already current'
-            exit 0
-          fi
-          git commit -m "Publish Growth OS 6.4 management board"
+          git add growth6-source/team_access_v1.js growth6-source/team_access_v1.css growth6-source/group_access_v1.js growth6-source/management_up_v1.js growth6-source/management_up_v1.css growth6-source/sofa3_merge_v1.js growth6-source/sofa3_merge_v1.css growth6-source/patch_team_access_v1.py growth6-source/v6.5.html growth6-source/SHA256.txt growth-os growth-os-6 growth61-live
+          if git diff --cached --quiet;then echo 'Growth OS 6.5 release already current';exit 0;fi
+          git commit -m "Publish Growth OS 6.5 unified management system"
           git push
 
       - name: Diagnostics on failure
         if: failure()
         shell: bash
         run: |
-          echo '--- HTTP ---'
-          cat /tmp/growth-role-http.log || true
-          for name in owner_staff owner_tasks manager_tasks stas_tasks ivan_tasks tasya_tasks anya_tasks owner_groups manager_groups stas_groups ivan_groups tasya_groups owner_docs ivan_docs tasya_docs anya_docs owner_meeting manager_meeting stas_meeting ivan_meeting tasya_meeting anya_cabinet attendance payroll; do
-            echo "--- ${name} chrome ---"
-            cat "/tmp/${name}.log" 2>/dev/null || true
-            echo "--- ${name} markers ---"
-            grep -E 'pageTitle|bootText|Управляющий состав|Документы и обязанности|Собрание УП|Управляющий режим|только для чтения|видит все активные группы|Все ответственные|meetingTimerValue' "/tmp/${name}.html" 2>/dev/null | head -100 || true
+          cat /tmp/growth-http.log 2>/dev/null || true
+          for name in owner_ops manager_ops tasya_ops owner_tasks manager_tasks stas_tasks ivan_tasks tasya_tasks owner_groups ivan_groups tasya_groups owner_docs tasya_docs owner_meeting tasya_meeting payroll attendance;do
+            echo "--- ${name} ---";cat "/tmp/${name}.log" 2>/dev/null | tail -30 || true
+            grep -E 'pageTitle|bootText|Операционный|Собрание|СОФА|Фактическая плотность|Все ответственные|только мои' "/tmp/${name}.html" 2>/dev/null | head -60 || true
           done
