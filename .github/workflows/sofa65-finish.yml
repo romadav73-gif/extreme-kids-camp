@@ -6,43 +6,55 @@ on:
       - sofa65-finish
     paths:
       - patches/sofa65_finish_block.js
+      - patches/sofa65_corrections_v3.js
       - .github/workflows/sofa65-finish.yml
 
 permissions:
   contents: write
 
+concurrency:
+  group: sofa65-finish
+  cancel-in-progress: false
+
 jobs:
   patch-growth-os:
+    if: github.actor != 'github-actions[bot]'
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
         with:
           ref: sofa65-finish
           fetch-depth: 0
 
-      - name: Inject Sofia 6.5 finish block
+      - name: Inject Sofia 6.5 blocks
         shell: bash
         run: |
+          set -euo pipefail
           python - <<'PY'
           from pathlib import Path
           index = Path('growth-os/index.html')
-          patch = Path('patches/sofa65_finish_block.js').read_text(encoding='utf-8').strip()
           text = index.read_text(encoding='utf-8')
-          anchor = '// SOFA3_UNIQUE_DETAILS_V1_END'
-          marker = '// SOFA65_FINISH_V2_START'
-          if marker not in text:
+          blocks = [
+              ('// SOFA3_UNIQUE_DETAILS_V1_END', 'patches/sofa65_finish_block.js', '// SOFA65_FINISH_V2_START'),
+              ('// SOFA65_FINISH_V2_END', 'patches/sofa65_corrections_v3.js', '// SOFA65_CORRECTIONS_V3_START'),
+          ]
+          for anchor, path, marker in blocks:
+              patch = Path(path).read_text(encoding='utf-8').strip()
+              if marker in text:
+                  print('already present:', marker)
+                  continue
               if anchor not in text:
-                  raise SystemExit('Anchor not found')
+                  raise SystemExit('Anchor not found: '+anchor)
               text = text.replace(anchor, anchor + '\n\n' + patch, 1)
-              index.write_text(text, encoding='utf-8')
-              print('PATCHED')
-          else:
-              print('ALREADY_PATCHED')
+              print('inserted:', marker)
+          index.write_text(text, encoding='utf-8')
           PY
 
       - name: Validate embedded JavaScript
         shell: bash
         run: |
+          set -euo pipefail
           python - <<'PY'
           from pathlib import Path
           import re
@@ -51,16 +63,80 @@ jobs:
           if not scripts:
               raise SystemExit('No script blocks found')
           Path('/tmp/growth-os-main.js').write_text('\n'.join(scripts), encoding='utf-8')
-          print('scripts:', len(scripts))
+          for marker in [
+              'SOFA65_FINISH_V2_START','SOFA65_CORRECTIONS_V3_START',
+              "label:'Цифры клуба'","label:'Мотивация Софы'","id:'sofa_meetings'",
+              'function sofa65NumbersPage()','function sofa65MotivationPage()','function sofa65SystemPage()'
+          ]:
+              if marker not in html: raise SystemExit('Missing marker: '+marker)
           PY
           node --check /tmp/growth-os-main.js
-          grep -q 'SOFA65_FINISH_V2_START' growth-os/index.html
-          grep -q "label:'Цифры клуба'" growth-os/index.html
-          grep -q "label:'Мотивация Софы'" growth-os/index.html
+
+      - name: Browser smoke tests
+        shell: bash
+        run: |
+          set -euo pipefail
+          chrome="$(command -v google-chrome || command -v google-chrome-stable || command -v chromium || command -v chromium-browser || true)"
+          test -n "$chrome"
+          python3 -m http.server 8765 --directory growth-os >/tmp/sofa65-http.log 2>&1 &
+          server_pid=$!
+          trap 'kill $server_pid 2>/dev/null || true' EXIT
+          sleep 1
+          key='0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef'
+          chrome_flags=(--headless=new --no-sandbox --disable-gpu --disable-dev-shm-usage --ignore-certificate-errors --disable-background-networking --disable-sync --disable-default-apps --disable-extensions --no-first-run --metrics-recording-only --virtual-time-budget=9000)
+          run_dom () {
+            local name="$1"; local hash="$2"
+            timeout 120s "$chrome" "${chrome_flags[@]}" --dump-dom "http://127.0.0.1:8765/#w=ek65-${GITHUB_RUN_ID}-${name}&k=${key}&${hash}&t=release" >"/tmp/${name}.html" 2>"/tmp/${name}.log" || true
+            grep -Fq '<div class="app-shell" id="appShell">' "/tmp/${name}.html"
+            if grep -Fq 'id="bootText">Ошибка запуска' "/tmp/${name}.html"; then echo "Runtime boot failed: ${name}"; exit 1; fi
+          }
+
+          run_dom manager_home 'r=manager&v=manager'
+          grep -Fq 'Один кабинет внутри Growth OS 6.5' /tmp/manager_home.html
+          grep -Fq 'Цифры клуба' /tmp/manager_home.html
+          grep -Fq 'Моя мотивация' /tmp/manager_home.html
+          if grep -Fq 'Собрать отчёт' /tmp/manager_home.html; then echo 'Daily report still visible on manager home'; exit 1; fi
+
+          run_dom manager_numbers 'r=manager&v=sofa_numbers'
+          grep -Fq '<h1 id="pageTitle">Цифры клуба</h1>' /tmp/manager_numbers.html
+          grep -Fq 'Операционные цифры' /tmp/manager_numbers.html
+          grep -Fq '8 полей' /tmp/manager_numbers.html
+          grep -Fq 'Пробная → покупка' /tmp/manager_numbers.html
+
+          run_dom manager_control 'r=manager&v=operations'
+          grep -Fq '<h1 id="pageTitle">Контроль дня</h1>' /tmp/manager_control.html
+          grep -Fq 'Сегодня' /tmp/manager_control.html
+          grep -Fq 'Контроль' /tmp/manager_control.html
+          grep -Fq 'Неделя' /tmp/manager_control.html
+          if grep -Fq '>Итог дня<' /tmp/manager_control.html; then echo 'Daily report tab still visible'; exit 1; fi
+          if grep -Fq 'Отчёт Роману' /tmp/manager_control.html; then echo 'Daily report rhythm still visible'; exit 1; fi
+
+          run_dom manager_motivation 'r=manager&v=sofa_motivation'
+          grep -Fq '<h1 id="pageTitle">Мотивация Софы</h1>' /tmp/manager_motivation.html
+          grep -Fq 'Оценку KPI подтверждает Роман' /tmp/manager_motivation.html
+          grep -Fq 'disabled class="sofia-kpi' /tmp/manager_motivation.html
+
+          run_dom owner_motivation 'r=owner&v=sofa_motivation'
+          grep -Fq 'data-action="sofa3ToggleKpi"' /tmp/owner_motivation.html
+          grep -Fq 'Зафиксировать месяц' /tmp/owner_motivation.html
+
+          run_dom manager_meetings 'r=manager&v=sofa_meetings'
+          grep -Fq '<h1 id="pageTitle">Собрания</h1>' /tmp/manager_meetings.html
+          grep -Fq 'Роман + Софа' /tmp/manager_meetings.html
+          grep -Fq 'Сохранить встречу и создать задачи' /tmp/manager_meetings.html
+
+          run_dom manager_system 'r=manager&v=sofa_system'
+          grep -Fq '<h1 id="pageTitle">Система управляющей</h1>' /tmp/manager_system.html
+          grep -Fq 'Порядок приоритетов' /tmp/manager_system.html
+          grep -Fq 'Стандарты сервиса' /tmp/manager_system.html
+
+          run_dom stas_meeting 'r=stas&v=meeting'
+          grep -Fq 'Собрание УП' /tmp/stas_meeting.html
 
       - name: Commit patched Growth OS
         shell: bash
         run: |
+          set -euo pipefail
           if git diff --quiet -- growth-os/index.html; then
             echo 'No changes to commit'
             exit 0
@@ -70,3 +146,14 @@ jobs:
           git add growth-os/index.html
           git commit -m 'Finish Sofia cabinet in Growth OS 6.5'
           git push origin HEAD:sofa65-finish
+
+      - name: Diagnostics on failure
+        if: failure()
+        shell: bash
+        run: |
+          cat /tmp/sofa65-http.log 2>/dev/null || true
+          for name in manager_home manager_numbers manager_control manager_motivation owner_motivation manager_meetings manager_system stas_meeting; do
+            echo "--- ${name} ---"
+            cat "/tmp/${name}.log" 2>/dev/null | tail -30 || true
+            grep -E 'pageTitle|Ошибка запуска|Софа|Цифры|Мотивация|Собрания|Отчёт' "/tmp/${name}.html" 2>/dev/null | head -80 || true
+          done
