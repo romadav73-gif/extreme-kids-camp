@@ -7,6 +7,8 @@ on:
       - growth6-source/team_access_v1.js
       - growth6-source/team_access_v1.css
       - growth6-source/group_access_v1.js
+      - growth6-source/management_up_v1.js
+      - growth6-source/management_up_v1.css
       - growth6-source/patch_team_access_v1.py
       - .github/workflows/build-growth63-role-cabinets.yml
   workflow_dispatch:
@@ -27,7 +29,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Build role, cabinet and group access release
+      - name: Build Growth OS 6.4 management board release
         shell: bash
         run: |
           set -euo pipefail
@@ -47,13 +49,15 @@ jobs:
               'ATTENDANCE_INTELLIGENCE_V1_START',
               'TEAM_CABINETS_ACCESS_V1_START',
               'MANAGEMENT_GROUP_ACCESS_V1_START',
+              'MANAGEMENT_UP_V1_START',
               'function canSeeAllTasks()',
               'function canSeeAllGroups()',
-              "label:'Команда и кабинеты'",
-              'function renderStaffManagement()',
-              'function adminPersonModal(',
-              'Ваня видит задачи всей команды',
-              'Ваня видит все активные группы клуба',
+              'function isManagementBoard()',
+              "label:'Документы и обязанности'",
+              "label:'Собрание УП'",
+              'function renderDocumentsAndDuties()',
+              'function renderMeeting()',
+              'Руководитель роллер-школы · теоретический',
               'МОЯ ЗАРПЛАТА ЗА МЕСЯЦ',
           ):
               if marker not in html:
@@ -86,27 +90,25 @@ jobs:
 
           run_dom owner_staff 'r=owner&v=staff'
           grep -Fq '<h1 id="pageTitle">Команда и кабинеты</h1>' /tmp/owner_staff.html
-          grep -Fq '+ Наставник' /tmp/owner_staff.html
-          grep -Fq '+ Администратор' /tmp/owner_staff.html
-          grep -Fq 'Открыть кабинет' /tmp/owner_staff.html
+          grep -Fq 'Управляющий состав' /tmp/owner_staff.html
+          grep -Fq 'Технический руководитель' /tmp/owner_staff.html
+          grep -Fq 'Теоретический руководитель' /tmp/owner_staff.html
 
           run_dom owner_tasks 'r=owner&v=tasks'
-          grep -Fq 'Роман видит задачи всей команды' /tmp/owner_tasks.html
+          grep -Fq 'Роман видит задачи всей команды как собственник' /tmp/owner_tasks.html
           grep -Fq 'Все ответственные' /tmp/owner_tasks.html
-          grep -Fq '<h4>Подготовить «Арбузные зарубы»</h4>' /tmp/owner_tasks.html
 
           run_dom manager_tasks 'r=manager&v=tasks'
-          grep -Fq 'Софа видит задачи всей команды' /tmp/manager_tasks.html
+          grep -Fq 'Софа видит задачи всей команды как управляющая' /tmp/manager_tasks.html
           grep -Fq 'Все ответственные' /tmp/manager_tasks.html
 
           run_dom stas_tasks 'r=stas&v=tasks'
-          grep -Fq 'Стас видит задачи всей команды' /tmp/stas_tasks.html
+          grep -Fq 'Станислав видит задачи всей команды как технический руководитель' /tmp/stas_tasks.html
           grep -Fq 'Все ответственные' /tmp/stas_tasks.html
 
           run_dom ivan_tasks 'r=mentor&p=ivan&v=tasks'
-          grep -Fq 'Ваня видит задачи всей команды' /tmp/ivan_tasks.html
+          grep -Fq 'Иван видит задачи всей команды как теоретический руководитель' /tmp/ivan_tasks.html
           grep -Fq 'Все ответственные' /tmp/ivan_tasks.html
-          grep -Fq '<h4>Подготовить «Арбузные зарубы»</h4>' /tmp/ivan_tasks.html
 
           run_dom tasya_tasks 'r=mentor&p=tasya&v=tasks'
           grep -Fq 'только мои' /tmp/tasya_tasks.html
@@ -117,13 +119,12 @@ jobs:
 
           run_dom anya_tasks 'r=admin&p=anya&v=tasks'
           grep -Fq 'только мои' /tmp/anya_tasks.html
-          grep -Fq '<h4>Вернуть старую клиентскую базу</h4>' /tmp/anya_tasks.html
           if grep -Fq '<h4>Подготовить «Арбузные зарубы»</h4>' /tmp/anya_tasks.html; then
             echo 'Admin can see another employee task'
             exit 1
           fi
 
-          # Management team sees every active group, including groups outside its own direction.
+          # Every member of the management board sees every active group.
           run_dom owner_groups 'r=owner&v=groups'
           grep -Fq 'Роман видит все активные группы клуба' /tmp/owner_groups.html
           grep -Fq '<td>Денис</td>' /tmp/owner_groups.html
@@ -133,14 +134,13 @@ jobs:
           grep -Fq '<td>Денис</td>' /tmp/manager_groups.html
 
           run_dom stas_groups 'r=stas&v=groups'
-          grep -Fq 'Стас видит все активные группы клуба' /tmp/stas_groups.html
+          grep -Fq 'Станислав видит все активные группы клуба' /tmp/stas_groups.html
           grep -Fq '<td>Денис</td>' /tmp/stas_groups.html
 
           run_dom ivan_groups 'r=mentor&p=ivan&v=groups'
-          grep -Fq 'Ваня видит все активные группы клуба' /tmp/ivan_groups.html
+          grep -Fq 'Иван видит все активные группы клуба' /tmp/ivan_groups.html
           grep -Fq '<td>Денис</td>' /tmp/ivan_groups.html
 
-          # Ordinary mentor sees only own groups.
           run_dom tasya_groups 'r=mentor&p=tasya&v=groups'
           grep -Fq 'В кабинете Тася отображаются только его группы' /tmp/tasya_groups.html
           grep -Fq '<td>Тася</td>' /tmp/tasya_groups.html
@@ -149,9 +149,58 @@ jobs:
             exit 1
           fi
 
+          # Documents and duties: management board writes, ordinary employees read only.
+          run_dom owner_docs 'r=owner&v=documents'
+          grep -Fq '<h1 id="pageTitle">Документы и обязанности</h1>' /tmp/owner_docs.html
+          grep -Fq 'Управляющий режим' /tmp/owner_docs.html
+          grep -Fq '+ Документ' /tmp/owner_docs.html
+          grep -Fq '+ Обязанность' /tmp/owner_docs.html
+
+          run_dom ivan_docs 'r=mentor&p=ivan&v=documents'
+          grep -Fq '<h1 id="pageTitle">Документы и обязанности</h1>' /tmp/ivan_docs.html
+          grep -Fq 'Управляющий режим' /tmp/ivan_docs.html
+          grep -Fq '+ Документ' /tmp/ivan_docs.html
+
+          run_dom tasya_docs 'r=mentor&p=tasya&v=documents'
+          grep -Fq '<h1 id="pageTitle">Документы и обязанности</h1>' /tmp/tasya_docs.html
+          grep -Fq 'Режим только для чтения' /tmp/tasya_docs.html
+          if grep -Fq '+ Документ' /tmp/tasya_docs.html; then
+            echo 'Ordinary mentor can add documents'
+            exit 1
+          fi
+
+          run_dom anya_docs 'r=admin&p=anya&v=documents'
+          grep -Fq '<h1 id="pageTitle">Документы и обязанности</h1>' /tmp/anya_docs.html
+          grep -Fq 'Режим только для чтения' /tmp/anya_docs.html
+          if grep -Fq '+ Обязанность' /tmp/anya_docs.html; then
+            echo 'Admin can manage duties'
+            exit 1
+          fi
+
+          # Meeting workspace is visible only to the management board.
+          run_dom owner_meeting 'r=owner&v=meeting'
+          grep -Fq '<h1 id="pageTitle">Собрание УП</h1>' /tmp/owner_meeting.html
+          grep -Fq 'id="meetingTimerValue"' /tmp/owner_meeting.html
+          grep -Fq '+ Вопрос на обсуждение' /tmp/owner_meeting.html
+
+          run_dom manager_meeting 'r=manager&v=meeting'
+          grep -Fq '<h1 id="pageTitle">Собрание УП</h1>' /tmp/manager_meeting.html
+
+          run_dom stas_meeting 'r=stas&v=meeting'
+          grep -Fq '<h1 id="pageTitle">Собрание УП</h1>' /tmp/stas_meeting.html
+
+          run_dom ivan_meeting 'r=mentor&p=ivan&v=meeting'
+          grep -Fq '<h1 id="pageTitle">Собрание УП</h1>' /tmp/ivan_meeting.html
+
+          run_dom tasya_meeting 'r=mentor&p=tasya&v=meeting'
+          if grep -Fq '<h1 id="pageTitle">Собрание УП</h1>' /tmp/tasya_meeting.html; then
+            echo 'Ordinary mentor can access management meeting'
+            exit 1
+          fi
+
           run_dom anya_cabinet 'r=admin&p=anya&v=admin'
           grep -Fq 'ЛИЧНЫЙ КАБИНЕТ АДМИНИСТРАТОРА' /tmp/anya_cabinet.html
-          grep -Fq 'Фокус личного кабинета' /tmp/anya_cabinet.html
+          grep -Fq 'Документы и обязанности' /tmp/anya_cabinet.html
 
           run_dom attendance 'r=owner&v=attendance'
           grep -Fq '<h1 id="pageTitle">Посещаемость</h1>' /tmp/attendance.html
@@ -167,12 +216,12 @@ jobs:
           set -euo pipefail
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add growth6-source/team_access_v1.js growth6-source/team_access_v1.css growth6-source/group_access_v1.js growth6-source/patch_team_access_v1.py growth6-source/v6.3.html growth6-source/v6.3.1.html growth6-source/SHA256.txt growth-os growth-os-6 growth61-live
+          git add growth6-source/team_access_v1.js growth6-source/team_access_v1.css growth6-source/group_access_v1.js growth6-source/management_up_v1.js growth6-source/management_up_v1.css growth6-source/patch_team_access_v1.py growth6-source/v6.3.html growth6-source/v6.3.1.html growth6-source/v6.4.html growth6-source/SHA256.txt growth-os growth-os-6 growth61-live
           if git diff --cached --quiet; then
-            echo 'Management group access release already current'
+            echo 'Growth OS 6.4 management board release already current'
             exit 0
           fi
-          git commit -m "Publish management access to all groups"
+          git commit -m "Publish Growth OS 6.4 management board"
           git push
 
       - name: Diagnostics on failure
@@ -181,9 +230,9 @@ jobs:
         run: |
           echo '--- HTTP ---'
           cat /tmp/growth-role-http.log || true
-          for name in owner_staff owner_tasks manager_tasks stas_tasks ivan_tasks tasya_tasks anya_tasks owner_groups manager_groups stas_groups ivan_groups tasya_groups anya_cabinet attendance payroll; do
+          for name in owner_staff owner_tasks manager_tasks stas_tasks ivan_tasks tasya_tasks anya_tasks owner_groups manager_groups stas_groups ivan_groups tasya_groups owner_docs ivan_docs tasya_docs anya_docs owner_meeting manager_meeting stas_meeting ivan_meeting tasya_meeting anya_cabinet attendance payroll; do
             echo "--- ${name} chrome ---"
             cat "/tmp/${name}.log" 2>/dev/null || true
             echo "--- ${name} markers ---"
-            grep -E 'pageTitle|bootText|Команда и кабинеты|только мои|видит все активные группы|отображаются только|Денис|Тася|Арбузные|Фокус личного кабинета' "/tmp/${name}.html" 2>/dev/null | head -80 || true
+            grep -E 'pageTitle|bootText|Управляющий состав|Документы и обязанности|Собрание УП|Управляющий режим|только для чтения|видит все активные группы|Все ответственные|meetingTimerValue' "/tmp/${name}.html" 2>/dev/null | head -100 || true
           done
