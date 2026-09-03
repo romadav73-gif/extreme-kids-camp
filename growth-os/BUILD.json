@@ -1,17 +1,17 @@
 {
   "compatibilityVersion": "6.1.0",
-  "featureVersion": "6.2-attendance",
-  "build": "2026.09.01-weekly-attendance-intelligence",
-  "sha256": "c1c69e193889970884388f46024577f3ae9448556ffebcadd8dae3fafebf322d",
+  "featureVersion": "6.3-role-cabinets",
+  "build": "2026.09.03-role-cabinets",
+  "sha256": "a07e655d822041ae4a5fbdbd4ce4b7f1ad936d510d73a1d32f713e52bb41ef57",
   "source": "growth-os-6/index.html",
   "features": [
-    "weekly-attendance",
-    "enrollment-vs-attendance-vs-density",
-    "absence-reasons",
-    "mentor-weekly-metrics",
-    "attendance-forecast",
-    "automatic-follow-up-tasks",
-    "weekly-archives",
-    "shared-sync"
+    "task-scope-by-person",
+    "all-task-access-owner-manager-stas-ivan",
+    "owner-managed-mentors",
+    "owner-managed-admins",
+    "dynamic-personal-cabinets",
+    "personal-admin-task-focus",
+    "staff-cabinet-management",
+    "attendance-and-payroll-preserved"
   ]
 }
