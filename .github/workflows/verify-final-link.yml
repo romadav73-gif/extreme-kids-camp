@@ -1,32 +1,25 @@
-name: Verify final parent link
+name: Verify Growth OS 6.5 Vercel preview
 on:
   push:
+    branches: [growth65-sofa3-merge]
     paths:
       - '.github/workflows/verify-final-link.yml'
 jobs:
   verify:
     runs-on: ubuntu-latest
+    timeout-minutes: 12
     steps:
-      - name: Check published immutable page
+      - name: Render Vercel preview with Chrome
         shell: bash
         run: |
           set -euo pipefail
-          URL='https://rawcdn.githack.com/romadav73-gif/extreme-kids-camp/2754cdbc6bb7b5df87f3393f19c0e628a87bee30/index.html'
-          curl -L --fail --retry 3 --max-time 60 -sS -D /tmp/h -o /tmp/site.html "$URL"
-          echo "URL=$URL"
-          sed -n '1,20p' /tmp/h
-          wc -c /tmp/site.html
-          python3 - <<'PY'
-from pathlib import Path
-import re, base64, hashlib
-s=Path('/tmp/site.html').read_text(encoding='utf-8')
-assert len(s.encode()) > 2_500_000, len(s)
-assert '5 ДНЕЙ.' in s
-assert '<b>Иван</b>' in s
-assert '<b>Стас</b>' in s
-assert 'BANDA BOX' in s and 'KIBERone' in s
-assert 'ДНЕИ' not in s and '5 ДНИ.' not in s
-imgs=re.findall(r'data:image/[^;]+;base64,([A-Za-z0-9+/=]+)',s)
-assert len(imgs)>=5, len(imgs)
-print('VERIFY_OK bytes=',len(s.encode()),'embedded_images=',len(imgs),'smallest_b64=',min(map(len,imgs)))
-PY
+          chrome="$(command -v google-chrome || command -v google-chrome-stable || command -v chromium || command -v chromium-browser || true)"
+          test -n "$chrome"
+          URL='https://extreme-kids-roller-control-v6-36hmerl2r.vercel.app/#w=ek-delivery-check&k=0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef&r=owner&v=operations&t=verify'
+          timeout 150s "$chrome" --headless=new --no-sandbox --disable-gpu --disable-dev-shm-usage --ignore-certificate-errors --disable-sync --disable-default-apps --disable-extensions --no-first-run --virtual-time-budget=22000 --dump-dom "$URL" >/tmp/site.html 2>/tmp/chrome.log || true
+          grep -Fq '<h1 id="pageTitle">Операционный день</h1>' /tmp/site.html
+          grep -Fq 'ОПЕРАЦИОННЫЙ ЦЕНТР' /tmp/site.html
+          grep -Fq 'Три результата дня' /tmp/site.html
+          grep -Fq 'Growth OS <span>6.5</span>' /tmp/site.html
+          if grep -Fq 'Не удалось загрузить Growth OS' /tmp/site.html; then cat /tmp/chrome.log; exit 1; fi
+          echo 'VERIFY_OK Growth OS 6.5 rendered through Vercel preview'
