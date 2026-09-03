@@ -6,6 +6,7 @@ on:
     paths:
       - growth6-source/team_access_v1.js
       - growth6-source/team_access_v1.css
+      - growth6-source/group_access_v1.js
       - growth6-source/patch_team_access_v1.py
       - .github/workflows/build-growth63-role-cabinets.yml
   workflow_dispatch:
@@ -26,7 +27,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Build role and cabinet release
+      - name: Build role, cabinet and group access release
         shell: bash
         run: |
           set -euo pipefail
@@ -45,11 +46,14 @@ jobs:
               "const VERSION='6.1.0'",
               'ATTENDANCE_INTELLIGENCE_V1_START',
               'TEAM_CABINETS_ACCESS_V1_START',
+              'MANAGEMENT_GROUP_ACCESS_V1_START',
               'function canSeeAllTasks()',
+              'function canSeeAllGroups()',
               "label:'Команда и кабинеты'",
               'function renderStaffManagement()',
               'function adminPersonModal(',
               'Ваня видит задачи всей команды',
+              'Ваня видит все активные группы клуба',
               'МОЯ ЗАРПЛАТА ЗА МЕСЯЦ',
           ):
               if marker not in html:
@@ -119,6 +123,32 @@ jobs:
             exit 1
           fi
 
+          # Management team sees every active group, including groups outside its own direction.
+          run_dom owner_groups 'r=owner&v=groups'
+          grep -Fq 'Роман видит все активные группы клуба' /tmp/owner_groups.html
+          grep -Fq '<td>Денис</td>' /tmp/owner_groups.html
+
+          run_dom manager_groups 'r=manager&v=groups'
+          grep -Fq 'Софа видит все активные группы клуба' /tmp/manager_groups.html
+          grep -Fq '<td>Денис</td>' /tmp/manager_groups.html
+
+          run_dom stas_groups 'r=stas&v=groups'
+          grep -Fq 'Стас видит все активные группы клуба' /tmp/stas_groups.html
+          grep -Fq '<td>Денис</td>' /tmp/stas_groups.html
+
+          run_dom ivan_groups 'r=mentor&p=ivan&v=groups'
+          grep -Fq 'Ваня видит все активные группы клуба' /tmp/ivan_groups.html
+          grep -Fq '<td>Денис</td>' /tmp/ivan_groups.html
+
+          # Ordinary mentor sees only own groups.
+          run_dom tasya_groups 'r=mentor&p=tasya&v=groups'
+          grep -Fq 'В кабинете Тася отображаются только его группы' /tmp/tasya_groups.html
+          grep -Fq '<td>Тася</td>' /tmp/tasya_groups.html
+          if grep -Fq '<td>Денис</td>' /tmp/tasya_groups.html; then
+            echo 'Ordinary mentor can see another mentor group'
+            exit 1
+          fi
+
           run_dom anya_cabinet 'r=admin&p=anya&v=admin'
           grep -Fq 'ЛИЧНЫЙ КАБИНЕТ АДМИНИСТРАТОРА' /tmp/anya_cabinet.html
           grep -Fq 'Фокус личного кабинета' /tmp/anya_cabinet.html
@@ -137,12 +167,12 @@ jobs:
           set -euo pipefail
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add growth6-source/team_access_v1.js growth6-source/team_access_v1.css growth6-source/patch_team_access_v1.py growth6-source/v6.3.html growth6-source/SHA256.txt growth-os growth-os-6 growth61-live
+          git add growth6-source/team_access_v1.js growth6-source/team_access_v1.css growth6-source/group_access_v1.js growth6-source/patch_team_access_v1.py growth6-source/v6.3.html growth6-source/v6.3.1.html growth6-source/SHA256.txt growth-os growth-os-6 growth61-live
           if git diff --cached --quiet; then
-            echo 'Role/cabinet release already current'
+            echo 'Management group access release already current'
             exit 0
           fi
-          git commit -m "Publish role access and personal cabinets"
+          git commit -m "Publish management access to all groups"
           git push
 
       - name: Diagnostics on failure
@@ -151,9 +181,9 @@ jobs:
         run: |
           echo '--- HTTP ---'
           cat /tmp/growth-role-http.log || true
-          for name in owner_staff owner_tasks manager_tasks stas_tasks ivan_tasks tasya_tasks anya_tasks anya_cabinet attendance payroll; do
+          for name in owner_staff owner_tasks manager_tasks stas_tasks ivan_tasks tasya_tasks anya_tasks owner_groups manager_groups stas_groups ivan_groups tasya_groups anya_cabinet attendance payroll; do
             echo "--- ${name} chrome ---"
             cat "/tmp/${name}.log" 2>/dev/null || true
             echo "--- ${name} markers ---"
-            grep -E 'pageTitle|bootText|Команда и кабинеты|только мои|Ваня видит|Арбузные|Фокус личного кабинета' "/tmp/${name}.html" 2>/dev/null | head -80 || true
+            grep -E 'pageTitle|bootText|Команда и кабинеты|только мои|видит все активные группы|отображаются только|Денис|Тася|Арбузные|Фокус личного кабинета' "/tmp/${name}.html" 2>/dev/null | head -80 || true
           done
