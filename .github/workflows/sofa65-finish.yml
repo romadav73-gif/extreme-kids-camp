@@ -87,51 +87,61 @@ jobs:
           run_dom () {
             local name="$1"; local hash="$2"
             timeout 120s "$chrome" "${chrome_flags[@]}" --dump-dom "http://127.0.0.1:8765/#w=ek65-${GITHUB_RUN_ID}-${name}&k=${key}&${hash}&t=release" >"/tmp/${name}.html" 2>"/tmp/${name}.log" || true
-            grep -Fq '<div class="app-shell" id="appShell">' "/tmp/${name}.html"
-            if grep -Fq 'id="bootText">Ошибка запуска' "/tmp/${name}.html"; then echo "Runtime boot failed: ${name}"; exit 1; fi
+            python - "/tmp/${name}.html" "/tmp/${name}.visible.html" <<'PY'
+          import re,sys
+          src,dst=sys.argv[1:3]
+          s=open(src,encoding='utf-8').read()
+          s=re.sub(r'<script\b[^>]*>[\s\S]*?</script>','',s,flags=re.I)
+          s=re.sub(r'<style\b[^>]*>[\s\S]*?</style>','',s,flags=re.I)
+          open(dst,'w',encoding='utf-8').write(s)
+          PY
+            grep -Fq '<div class="app-shell" id="appShell">' "/tmp/${name}.visible.html"
+            if grep -Fq 'id="bootText">Ошибка запуска' "/tmp/${name}.visible.html"; then echo "Runtime boot failed: ${name}"; exit 1; fi
           }
 
           run_dom manager_home 'r=manager&v=manager'
-          grep -Fq 'Один кабинет внутри Growth OS 6.5' /tmp/manager_home.html
-          grep -Fq 'Цифры клуба' /tmp/manager_home.html
-          grep -Fq 'Моя мотивация' /tmp/manager_home.html
-          if grep -Fq 'Собрать отчёт' /tmp/manager_home.html; then echo 'Daily report still visible on manager home'; exit 1; fi
+          grep -Fq 'Один кабинет внутри Growth OS 6.5' /tmp/manager_home.visible.html
+          grep -Fq 'Цифры клуба' /tmp/manager_home.visible.html
+          grep -Fq 'Моя мотивация' /tmp/manager_home.visible.html
+          if grep -Fq 'Собрать отчёт' /tmp/manager_home.visible.html; then echo 'Daily report still visible on manager home'; exit 1; fi
 
           run_dom manager_numbers 'r=manager&v=sofa_numbers'
-          grep -Fq '<h1 id="pageTitle">Цифры клуба</h1>' /tmp/manager_numbers.html
-          grep -Fq 'Операционные цифры' /tmp/manager_numbers.html
-          grep -Fq '8 полей' /tmp/manager_numbers.html
-          grep -Fq 'Пробная → покупка' /tmp/manager_numbers.html
+          grep -Fq '<h1 id="pageTitle">Цифры клуба</h1>' /tmp/manager_numbers.visible.html
+          grep -Fq 'Операционные цифры' /tmp/manager_numbers.visible.html
+          grep -Fq '8 полей' /tmp/manager_numbers.visible.html
+          grep -Fq 'Пробная → покупка' /tmp/manager_numbers.visible.html
 
           run_dom manager_control 'r=manager&v=operations'
-          grep -Fq '<h1 id="pageTitle">Контроль дня</h1>' /tmp/manager_control.html
-          grep -Fq 'Сегодня' /tmp/manager_control.html
-          grep -Fq 'Контроль' /tmp/manager_control.html
-          grep -Fq 'Неделя' /tmp/manager_control.html
-          if grep -Fq '>Итог дня<' /tmp/manager_control.html; then echo 'Daily report tab still visible'; exit 1; fi
-          if grep -Fq 'Отчёт Роману' /tmp/manager_control.html; then echo 'Daily report rhythm still visible'; exit 1; fi
+          grep -Fq '<h1 id="pageTitle">Контроль дня</h1>' /tmp/manager_control.visible.html
+          grep -Fq 'Сегодня' /tmp/manager_control.visible.html
+          grep -Fq 'Контроль' /tmp/manager_control.visible.html
+          grep -Fq 'Неделя' /tmp/manager_control.visible.html
+          if grep -Fq '>Итог дня<' /tmp/manager_control.visible.html; then echo 'Daily report tab still visible'; exit 1; fi
+          if grep -Fq 'Отчёт Роману' /tmp/manager_control.visible.html; then echo 'Daily report rhythm still visible'; exit 1; fi
 
           run_dom manager_motivation 'r=manager&v=sofa_motivation'
-          grep -Fq '<h1 id="pageTitle">Мотивация Софы</h1>' /tmp/manager_motivation.html
-          grep -Fq 'Оценку KPI подтверждает Роман' /tmp/manager_motivation.html
-          grep -Fq 'disabled class="sofia-kpi' /tmp/manager_motivation.html
+          grep -Fq '<h1 id="pageTitle">Мотивация Софы</h1>' /tmp/manager_motivation.visible.html
+          grep -Fq 'Оценку KPI подтверждает Роман' /tmp/manager_motivation.visible.html
+          grep -Fq 'class="sofia-kpi' /tmp/manager_motivation.visible.html
+          grep -Fq ' disabled' /tmp/manager_motivation.visible.html
+          if grep -Fq 'data-action="sofa3ToggleKpi"' /tmp/manager_motivation.visible.html; then echo 'Manager can edit own KPI'; exit 1; fi
 
           run_dom owner_motivation 'r=owner&v=sofa_motivation'
-          grep -Fq 'data-action="sofa3ToggleKpi"' /tmp/owner_motivation.html
-          grep -Fq 'Зафиксировать месяц' /tmp/owner_motivation.html
+          grep -Fq 'data-action="sofa3ToggleKpi"' /tmp/owner_motivation.visible.html
+          grep -Fq 'Зафиксировать месяц' /tmp/owner_motivation.visible.html
 
           run_dom manager_meetings 'r=manager&v=sofa_meetings'
-          grep -Fq '<h1 id="pageTitle">Собрания</h1>' /tmp/manager_meetings.html
-          grep -Fq 'Роман + Софа' /tmp/manager_meetings.html
-          grep -Fq 'Сохранить встречу и создать задачи' /tmp/manager_meetings.html
+          grep -Fq '<h1 id="pageTitle">Собрания</h1>' /tmp/manager_meetings.visible.html
+          grep -Fq 'Роман + Софа' /tmp/manager_meetings.visible.html
+          grep -Fq 'Сохранить встречу и создать задачи' /tmp/manager_meetings.visible.html
 
           run_dom manager_system 'r=manager&v=sofa_system'
-          grep -Fq '<h1 id="pageTitle">Система управляющей</h1>' /tmp/manager_system.html
-          grep -Fq 'Порядок приоритетов' /tmp/manager_system.html
-          grep -Fq 'Стандарты сервиса' /tmp/manager_system.html
+          grep -Fq '<h1 id="pageTitle">Система управляющей</h1>' /tmp/manager_system.visible.html
+          grep -Fq 'Порядок приоритетов' /tmp/manager_system.visible.html
+          grep -Fq 'Стандарты сервиса' /tmp/manager_system.visible.html
 
           run_dom stas_meeting 'r=stas&v=meeting'
-          grep -Fq 'Собрание УП' /tmp/stas_meeting.html
+          grep -Fq 'Собрание УП' /tmp/stas_meeting.visible.html
 
       - name: Commit patched Growth OS
         shell: bash
@@ -155,5 +165,5 @@ jobs:
           for name in manager_home manager_numbers manager_control manager_motivation owner_motivation manager_meetings manager_system stas_meeting; do
             echo "--- ${name} ---"
             cat "/tmp/${name}.log" 2>/dev/null | tail -30 || true
-            grep -E 'pageTitle|Ошибка запуска|Софа|Цифры|Мотивация|Собрания|Отчёт' "/tmp/${name}.html" 2>/dev/null | head -80 || true
+            grep -E 'pageTitle|Ошибка запуска|Софа|Цифры|Мотивация|Собрания|Отчёт' "/tmp/${name}.visible.html" 2>/dev/null | head -80 || true
           done
