@@ -1,0 +1,159 @@
+name: Build Growth OS role access and personal cabinets
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - growth6-source/team_access_v1.js
+      - growth6-source/team_access_v1.css
+      - growth6-source/patch_team_access_v1.py
+      - .github/workflows/build-growth63-role-cabinets.yml
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: growth-os-role-cabinets-release
+  cancel-in-progress: false
+
+jobs:
+  build:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Build role and cabinet release
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -m py_compile growth6-source/patch_team_access_v1.py
+          python3 growth6-source/patch_team_access_v1.py
+          python3 <<'PY'
+          import re
+          from pathlib import Path
+          html = Path('growth-os/index.html').read_text(encoding='utf-8')
+          scripts = re.findall(r'<script>(.*?)</script>', html, re.S)
+          if not scripts:
+              raise SystemExit('Application script missing')
+          app = max(scripts, key=len)
+          Path('/tmp/growth-team-access-app.js').write_text(app, encoding='utf-8')
+          for marker in (
+              "const VERSION='6.1.0'",
+              'ATTENDANCE_INTELLIGENCE_V1_START',
+              'TEAM_CABINETS_ACCESS_V1_START',
+              'function canSeeAllTasks()',
+              "label:'Команда и кабинеты'",
+              'function renderStaffManagement()',
+              'function adminPersonModal(',
+              'Ваня видит задачи всей команды',
+              'МОЯ ЗАРПЛАТА ЗА МЕСЯЦ',
+          ):
+              if marker not in html:
+                  raise SystemExit('Missing marker: ' + marker)
+          PY
+          node --check /tmp/growth-team-access-app.js
+
+      - name: Browser permission smoke tests
+        shell: bash
+        run: |
+          set -euo pipefail
+          chrome="$(command -v google-chrome || command -v google-chrome-stable || command -v chromium || command -v chromium-browser || true)"
+          test -n "$chrome"
+          python3 -m http.server 8765 --directory growth-os >/tmp/growth-role-http.log 2>&1 &
+          server_pid=$!
+          trap 'kill $server_pid 2>/dev/null || true' EXIT
+          sleep 1
+          key='0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef'
+
+          run_dom () {
+            local name="$1"
+            local hash="$2"
+            timeout 60s "$chrome" --headless=new --no-sandbox --disable-gpu --disable-dev-shm-usage --ignore-certificate-errors --virtual-time-budget=18000 --dump-dom "http://127.0.0.1:8765/#w=ek-role-${GITHUB_RUN_ID}-${name}&k=${key}&${hash}&t=release" >"/tmp/${name}.html" 2>"/tmp/${name}.log" || true
+            grep -Fq '<div class="app-shell" id="appShell">' "/tmp/${name}.html"
+            if grep -Fq 'id="bootText">Ошибка запуска' "/tmp/${name}.html"; then
+              echo "Runtime boot failed for ${name}"
+              exit 1
+            fi
+          }
+
+          run_dom owner_staff 'r=owner&v=staff'
+          grep -Fq '<h1 id="pageTitle">Команда и кабинеты</h1>' /tmp/owner_staff.html
+          grep -Fq '+ Наставник' /tmp/owner_staff.html
+          grep -Fq '+ Администратор' /tmp/owner_staff.html
+          grep -Fq 'Открыть кабинет' /tmp/owner_staff.html
+
+          run_dom owner_tasks 'r=owner&v=tasks'
+          grep -Fq 'Роман видит задачи всей команды' /tmp/owner_tasks.html
+          grep -Fq 'Все ответственные' /tmp/owner_tasks.html
+          grep -Fq 'Подготовить «Арбузные зарубы»' /tmp/owner_tasks.html
+
+          run_dom manager_tasks 'r=manager&v=tasks'
+          grep -Fq 'Софа видит задачи всей команды' /tmp/manager_tasks.html
+          grep -Fq 'Все ответственные' /tmp/manager_tasks.html
+
+          run_dom stas_tasks 'r=stas&v=tasks'
+          grep -Fq 'Стас видит задачи всей команды' /tmp/stas_tasks.html
+          grep -Fq 'Все ответственные' /tmp/stas_tasks.html
+
+          run_dom ivan_tasks 'r=mentor&p=ivan&v=tasks'
+          grep -Fq 'Ваня видит задачи всей команды' /tmp/ivan_tasks.html
+          grep -Fq 'Все ответственные' /tmp/ivan_tasks.html
+          grep -Fq 'Подготовить «Арбузные зарубы»' /tmp/ivan_tasks.html
+
+          run_dom tasya_tasks 'r=mentor&p=tasya&v=tasks'
+          grep -Fq 'Только мои' /tmp/tasya_tasks.html
+          if grep -Fq 'Подготовить «Арбузные зарубы»' /tmp/tasya_tasks.html; then
+            echo 'Tasya can see another employee task'
+            exit 1
+          fi
+
+          run_dom anya_tasks 'r=admin&p=anya&v=tasks'
+          grep -Fq 'Только мои' /tmp/anya_tasks.html
+          grep -Fq 'Вернуть старую клиентскую базу' /tmp/anya_tasks.html
+          if grep -Fq 'Подготовить «Арбузные зарубы»' /tmp/anya_tasks.html; then
+            echo 'Admin can see another employee task'
+            exit 1
+          fi
+
+          run_dom anya_cabinet 'r=admin&p=anya&v=admin'
+          grep -Fq 'ЛИЧНЫЙ КАБИНЕТ АДМИНИСТРАТОРА' /tmp/anya_cabinet.html
+          grep -Fq 'Фокус личного кабинета' /tmp/anya_cabinet.html
+
+          run_dom attendance 'r=owner&v=attendance'
+          grep -Fq '<h1 id="pageTitle">Посещаемость</h1>' /tmp/attendance.html
+          grep -Fq 'Фактическая плотность' /tmp/attendance.html
+
+          run_dom payroll 'r=owner&v=payroll'
+          grep -Fq '<h1 id="pageTitle">ЗП и мотивация</h1>' /tmp/payroll.html
+          grep -Fq 'Администраторы · автоматический расчёт' /tmp/payroll.html
+
+      - name: Commit ready release
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add growth6-source/team_access_v1.js growth6-source/team_access_v1.css growth6-source/patch_team_access_v1.py growth6-source/v6.3.html growth6-source/SHA256.txt growth-os growth-os-6 growth61-live
+          if git diff --cached --quiet; then
+            echo 'Role/cabinet release already current'
+            exit 0
+          fi
+          git commit -m "Publish role access and personal cabinets"
+          git push
+
+      - name: Diagnostics on failure
+        if: failure()
+        shell: bash
+        run: |
+          echo '--- HTTP ---'
+          cat /tmp/growth-role-http.log || true
+          for name in owner_staff owner_tasks manager_tasks stas_tasks ivan_tasks tasya_tasks anya_tasks anya_cabinet attendance payroll; do
+            echo "--- ${name} chrome ---"
+            cat "/tmp/${name}.log" 2>/dev/null || true
+            echo "--- ${name} markers ---"
+            grep -E 'pageTitle|bootText|Команда и кабинеты|Только мои|Ваня видит|Арбузные|Фокус личного кабинета' "/tmp/${name}.html" 2>/dev/null | head -80 || true
+          done
