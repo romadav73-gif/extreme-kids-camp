@@ -2,7 +2,7 @@
   "compatibilityVersion": "6.1.0",
   "featureVersion": "6.5-sofa-operations",
   "build": "2026.09.03-sofa3-unique-merge",
-  "sha256": "8e6b89797b48ed5d29572bf711bf275e9bb4d26ad6a0f30c35a2bbe8439eb3c3",
+  "sha256": "839f21e05833877608a9ed78863f08acef4611449ea639eea6731a0abdc6abf4",
   "source": "growth-os-6/index.html",
   "features": [
     "task-scope-by-person",
