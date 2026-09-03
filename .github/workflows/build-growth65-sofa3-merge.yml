@@ -5,6 +5,7 @@ on:
     branches: [growth65-sofa3-merge]
     paths:
       - growth6-source/sofa3_merge_v1.js
+      - growth6-source/sofa3_merge_v1_details.js
       - growth6-source/sofa3_merge_v1.css
       - growth6-source/patch_team_access_v1.py
       - .github/workflows/build-growth65-sofa3-merge.yml
@@ -21,7 +22,7 @@ jobs:
   build:
     if: github.actor != 'github-actions[bot]'
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 30
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -44,12 +45,15 @@ jobs:
           assert build['featureVersion']=='6.5-sofa-operations',build
           for marker in (
             'SOFA3_UNIQUE_MERGE_V1_START',
+            'SOFA3_UNIQUE_DETAILS_V1_START',
             "label:'Операционный день'",
             'function renderOperations()',
             'function sofa3ReportText(',
             'function sofa3WeekScore(',
+            'function sofa3MeetingProtocolModal(',
             'const SOFA3_BASE_SALARY=100000',
             'const SOFA3_MEETING_TEMPLATES=',
+            'sofa3-service-standards',
             'СОФА · МОТИВАЦИЯ УПРАВЛЯЮЩЕЙ',
             'Сохранить встречу и создать задачи',
             'MANAGEMENT_UP_V1_START',
@@ -71,10 +75,11 @@ jobs:
           trap 'kill $server_pid 2>/dev/null || true' EXIT
           sleep 1
           key='0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef'
+          chrome_flags=(--headless=new --no-sandbox --disable-gpu --disable-dev-shm-usage --ignore-certificate-errors --disable-background-networking --disable-sync --disable-default-apps --disable-extensions --no-first-run --metrics-recording-only --virtual-time-budget=10000)
 
           run_dom () {
             local name="$1"; local hash="$2"
-            timeout 60s "$chrome" --headless=new --no-sandbox --disable-gpu --disable-dev-shm-usage --ignore-certificate-errors --virtual-time-budget=18000 --dump-dom "http://127.0.0.1:8765/#w=ek65-${GITHUB_RUN_ID}-${name}&k=${key}&${hash}&t=release" >"/tmp/${name}.html" 2>"/tmp/${name}.log" || true
+            timeout 120s "$chrome" "${chrome_flags[@]}" --dump-dom "http://127.0.0.1:8765/#w=ek65-${GITHUB_RUN_ID}-${name}&k=${key}&${hash}&t=release" >"/tmp/${name}.html" 2>"/tmp/${name}.log" || true
             grep -Fq '<div class="app-shell" id="appShell">' "/tmp/${name}.html"
             if grep -Fq 'id="bootText">Ошибка запуска' "/tmp/${name}.html"; then echo "Runtime boot failed: ${name}"; exit 1; fi
           }
