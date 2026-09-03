@@ -10,6 +10,7 @@ on:
       - growth6-source/management_up_v1.js
       - growth6-source/management_up_v1.css
       - growth6-source/sofa3_merge_v1.js
+      - growth6-source/sofa3_merge_v1_details.js
       - growth6-source/sofa3_merge_v1.css
       - growth6-source/patch_team_access_v1.py
       - .github/workflows/build-growth63-role-cabinets.yml
@@ -26,7 +27,7 @@ jobs:
   build:
     if: github.actor != 'github-actions[bot]'
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 30
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -53,6 +54,7 @@ jobs:
             'MANAGEMENT_GROUP_ACCESS_V1_START',
             'MANAGEMENT_UP_V1_START',
             'SOFA3_UNIQUE_MERGE_V1_START',
+            'SOFA3_UNIQUE_DETAILS_V1_START',
             'function canSeeAllTasks()',
             'function canSeeAllGroups()',
             'function isManagementBoard()',
@@ -62,7 +64,9 @@ jobs:
             'function renderDocumentsAndDuties()',
             'function renderMeeting()',
             'function renderOperations()',
+            'function sofa3MeetingProtocolModal(',
             'const SOFA3_BASE_SALARY=100000',
+            'sofa3-service-standards',
             'СОФА · МОТИВАЦИЯ УПРАВЛЯЮЩЕЙ',
             'МОЯ ЗАРПЛАТА ЗА МЕСЯЦ',
           ):
@@ -81,9 +85,10 @@ jobs:
           trap 'kill $server_pid 2>/dev/null || true' EXIT
           sleep 1
           key='0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef'
+          chrome_flags=(--headless=new --no-sandbox --disable-gpu --disable-dev-shm-usage --ignore-certificate-errors --disable-background-networking --disable-sync --disable-default-apps --disable-extensions --no-first-run --metrics-recording-only --virtual-time-budget=10000)
           run_dom(){
             local name="$1";local hash="$2"
-            timeout 60s "$chrome" --headless=new --no-sandbox --disable-gpu --disable-dev-shm-usage --ignore-certificate-errors --virtual-time-budget=18000 --dump-dom "http://127.0.0.1:8765/#w=ek-main-${GITHUB_RUN_ID}-${name}&k=${key}&${hash}&t=release" >"/tmp/${name}.html" 2>"/tmp/${name}.log" || true
+            timeout 120s "$chrome" "${chrome_flags[@]}" --dump-dom "http://127.0.0.1:8765/#w=ek-main-${GITHUB_RUN_ID}-${name}&k=${key}&${hash}&t=release" >"/tmp/${name}.html" 2>"/tmp/${name}.log" || true
             grep -Fq '<div class="app-shell" id="appShell">' "/tmp/${name}.html"
             if grep -Fq 'id="bootText">Ошибка запуска' "/tmp/${name}.html";then echo "Runtime boot failed ${name}";exit 1;fi
           }
@@ -152,7 +157,7 @@ jobs:
           set -euo pipefail
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add growth6-source/team_access_v1.js growth6-source/team_access_v1.css growth6-source/group_access_v1.js growth6-source/management_up_v1.js growth6-source/management_up_v1.css growth6-source/sofa3_merge_v1.js growth6-source/sofa3_merge_v1.css growth6-source/patch_team_access_v1.py growth6-source/v6.5.html growth6-source/SHA256.txt growth-os growth-os-6 growth61-live
+          git add growth6-source/team_access_v1.js growth6-source/team_access_v1.css growth6-source/group_access_v1.js growth6-source/management_up_v1.js growth6-source/management_up_v1.css growth6-source/sofa3_merge_v1.js growth6-source/sofa3_merge_v1_details.js growth6-source/sofa3_merge_v1.css growth6-source/patch_team_access_v1.py growth6-source/v6.5.html growth6-source/SHA256.txt growth-os growth-os-6 growth61-live
           if git diff --cached --quiet;then echo 'Growth OS 6.5 release already current';exit 0;fi
           git commit -m "Publish Growth OS 6.5 unified management system"
           git push
