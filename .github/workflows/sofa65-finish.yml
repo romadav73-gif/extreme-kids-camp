@@ -1,0 +1,72 @@
+name: Finish Sofia cabinet in Growth OS 6.5
+
+on:
+  push:
+    branches:
+      - sofa65-finish
+    paths:
+      - patches/sofa65_finish_block.js
+      - .github/workflows/sofa65-finish.yml
+
+permissions:
+  contents: write
+
+jobs:
+  patch-growth-os:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: sofa65-finish
+          fetch-depth: 0
+
+      - name: Inject Sofia 6.5 finish block
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          index = Path('growth-os/index.html')
+          patch = Path('patches/sofa65_finish_block.js').read_text(encoding='utf-8').strip()
+          text = index.read_text(encoding='utf-8')
+          anchor = '// SOFA3_UNIQUE_DETAILS_V1_END'
+          marker = '// SOFA65_FINISH_V2_START'
+          if marker not in text:
+              if anchor not in text:
+                  raise SystemExit('Anchor not found')
+              text = text.replace(anchor, anchor + '\n\n' + patch, 1)
+              index.write_text(text, encoding='utf-8')
+              print('PATCHED')
+          else:
+              print('ALREADY_PATCHED')
+          PY
+
+      - name: Validate embedded JavaScript
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import re
+          html = Path('growth-os/index.html').read_text(encoding='utf-8')
+          scripts = re.findall(r'<script[^>]*>([\s\S]*?)</script>', html, flags=re.I)
+          if not scripts:
+              raise SystemExit('No script blocks found')
+          Path('/tmp/growth-os-main.js').write_text('\n'.join(scripts), encoding='utf-8')
+          print('scripts:', len(scripts))
+          PY
+          node --check /tmp/growth-os-main.js
+          grep -q 'SOFA65_FINISH_V2_START' growth-os/index.html
+          grep -q "label:'Цифры клуба'" growth-os/index.html
+          grep -q "label:'Мотивация Софы'" growth-os/index.html
+
+      - name: Commit patched Growth OS
+        shell: bash
+        run: |
+          if git diff --quiet -- growth-os/index.html; then
+            echo 'No changes to commit'
+            exit 0
+          fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add growth-os/index.html
+          git commit -m 'Finish Sofia cabinet in Growth OS 6.5'
+          git push origin HEAD:sofa65-finish
