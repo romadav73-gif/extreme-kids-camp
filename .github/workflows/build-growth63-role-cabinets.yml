@@ -105,14 +105,14 @@ jobs:
           grep -Fq '<h4>Подготовить «Арбузные зарубы»</h4>' /tmp/ivan_tasks.html
 
           run_dom tasya_tasks 'r=mentor&p=tasya&v=tasks'
-          grep -Fq 'Только мои' /tmp/tasya_tasks.html
+          grep -Fq 'только мои' /tmp/tasya_tasks.html
           if grep -Fq '<h4>Подготовить «Арбузные зарубы»</h4>' /tmp/tasya_tasks.html; then
             echo 'Tasya can see another employee task'
             exit 1
           fi
 
           run_dom anya_tasks 'r=admin&p=anya&v=tasks'
-          grep -Fq 'Только мои' /tmp/anya_tasks.html
+          grep -Fq 'только мои' /tmp/anya_tasks.html
           grep -Fq '<h4>Вернуть старую клиентскую базу</h4>' /tmp/anya_tasks.html
           if grep -Fq '<h4>Подготовить «Арбузные зарубы»</h4>' /tmp/anya_tasks.html; then
             echo 'Admin can see another employee task'
@@ -155,5 +155,5 @@ jobs:
             echo "--- ${name} chrome ---"
             cat "/tmp/${name}.log" 2>/dev/null || true
             echo "--- ${name} markers ---"
-            grep -E 'pageTitle|bootText|Команда и кабинеты|Только мои|Ваня видит|Арбузные|Фокус личного кабинета' "/tmp/${name}.html" 2>/dev/null | head -80 || true
+            grep -E 'pageTitle|bootText|Команда и кабинеты|только мои|Ваня видит|Арбузные|Фокус личного кабинета' "/tmp/${name}.html" 2>/dev/null | head -80 || true
           done
