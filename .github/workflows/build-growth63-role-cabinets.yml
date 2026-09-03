@@ -89,7 +89,7 @@ jobs:
           run_dom owner_tasks 'r=owner&v=tasks'
           grep -Fq 'Роман видит задачи всей команды' /tmp/owner_tasks.html
           grep -Fq 'Все ответственные' /tmp/owner_tasks.html
-          grep -Fq 'Подготовить «Арбузные зарубы»' /tmp/owner_tasks.html
+          grep -Fq '<h4>Подготовить «Арбузные зарубы»</h4>' /tmp/owner_tasks.html
 
           run_dom manager_tasks 'r=manager&v=tasks'
           grep -Fq 'Софа видит задачи всей команды' /tmp/manager_tasks.html
@@ -102,19 +102,19 @@ jobs:
           run_dom ivan_tasks 'r=mentor&p=ivan&v=tasks'
           grep -Fq 'Ваня видит задачи всей команды' /tmp/ivan_tasks.html
           grep -Fq 'Все ответственные' /tmp/ivan_tasks.html
-          grep -Fq 'Подготовить «Арбузные зарубы»' /tmp/ivan_tasks.html
+          grep -Fq '<h4>Подготовить «Арбузные зарубы»</h4>' /tmp/ivan_tasks.html
 
           run_dom tasya_tasks 'r=mentor&p=tasya&v=tasks'
           grep -Fq 'Только мои' /tmp/tasya_tasks.html
-          if grep -Fq 'Подготовить «Арбузные зарубы»' /tmp/tasya_tasks.html; then
+          if grep -Fq '<h4>Подготовить «Арбузные зарубы»</h4>' /tmp/tasya_tasks.html; then
             echo 'Tasya can see another employee task'
             exit 1
           fi
 
           run_dom anya_tasks 'r=admin&p=anya&v=tasks'
           grep -Fq 'Только мои' /tmp/anya_tasks.html
-          grep -Fq 'Вернуть старую клиентскую базу' /tmp/anya_tasks.html
-          if grep -Fq 'Подготовить «Арбузные зарубы»' /tmp/anya_tasks.html; then
+          grep -Fq '<h4>Вернуть старую клиентскую базу</h4>' /tmp/anya_tasks.html
+          if grep -Fq '<h4>Подготовить «Арбузные зарубы»</h4>' /tmp/anya_tasks.html; then
             echo 'Admin can see another employee task'
             exit 1
           fi
