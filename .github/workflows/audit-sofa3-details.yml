@@ -1,0 +1,87 @@
+name: Audit Sofa 3.0 details
+
+on:
+  push:
+    branches: [audit-sofa3-merge]
+    paths:
+      - .github/workflows/audit-sofa3-details.yml
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  details:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Extract exact details
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 <<'PY'
+          import re, subprocess
+          from pathlib import Path
+          commit='32408ad6b5c6c0af052167a180ebd7fcc8ccd121'
+          sofa=''.join(subprocess.check_output(['git','show',f'{commit}:management-v6/parts/p{i:02d}.txt'],text=True) for i in range(17))
+          growth=Path('growth-os/index.html').read_text(encoding='utf-8')
+
+          def extract_function(text,name):
+              m=re.search(rf'\bfunction\s+{re.escape(name)}\s*\(',text)
+              if not m:return ''
+              start=m.start(); brace=text.find('{',m.end()); depth=0; quote=None; escp=False; i=brace
+              while i<len(text):
+                  c=text[i]
+                  if quote:
+                      if escp:escp=False
+                      elif c=='\\':escp=True
+                      elif c==quote:quote=None
+                  else:
+                      if c in "'\"`":quote=c
+                      elif c=='{':depth+=1
+                      elif c=='}':
+                          depth-=1
+                          if depth==0:return text[start:i+1]
+                  i+=1
+              return text[start:start+15000]
+
+          def extract_const(text,name):
+              m=re.search(rf'\bconst\s+{re.escape(name)}\s*=\s*',text)
+              if not m:return ''
+              start=m.start(); i=m.end(); depth=0; quote=None; escp=False
+              while i<len(text):
+                  c=text[i]
+                  if quote:
+                      if escp:escp=False
+                      elif c=='\\':escp=True
+                      elif c==quote:quote=None
+                  else:
+                      if c in "'\"`":quote=c
+                      elif c in '[{(':depth+=1
+                      elif c in ']})':depth=max(0,depth-1)
+                      elif c==';' and depth==0:return text[start:i+1]
+                  i+=1
+              return text[start:start+25000]
+
+          out=['# Sofa 3.0 exact functional details','',f'Source commit: `{commit}`','']
+          for name in ['CHECK_GROUPS','RHYTHM','METRIC_GROUPS','MEETING_TEMPLATES','PAGES']:
+              out += [f'## CONST `{name}`','```javascript',extract_const(sofa,name),'```','']
+          for name in ['todayPage','numbersPage','rhythmPage','plansPage','reportPage','reportText','meetingsPage','guidePage','archivePage','settingsPage','stats','ensureRecurring','nextRhythm']:
+              body=extract_function(sofa,name)
+              out += [f'## FUNCTION `{name}`',f'- Exact function name already in Growth: {"yes" if ("function "+name+"(") in growth else "no"}','```javascript',body,'```','']
+          Path('audit').mkdir(exist_ok=True)
+          Path('audit/SOFA3_DETAILS.md').write_text('\n'.join(out)+'\n',encoding='utf-8')
+          print('SOFA3_DETAILS.md bytes',Path('audit/SOFA3_DETAILS.md').stat().st_size)
+          PY
+      - name: Commit details
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add audit/SOFA3_DETAILS.md
+          git commit -m "Add Sofa 3.0 exact functional details" || exit 0
+          git push
