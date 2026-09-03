@@ -7,7 +7,7 @@
   <meta name="color-scheme" content="dark">
   <meta name="robots" content="noindex,nofollow">
   <meta name="referrer" content="no-referrer">
-  <title>EXTREME KIDS · Growth OS 6.3 Team Cabinets</title>
+  <title>EXTREME KIDS · Growth OS 6.3.1 Management Groups</title>
   <link rel="icon" href="https://ek-ui2-logo.vercel.app/logo.webp">
   <link rel="manifest" href="manifest.webmanifest">
   <style>
@@ -543,6 +543,7 @@ body{
 @media(max-width:560px){.attendance-week-nav{width:100%;display:grid;grid-template-columns:42px minmax(0,1fr) 42px}.attendance-week-nav>div{min-width:0}.attendance-week-nav .btn{grid-column:1/-1}.attendance-week-actions{display:grid;grid-template-columns:1fr}.attendance-kpis{grid-template-columns:1fr}.attendance-reasons{grid-template-columns:1fr}.attendance-child-row{grid-template-columns:1fr}.attendance-close-preview,.attendance-roster-summary{grid-template-columns:repeat(2,1fr)}.attendance-session{grid-template-columns:1fr auto}.attendance-session-date{grid-column:1}.attendance-session-main{grid-column:1}.attendance-session .table-actions{grid-column:2;grid-row:1/3}.attendance-mini-grid{grid-template-columns:1fr 1fr}}
 /* ATTENDANCE_INTELLIGENCE_V1_END */
 
+
 /* TEAM_CABINETS_ACCESS_V1_START */
 .staff-hero{display:flex;align-items:center;justify-content:space-between;gap:22px;padding:24px 26px;border-radius:23px;background:radial-gradient(circle at 88% 0,rgba(240,199,47,.15),transparent 42%),linear-gradient(145deg,#25200e,#11100c);border:1px solid #5e4a19;box-shadow:var(--shadow)}
 .staff-hero h3{margin:7px 0 5px;font-size:27px;line-height:1.18}.staff-hero p{margin:0;max-width:760px;color:var(--readable-muted,var(--muted));font-size:14px}.staff-hero-actions{display:flex;gap:9px;flex-wrap:wrap;justify-content:flex-end}
@@ -570,7 +571,7 @@ body{
         <span class="boot-ring"></span>
       </div>
       <div class="eyebrow">EXTREME KIDS · ТРОПАРЁВО</div>
-      <h1>Growth OS <span>6.3</span></h1>
+      <h1>Growth OS <span>6.3.1</span></h1>
       <p id="bootText">Подключаем рабочую систему клуба…</p>
       <div class="boot-progress"><i></i></div>
       <button class="btn btn-primary hidden" id="bootRetry">Повторить запуск</button>
@@ -582,7 +583,7 @@ body{
       <div class="brand">
         <img src="https://ek-ui2-logo.vercel.app/logo.webp" alt="EXTREME KIDS" class="brand-logo">
         <div class="brand-copy">
-          <b>GROWTH OS <span>6.3</span></b>
+          <b>GROWTH OS <span>6.3.1</span></b>
           <small>Стратегия клуба · 2026/27</small>
         </div>
       </div>
@@ -1995,6 +1996,106 @@ boot=async function(){
   return result;
 };
 // TEAM_CABINETS_ACCESS_V1_END
+
+// MANAGEMENT_GROUP_ACCESS_V1_START
+const MANAGEMENT_GROUP_ACCESS_BUILD='2026.09.03-management-all-groups';
+
+function canSeeAllGroups(){
+  return currentRole==='owner'||currentRole==='manager'||currentRole==='stas'||isIvanSeniorMentor();
+}
+function personalGroupMentorId(){
+  return currentRole==='mentor'?mentorViewerId():'';
+}
+const __activeGroupsManagementBase=activeGroups;
+function groupScopeList(){
+  const list=__activeGroupsManagementBase();
+  if(canSeeAllGroups())return list;
+  const mentorId=personalGroupMentorId();
+  return mentorId?list.filter(g=>g.mentorId===mentorId):[];
+}
+function groupVisibleToCurrentUser(group){
+  return Boolean(group)&&(canSeeAllGroups()||group.mentorId===personalGroupMentorId());
+}
+function groupAccessDescription(){
+  if(currentRole==='owner')return'Роман видит все активные группы клуба для контроля.';
+  if(currentRole==='manager')return'Софа видит все активные группы клуба для операционного контроля.';
+  if(currentRole==='stas')return'Стас видит все активные группы клуба как руководитель направления.';
+  if(isIvanSeniorMentor())return'Ваня видит все активные группы клуба как старший наставник.';
+  const mentorId=personalGroupMentorId();
+  return mentorId?`В кабинете ${person(mentorId).name} отображаются только его группы.`:'Группы других наставников недоступны.';
+}
+
+const __renderGroupsManagementBase=renderGroups;
+renderGroups=function(){
+  const originalActiveGroups=activeGroups;
+  const previousMentorFilter=state.ui.groupMentor;
+  activeGroups=groupScopeList;
+  if(!canSeeAllGroups())state.ui.groupMentor='all';
+  try{
+    let html=__renderGroupsManagementBase();
+    const note=`<div class="task-access-note"><i></i><div><b>${esc(canSeeAllGroups()?'Контроль всех групп':'Личный доступ к группам')}</b><small>${esc(groupAccessDescription())}</small></div></div>`;
+    html=html.replace('<div class="toolbar">',note+'<div class="toolbar">');
+    return html;
+  }finally{
+    activeGroups=originalActiveGroups;
+    state.ui.groupMentor=previousMentorFilter;
+  }
+};
+
+const __navBadgeManagementGroupsBase=navBadge;
+navBadge=function(view){
+  if(view==='groups')return loadStats(groupScopeList()).free||'';
+  return __navBadgeManagementGroupsBase(view);
+};
+
+const __groupModalManagementBase=groupModal;
+groupModal=function(item=null){
+  if(item&&!groupVisibleToCurrentUser(item)){
+    toast('Эта группа недоступна','В личном кабинете наставника доступны только его группы.','error');
+    return;
+  }
+  __groupModalManagementBase(item);
+  if(canSeeAllGroups()||currentRole!=='mentor')return;
+  const form=$('#groupForm');if(!form)return;
+  const select=form.querySelector('[name="mentorId"]');if(!select)return;
+  const field=select.closest('.field');if(!field)return;
+  const mentorId=personalGroupMentorId(),p=person(mentorId);
+  field.innerHTML=`<label>Наставник</label><div class="task-fixed-owner"><span class="avatar small">${esc(p.avatar||String(p.name||'?')[0])}</span><b>${esc(p.name)}</b></div><input type="hidden" name="mentorId" value="${esc(mentorId)}">`;
+};
+
+const __handleSubmitManagementGroupsBase=handleSubmit;
+handleSubmit=function(e){
+  const form=e.target;
+  if(form instanceof HTMLFormElement&&form.id==='groupForm'&&!canSeeAllGroups()&&currentRole==='mentor'){
+    const mentor=form.querySelector('[name="mentorId"]');
+    if(mentor)mentor.value=personalGroupMentorId();
+  }
+  return __handleSubmitManagementGroupsBase(e);
+};
+
+const __handleClickManagementGroupsBase=handleClick;
+handleClick=function(e){
+  const el=e.target.closest('[data-action]');
+  if(el){
+    const action=el.dataset.action;
+    if((action==='editGroup'||action==='deleteGroup')&&!canSeeAllGroups()&&currentRole==='mentor'){
+      const group=state.groups.find(g=>g.id===el.dataset.id);
+      if(!groupVisibleToCurrentUser(group)){
+        toast('Эта группа недоступна','Наставник может работать только со своими группами.','error');
+        return;
+      }
+    }
+  }
+  return __handleClickManagementGroupsBase(e);
+};
+
+const __bootManagementGroupsBase=boot;
+boot=async function(){
+  const result=await __bootManagementGroupsBase();
+  if(window.EKGrowthOS)window.EKGrowthOS={...window.EKGrowthOS,managementGroupAccessBuild:MANAGEMENT_GROUP_ACCESS_BUILD,canSeeAllGroups:()=>canSeeAllGroups(),visibleGroups:()=>groupScopeList()};
+  return result;
+};
+// MANAGEMENT_GROUP_ACCESS_V1_END
 
 document.addEventListener('click',handleClick);
 document.addEventListener('submit',handleSubmit);

@@ -1,3 +1,3 @@
-EXTREME KIDS Growth OS 6.3 Role Access & Personal Cabinets
-Build: 2026.09.03-role-cabinets
-SHA256: a07e655d822041ae4a5fbdbd4ce4b7f1ad936d510d73a1d32f713e52bb41ef57
+EXTREME KIDS Growth OS 6.3.1 Management Group Access
+Build: 2026.09.03-management-all-groups
+SHA256: 8f2cfe084f9a7b656bcd23c3057135801e0960d17f596bae7106478f3d59bdbe
