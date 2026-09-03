@@ -24,108 +24,110 @@ jobs:
         run: |
           set -euo pipefail
           python3 <<'PY'
-          import re, subprocess, json
+          import re, subprocess
           from pathlib import Path
 
-          repo = Path('.')
           sofa_commit = '32408ad6b5c6c0af052167a180ebd7fcc8ccd121'
-          parts=[]
-          for i in range(17):
-              path=f'management-v6/parts/p{i:02d}.txt'
-              parts.append(subprocess.check_output(['git','show',f'{sofa_commit}:{path}'], text=True))
-          sofa=''.join(parts)
+          sofa=''.join(subprocess.check_output(['git','show',f'{sofa_commit}:management-v6/parts/p{i:02d}.txt'], text=True) for i in range(17))
           growth=Path('growth-os/index.html').read_text(encoding='utf-8')
 
-          def funcs(text):
-              return sorted(set(re.findall(r'\bfunction\s+([A-Za-z_$][\w$]*)\s*\(', text)))
-          sf, gf = funcs(sofa), funcs(growth)
-          unique=[x for x in sf if x not in gf]
+          def funcs(text): return sorted(set(re.findall(r'\bfunction\s+([A-Za-z_$][\w$]*)\s*\(', text)))
+          sf,gf=funcs(sofa),funcs(growth); unique=[x for x in sf if x not in gf]
 
           def navs(text):
               out=[]
-              for m in re.finditer(r"\{\s*(?:id|page)\s*:\s*['\"]([^'\"]+)['\"][^{}]{0,240}?(?:label|title|name)\s*:\s*['\"]([^'\"]+)['\"]", text, re.S):
-                  out.append((m.group(1),m.group(2)))
-              for m in re.finditer(r"data-page=['\"]([^'\"]+)['\"][^>]*>([^<]{1,80})<", text, re.S):
-                  out.append((m.group(1),re.sub(r'\s+',' ',m.group(2)).strip()))
+              for m in re.finditer(r"\{\s*(?:id|page)\s*:\s*['\"]([^'\"]+)['\"][^{}]{0,240}?(?:label|title|name)\s*:\s*['\"]([^'\"]+)['\"]",text,re.S): out.append((m.group(1),m.group(2)))
+              for m in re.finditer(r"data-page=['\"]([^'\"]+)['\"][^>]*>([^<]{1,80})<",text,re.S): out.append((m.group(1),re.sub(r'\s+',' ',m.group(2)).strip()))
               seen=[]
               for x in out:
                   if x not in seen: seen.append(x)
               return seen
 
-          keywords=[
-            'today','report','sales','funnel','lead','trial','renew','client','quality','complaint','incident','audit',
-            'cash','finance','debt','expense','revenue','plan','fact','shift','payroll','salary','motivation',
-            'meeting','document','duty','role','checklist','opening','closing','discipline','review','feedback',
-            'inventory','stock','equipment','clean','safety','conversion','crm','call','message','parent','service',
-            'employee','mentor','admin','manager','schedule','attendance','calendar','task','goal','event','camp'
-          ]
-
-          def snippets(text, word, limit=5, radius=180):
+          def snippets(text,word,limit=5,radius=180):
               res=[]
-              for m in re.finditer(re.escape(word), text, re.I):
-                  a=max(0,m.start()-radius); b=min(len(text),m.end()+radius)
-                  s=re.sub(r'\s+',' ',text[a:b]).strip()
+              for m in re.finditer(re.escape(word),text,re.I):
+                  s=re.sub(r'\s+',' ',text[max(0,m.start()-radius):min(len(text),m.end()+radius)]).strip()
                   if s not in res: res.append(s)
                   if len(res)>=limit: break
               return res
 
-          lines=[]
-          lines.append('# Sofa 3.0 → Growth OS functional gap audit')
-          lines.append('')
-          lines.append(f'- Sofa live source commit: `{sofa_commit}`')
-          lines.append(f'- Current Growth OS title marker: `{re.search(r"<title>(.*?)</title>",growth,re.S).group(1)}`')
-          lines.append(f'- Sofa named functions: **{len(sf)}**')
-          lines.append(f'- Growth named functions: **{len(gf)}**')
-          lines.append(f'- Function names only in Sofa: **{len(unique)}**')
-          lines.append('')
-          lines.append('## Sofa navigation/page candidates')
-          for pid,label in navs(sofa): lines.append(f'- `{pid}` — {label}')
-          lines.append('')
-          lines.append('## Growth navigation/page candidates')
-          for pid,label in navs(growth): lines.append(f'- `{pid}` — {label}')
-          lines.append('')
-          lines.append('## Function names present in Sofa but absent by name in Growth')
-          for x in unique: lines.append(f'- `{x}`')
-          lines.append('')
-          lines.append('## Sofa unique function source openings')
+          keywords=['today','report','sales','funnel','lead','trial','renew','client','quality','complaint','incident','audit','cash','finance','debt','expense','revenue','plan','fact','shift','payroll','salary','motivation','meeting','document','duty','role','checklist','opening','closing','discipline','review','feedback','inventory','stock','equipment','clean','safety','conversion','crm','call','message','parent','service','employee','mentor','admin','manager','schedule','attendance','calendar','task','goal','event','camp']
+
+          lines=['# Sofa 3.0 → Growth OS functional gap audit','',f'- Sofa live source commit: `{sofa_commit}`',f'- Current Growth OS title marker: `{re.search(r"<title>(.*?)</title>",growth,re.S).group(1)}`',f'- Sofa named functions: **{len(sf)}**',f'- Growth named functions: **{len(gf)}**',f'- Function names only in Sofa: **{len(unique)}**','','## Sofa navigation/page candidates']
+          lines += [f'- `{pid}` — {label}' for pid,label in navs(sofa)]
+          lines += ['','## Growth navigation/page candidates']+[f'- `{pid}` — {label}' for pid,label in navs(growth)]
+          lines += ['','## Function names present in Sofa but absent by name in Growth']+[f'- `{x}`' for x in unique]
+          lines += ['','## Sofa unique function source openings']
           for name in unique:
               m=re.search(rf'\bfunction\s+{re.escape(name)}\s*\(',sofa)
-              if not m: continue
-              s=re.sub(r'\s+',' ',sofa[m.start():m.start()+650]).strip()
-              lines.append(f'### `{name}`')
-              lines.append('```text')
-              lines.append(s)
-              lines.append('```')
-          lines.append('')
-          lines.append('## Keyword evidence')
+              if m:
+                  lines += [f'### `{name}`','```text',re.sub(r'\s+',' ',sofa[m.start():m.start()+650]).strip(),'```']
+          lines += ['','## Keyword evidence']
           for word in keywords:
               ss=snippets(sofa,word,4)
-              if not ss: continue
-              lines.append(f'### `{word}` — Growth contains keyword: {"yes" if re.search(re.escape(word),growth,re.I) else "no"}')
-              for s in ss:
-                  lines.append(f'- {s}')
-          lines.append('')
-          lines.append('## Top-level-like state/data keys in Sofa')
-          candidates=sorted(set(re.findall(r'\b(?:state|db|data|S)\.([A-Za-z_$][\w$]*)', sofa)))
-          for k in candidates: lines.append(f'- `{k}`')
-          lines.append('')
-          lines.append('## API routes in Sofa')
-          for route in sorted(set(re.findall(r"['\"](/api[^'\"]*)['\"]",sofa))): lines.append(f'- `{route}`')
-          lines.append('')
-          lines.append('## Local/session storage keys in Sofa')
-          for key in sorted(set(re.findall(r"(?:localStorage|sessionStorage)\.(?:getItem|setItem)\(['\"]([^'\"]+)['\"]",sofa))): lines.append(f'- `{key}`')
-
+              if ss:
+                  lines += [f'### `{word}` — Growth contains keyword: {"yes" if re.search(re.escape(word),growth,re.I) else "no"}']+[f'- {s}' for s in ss]
+          lines += ['','## Top-level-like state/data keys in Sofa']+[f'- `{k}`' for k in sorted(set(re.findall(r'\b(?:state|db|data|S)\.([A-Za-z_$][\w$]*)',sofa)))]
+          lines += ['','## API routes in Sofa']+[f'- `{r}`' for r in sorted(set(re.findall(r"['\"](/api[^'\"]*)['\"]",sofa)))]
           Path('audit').mkdir(exist_ok=True)
           Path('audit/SOFA3_GAP_REPORT.md').write_text('\n'.join(lines)+'\n',encoding='utf-8')
-          print('\n'.join(lines[:140]))
+
+          def extract_function(text,name):
+              m=re.search(rf'\bfunction\s+{re.escape(name)}\s*\(',text)
+              if not m: return ''
+              start=m.start(); brace=text.find('{',m.end())
+              if brace<0:return text[start:start+3000]
+              depth=0; quote=None; escp=False; template=False
+              i=brace
+              while i<len(text):
+                  c=text[i]
+                  if quote:
+                      if escp: escp=False
+                      elif c=='\\': escp=True
+                      elif c==quote: quote=None
+                  else:
+                      if c in "'\"`": quote=c
+                      elif c=='{': depth+=1
+                      elif c=='}':
+                          depth-=1
+                          if depth==0:return text[start:i+1]
+                  i+=1
+              return text[start:start+12000]
+
+          def extract_const(text,name):
+              m=re.search(rf'\bconst\s+{re.escape(name)}\s*=\s*',text)
+              if not m:return ''
+              start=m.start(); i=m.end(); depth=0; quote=None; escp=False
+              while i<len(text):
+                  c=text[i]
+                  if quote:
+                      if escp: escp=False
+                      elif c=='\\': escp=True
+                      elif c==quote: quote=None
+                  else:
+                      if c in "'\"`": quote=c
+                      elif c in '[{(': depth+=1
+                      elif c in ']})': depth=max(0,depth-1)
+                      elif c==';' and depth==0:return text[start:i+1]
+                  i+=1
+              return text[start:start+20000]
+
+          details=['# Sofa 3.0 exact functional details','',f'Source commit: `{sofa_commit}`','']
+          for name in ['CHECK_GROUPS','RHYTHM','METRIC_GROUPS','MEETING_TEMPLATES','PAGES']:
+              details += [f'## CONST `{name}`','```javascript',extract_const(sofa,name),'```','']
+          for name in ['todayPage','numbersPage','rhythmPage','plansPage','reportPage','reportText','meetingsPage','guidePage','archivePage','settingsPage','stats','ensureRecurring','nextRhythm']:
+              body=extract_function(sofa,name)
+              details += [f'## FUNCTION `{name}`',f'- Exact function name already in Growth: {"yes" if re.search(rf"\\bfunction\\s+{re.escape(name)}\\s*\\(",growth) else "no"}','```javascript',body,'```','']
+          Path('audit/SOFA3_DETAILS.md').write_text('\n'.join(details)+'\n',encoding='utf-8')
+          print('reports ready',len(lines),len(details))
           PY
 
-      - name: Commit report
+      - name: Commit reports
         shell: bash
         run: |
           set -euo pipefail
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add audit/SOFA3_GAP_REPORT.md
-          git commit -m "Add Sofa 3.0 functional gap report" || exit 0
+          git add audit/SOFA3_GAP_REPORT.md audit/SOFA3_DETAILS.md
+          git commit -m "Expand Sofa 3.0 functional gap report" || exit 0
           git push
