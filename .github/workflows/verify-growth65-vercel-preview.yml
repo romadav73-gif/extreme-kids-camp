@@ -1,0 +1,31 @@
+name: Verify Growth OS 6.5 Vercel delivery
+
+on:
+  push:
+    branches: [growth65-sofa3-merge]
+    paths:
+      - .github/workflows/verify-growth65-vercel-preview.yml
+  workflow_dispatch:
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - name: Verify immutable release loads through Vercel preview
+        shell: bash
+        run: |
+          set -euo pipefail
+          chrome="$(command -v google-chrome || command -v google-chrome-stable || command -v chromium || command -v chromium-browser || true)"
+          test -n "$chrome"
+          url='https://extreme-kids-roller-control-v6-36hmerl2r.vercel.app/#w=ek-delivery-check&k=0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef&r=owner&v=operations&t=verify'
+          timeout 150s "$chrome" --headless=new --no-sandbox --disable-gpu --disable-dev-shm-usage --ignore-certificate-errors --disable-background-networking --disable-sync --disable-default-apps --disable-extensions --no-first-run --virtual-time-budget=22000 --dump-dom "$url" >/tmp/vercel65.html 2>/tmp/chrome.log || true
+          grep -Fq '<h1 id="pageTitle">Операционный день</h1>' /tmp/vercel65.html
+          grep -Fq 'ОПЕРАЦИОННЫЙ ЦЕНТР' /tmp/vercel65.html
+          grep -Fq 'Три результата дня' /tmp/vercel65.html
+          grep -Fq 'Growth OS <span>6.5</span>' /tmp/vercel65.html
+          if grep -Fq 'Не удалось загрузить Growth OS' /tmp/vercel65.html; then
+            cat /tmp/chrome.log
+            exit 1
+          fi
+          echo 'Vercel preview rendered Growth OS 6.5 successfully.'
