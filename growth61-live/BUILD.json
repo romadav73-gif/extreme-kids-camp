@@ -2,7 +2,7 @@
   "compatibilityVersion": "6.1.0",
   "featureVersion": "6.5-sofa-operations",
   "build": "2026.09.03-sofa3-unique-merge",
-  "sha256": "0ee9fcfcbb96ac95e0174eb0917c5af61cde9b92f413b63509f8e2949480a5b9",
+  "sha256": "8e6b89797b48ed5d29572bf711bf275e9bb4d26ad6a0f30c35a2bbe8439eb3c3",
   "source": "growth-os-6/index.html",
   "features": [
     "task-scope-by-person",
@@ -21,7 +21,9 @@
     "sofa-owner-daily-report",
     "sofa-weekly-result-score",
     "sofa-meeting-templates-history-actions",
+    "sofa-meeting-protocols",
     "sofa-manager-motivation",
+    "sofa-service-standards",
     "daily-operations-archive",
     "owner-managed-mentors",
     "owner-managed-admins",
