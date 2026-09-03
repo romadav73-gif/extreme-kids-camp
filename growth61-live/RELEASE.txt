@@ -1,3 +1,3 @@
 EXTREME KIDS Growth OS 6.3.1 Management Group Access
 Build: 2026.09.03-management-all-groups
-SHA256: 8f2cfe084f9a7b656bcd23c3057135801e0960d17f596bae7106478f3d59bdbe
+SHA256: e2406fa7d5bb8e1a952b51810a237ebdc9c0148c16b51c4b49bb435933d3b9a5

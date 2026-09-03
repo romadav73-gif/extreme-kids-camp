@@ -2,7 +2,7 @@
   "compatibilityVersion": "6.1.0",
   "featureVersion": "6.3.1-management-groups",
   "build": "2026.09.03-management-all-groups",
-  "sha256": "8f2cfe084f9a7b656bcd23c3057135801e0960d17f596bae7106478f3d59bdbe",
+  "sha256": "e2406fa7d5bb8e1a952b51810a237ebdc9c0148c16b51c4b49bb435933d3b9a5",
   "source": "growth-os-6/index.html",
   "features": [
     "task-scope-by-person",
