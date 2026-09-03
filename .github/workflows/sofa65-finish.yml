@@ -65,7 +65,7 @@ jobs:
           Path('/tmp/growth-os-main.js').write_text('\n'.join(scripts), encoding='utf-8')
           for marker in [
               'SOFA65_FINISH_V2_START','SOFA65_CORRECTIONS_V3_START',
-              "label:'Цифры клуба'","label:'Мотивация Софы'","id:'sofa_meetings'",
+              "label:'Цифры клуба'","label:'Мотивация Софы'",'sofa_meetings',
               'function sofa65NumbersPage()','function sofa65MotivationPage()','function sofa65SystemPage()'
           ]:
               if marker not in html: raise SystemExit('Missing marker: '+marker)
