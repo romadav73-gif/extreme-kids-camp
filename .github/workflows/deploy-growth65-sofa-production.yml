@@ -69,7 +69,14 @@ jobs:
 
           run_page () {
             name="$1"; role="$2"; view="$3"
-            timeout 90s "$chrome" "${flags[@]}" --dump-dom "${base}#w=ek65-${GITHUB_RUN_ID}-${name}&k=${key}&r=${role}&v=${view}&t=${GITHUB_RUN_ID}-${name}" >"/tmp/${name}.html" 2>"/tmp/${name}.log" || true
+            timeout 90s "$chrome" "${flags[@]}" --dump-dom "${base}#w=ek65-${GITHUB_RUN_ID}-${name}&k=${key}&r=${role}&v=${view}&t=${GITHUB_RUN_ID}-${name}" >"/tmp/${name}.raw.html" 2>"/tmp/${name}.log" || true
+            python - "/tmp/${name}.raw.html" "/tmp/${name}.html" <<'PY'
+          import re,sys
+          s=open(sys.argv[1],encoding='utf-8').read()
+          s=re.sub(r'<script\b[^>]*>[\s\S]*?</script>','',s,flags=re.I)
+          s=re.sub(r'<style\b[^>]*>[\s\S]*?</style>','',s,flags=re.I)
+          open(sys.argv[2],'w',encoding='utf-8').write(s)
+          PY
             grep -Fq '<div class="app-shell" id="appShell">' "/tmp/${name}.html" || { echo "App failed to boot: ${name}"; tail -80 "/tmp/${name}.log"; exit 1; }
             ! grep -Fq 'id="bootText">Ошибка запуска' "/tmp/${name}.html" || { echo "Boot error: ${name}"; exit 1; }
           }
