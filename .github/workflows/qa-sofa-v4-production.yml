@@ -1,5 +1,6 @@
 name: QA Sofia v4 production
 
+# Production verification for the cleaned Sofia cabinet.
 on:
   push:
     branches: [main]
