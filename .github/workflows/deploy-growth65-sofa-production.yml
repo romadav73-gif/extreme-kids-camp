@@ -101,7 +101,7 @@ jobs:
 
           echo 'QA daily control'
           run_dom manager_control manager operations
-          must /tmp/manager_control.visible.html 'Операционный день' 'operations page'
+          must /tmp/manager_control.visible.html '<h1 id="pageTitle">Контроль дня</h1>' 'operations page title'
           must /tmp/manager_control.visible.html 'Три результата дня' 'daily priorities'
           must /tmp/manager_control.visible.html 'Что дальше' 'next-control block'
           must_not /tmp/manager_control.visible.html '>Итог дня<' 'legacy daily report'
