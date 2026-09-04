@@ -6,6 +6,7 @@ on:
     paths:
       - "growth-os/index.html"
       - "growth-os/sofa-cabinet-v4.patch.js"
+      - "growth-os/sofa-cabinet-v4.1.patch.js"
       - ".github/workflows/deploy-growth65-sofa-production.yml"
   workflow_dispatch:
 
@@ -37,12 +38,14 @@ jobs:
           import re
           base=Path('growth-os/index.html').read_text(encoding='utf-8')
           patch=Path('growth-os/sofa-cabinet-v4.patch.js').read_text(encoding='utf-8')
+          patch_fix=Path('growth-os/sofa-cabinet-v4.1.patch.js').read_text(encoding='utf-8')
           marker="document.addEventListener('click',handleClick);"
           assert base.count(marker)==1, base.count(marker)
           assert 'SOFA65_FINISH_V2_START' in base
           assert 'SOFA65_CORRECTIONS_V3_START' in base
           assert 'SOFA65_CLEANUP_V4_START' in patch
-          html=base.replace(marker,patch+'\n'+marker)
+          assert 'SOFA65_CLEANUP_V4_1_START' in patch_fix
+          html=base.replace(marker,patch+'\n'+patch_fix+'\n'+marker)
           Path('/tmp/index.html').write_text(html,encoding='utf-8')
           scripts=re.findall(r'<script[^>]*>([\s\S]*?)</script>',html,flags=re.I)
           Path('/tmp/growth65-v4.js').write_text('\n'.join(scripts),encoding='utf-8')
@@ -203,7 +206,7 @@ jobs:
           set -euo pipefail
           ok=0
           for attempt in $(seq 1 60); do
-            if curl -sSfL -H 'Cache-Control: no-cache' "${PROD_URL}/?release=${GITHUB_SHA}-${attempt}" -o /tmp/prod.html && grep -Fq 'SOFA65_CLEANUP_V4_START' /tmp/prod.html; then ok=1; break; fi
+            if curl -sSfL -H 'Cache-Control: no-cache' "${PROD_URL}/?release=${GITHUB_SHA}-${attempt}" -o /tmp/prod.html && grep -Fq 'SOFA65_CLEANUP_V4_START' /tmp/prod.html && grep -Fq 'SOFA65_CLEANUP_V4_1_START' /tmp/prod.html; then ok=1; break; fi
             sleep 5
           done
           test "$ok" = 1
