@@ -1,0 +1,124 @@
+name: QA Sofia v4 production
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/qa-sofa-v4-production.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: qa-sofa-v4-production
+  cancel-in-progress: true
+
+jobs:
+  production-qa:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      PROD_URL: https://extreme-kids-roller-control-v6.vercel.app
+    steps:
+      - name: Verify production loader
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl -fsSL -H 'Cache-Control: no-cache' "${PROD_URL}/?qa=${GITHUB_RUN_ID}" -o /tmp/loader.html
+          grep -Fq "a9b0083cd770fc114cc69530e6ac2b324bf70b98" /tmp/loader.html
+          grep -Fq "sofa-cabinet-v4.patch.js" /tmp/loader.html
+          grep -Fq "sofa-cabinet-v4.1.patch.js" /tmp/loader.html
+
+      - name: Browser QA all Sofia production tabs and cloud synchronization
+        shell: bash
+        run: |
+          set -euo pipefail
+          chrome="$(command -v google-chrome || command -v google-chrome-stable || command -v chromium || command -v chromium-browser || true)"
+          test -n "$chrome"
+          key='fedcba9876543210fedcba9876543210fedcba9876543210fedcba9876543210'
+          flags=(--headless=new --no-sandbox --disable-gpu --disable-dev-shm-usage --ignore-certificate-errors --disable-sync --disable-default-apps --disable-extensions --no-first-run --metrics-recording-only --virtual-time-budget=12000 --window-size=1440,1200)
+
+          clean_visible () {
+            python - "$1" "$2" <<'PY'
+          import re,sys
+          s=open(sys.argv[1],encoding='utf-8').read()
+          s=re.sub(r'<script\b[^>]*>[\s\S]*?</script>','',s,flags=re.I)
+          s=re.sub(r'<style\b[^>]*>[\s\S]*?</style>','',s,flags=re.I)
+          open(sys.argv[2],'w',encoding='utf-8').write(s)
+          PY
+          }
+          run_dom () {
+            name="$1"; role="$2"; view="$3"; extra="${4:-}"
+            workspace="ek65-prod-v4-${GITHUB_RUN_ID}-${name}"
+            timeout 120s "$chrome" "${flags[@]}" --dump-dom "${PROD_URL}/?run=${GITHUB_RUN_ID}-${name}#w=${workspace}&k=${key}&r=${role}&v=${view}&t=prod-${GITHUB_RUN_ID}-${name}${extra}" >"/tmp/${name}.html" 2>"/tmp/${name}.log" || true
+            clean_visible "/tmp/${name}.html" "/tmp/${name}.visible.html"
+            if ! grep -Fq '<div class="app-shell" id="appShell">' "/tmp/${name}.visible.html"; then
+              echo "FAIL ${name}: app did not boot"; tail -120 "/tmp/${name}.log"; exit 1
+            fi
+            if grep -Fq 'id="bootText">Ошибка запуска' "/tmp/${name}.visible.html"; then
+              echo "FAIL ${name}: boot error"; tail -120 "/tmp/${name}.log"; exit 1
+            fi
+          }
+          must () { grep -Fq "$2" "$1" || { echo "FAIL: $3"; grep -o '<h1 id="pageTitle">[^<]*</h1>' "$1" || true; exit 1; }; }
+          must_not () { if grep -Fq "$2" "$1"; then echo "FAIL: $3 ($2)"; exit 1; fi; }
+
+          echo 'PROD QA: home + real cloud roundtrip'
+          run_dom home manager manager '&qaSync=1'
+          must /tmp/home.visible.html '<h1 id="pageTitle">Главная Софы</h1>' 'home title'
+          must /tmp/home.visible.html 'Три результата сегодня' 'action-first home'
+          must /tmp/home.html 'data-sofa-sync-selftest="ok"' 'field-safe conflict merge'
+          must /tmp/home.html 'data-sofa-cloud-selftest="ok"' 'real cloud push/fetch roundtrip'
+          for x in 'Собрание УП' 'ЗП и мотивация' 'Аналитика и прогноз' 'Учебный год' 'План развития'; do must_not /tmp/home.visible.html "$x" 'duplicate Sofia navigation'; done
+
+          echo 'PROD QA: control'
+          run_dom control manager operations
+          must /tmp/control.visible.html '<h1 id="pageTitle">Контроль дня</h1>' 'control title'
+          must /tmp/control.visible.html 'Три результата дня' 'daily results'
+          must /tmp/control.visible.html 'Что дальше' 'next-control block'
+          must_not /tmp/control.visible.html 'Отчёт Роману' 'removed daily report'
+          must_not /tmp/control.visible.html '>Итог дня<' 'removed day close report'
+          must_not /tmp/control.visible.html 'Цифры дня' 'removed duplicate daily metrics tab'
+
+          echo 'PROD QA: numbers'
+          run_dom numbers manager sofa_numbers
+          must /tmp/numbers.visible.html '<h1 id="pageTitle">Цифры клуба</h1>' 'numbers title'
+          must /tmp/numbers.visible.html '8 полей' 'compact numbers form'
+
+          echo 'PROD QA: meetings'
+          run_dom meetings manager sofa_meetings
+          must /tmp/meetings.visible.html '<h1 id="pageTitle">Собрания</h1>' 'meetings title'
+          must /tmp/meetings.html 'id="sofa3MeetingForm"' 'meeting form'
+
+          echo 'PROD QA: motivation permissions'
+          run_dom motivation manager sofa_motivation
+          must /tmp/motivation.visible.html '<h1 id="pageTitle">Мотивация Софы</h1>' 'motivation title'
+          must_not /tmp/motivation.visible.html 'data-action="sofa3ToggleKpi"' 'Sofia cannot edit own KPI'
+          must_not /tmp/motivation.visible.html 'data-action="sofa3LockSalary"' 'Sofia cannot lock own salary'
+
+          echo 'PROD QA: management system'
+          run_dom system manager sofa_system
+          must /tmp/system.visible.html '<h1 id="pageTitle">Система управляющей</h1>' 'system title'
+          must /tmp/system.visible.html 'Что делать, если' 'decision playbooks'
+          must /tmp/system.visible.html 'Травма / угроза безопасности' 'injury playbook'
+          must /tmp/system.visible.html 'Расхождение кассы / денег' 'cash playbook'
+
+          echo 'PROD QA: shared operational pages'
+          run_dom tasks manager tasks
+          run_dom groups manager groups
+          must /tmp/groups.visible.html 'Группы' 'groups access'
+
+          echo 'PROD QA: stale duplicate routes'
+          run_dom stale_analytics manager analytics
+          must /tmp/stale_analytics.visible.html '<h1 id="pageTitle">Главная Софы</h1>' 'analytics fallback'
+          run_dom stale_payroll manager payroll
+          must /tmp/stale_payroll.visible.html '<h1 id="pageTitle">Мотивация Софы</h1>' 'payroll fallback'
+          run_dom stale_meeting manager meeting
+          must /tmp/stale_meeting.visible.html '<h1 id="pageTitle">Собрания</h1>' 'meeting fallback'
+
+          echo 'PROD QA: owner-only motivation controls'
+          run_dom owner_motivation owner sofa_motivation
+          must /tmp/owner_motivation.visible.html 'data-action="sofa3ToggleKpi"' 'Roman KPI control'
+          must /tmp/owner_motivation.visible.html 'data-action="sofa3LockSalary"' 'Roman salary lock'
+
+          echo 'SOFA_V4_PRODUCTION_QA_OK'
