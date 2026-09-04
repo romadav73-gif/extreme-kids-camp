@@ -62,7 +62,7 @@ jobs:
           grep -Fq "sofa65V4CloudRoundtrip" /tmp/index.html
           grep -Fq "hideManager('Работа',['analytics','archive','payroll'])" /tmp/index.html
 
-      - name: Browser QA all Sofia tabs and synchronization
+      - name: Browser QA all Sofia tabs and field-safe merge
         shell: bash
         run: |
           set -euo pipefail
@@ -74,11 +74,11 @@ jobs:
           sleep 1
           key='0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef'
           base="http://127.0.0.1:8765/index.html"
-          flags=(--headless=new --no-sandbox --disable-gpu --disable-dev-shm-usage --ignore-certificate-errors --disable-sync --disable-default-apps --disable-extensions --no-first-run --metrics-recording-only --virtual-time-budget=14000 --window-size=1440,1200)
+          flags=(--headless=new --no-sandbox --disable-gpu --disable-dev-shm-usage --ignore-certificate-errors --disable-sync --disable-default-apps --disable-extensions --no-first-run --metrics-recording-only --virtual-time-budget=9000 --window-size=1440,1200)
           run_dom () {
-            local name="$1" role="$2" view="$3" extra="${4:-}"
+            local name="$1" role="$2" view="$3"
             local workspace="ek65-v4-${GITHUB_RUN_ID}-${name}"
-            timeout 130s "$chrome" "${flags[@]}" --dump-dom "${base}#w=${workspace}&k=${key}&r=${role}&v=${view}&t=${GITHUB_RUN_ID}-${name}${extra}" >"/tmp/${name}.html" 2>"/tmp/${name}.log" || true
+            timeout 100s "$chrome" "${flags[@]}" --dump-dom "${base}#w=${workspace}&k=${key}&r=${role}&v=${view}&t=${GITHUB_RUN_ID}-${name}" >"/tmp/${name}.html" 2>"/tmp/${name}.log" || true
             python - "/tmp/${name}.html" "/tmp/${name}.visible.html" <<'PY'
           import re,sys
           s=open(sys.argv[1],encoding='utf-8').read()
@@ -86,51 +86,59 @@ jobs:
           s=re.sub(r'<style\b[^>]*>[\s\S]*?</style>','',s,flags=re.I)
           open(sys.argv[2],'w',encoding='utf-8').write(s)
           PY
-            grep -Fq '<div class="app-shell" id="appShell">' "/tmp/${name}.visible.html"
+            grep -Fq '<div class="app-shell" id="appShell">' "/tmp/${name}.visible.html" || { echo "App shell missing: $name"; tail -80 "/tmp/${name}.log"; exit 1; }
             if grep -Fq 'id="bootText">Ошибка запуска' "/tmp/${name}.visible.html"; then cat "/tmp/${name}.log"; exit 1; fi
           }
 
-          run_dom manager_home manager manager '&qaSync=1'
+          echo 'QA: manager home'
+          run_dom manager_home manager manager
           grep -Fq '<h1 id="pageTitle">Главная Софы</h1>' /tmp/manager_home.visible.html
           grep -Fq 'data-sofa-sync-selftest="ok"' /tmp/manager_home.html
-          grep -Fq 'data-sofa-cloud-selftest="ok"' /tmp/manager_home.html
           grep -Fq 'Три результата сегодня' /tmp/manager_home.visible.html
-          grep -Fq 'Общая база' /tmp/manager_home.visible.html
+          grep -Fq 'общая база' /tmp/manager_home.visible.html
           for forbidden in 'Собрание УП' 'ЗП и мотивация' 'Аналитика и прогноз' 'Учебный год' 'План развития'; do
             if grep -Fq "$forbidden" /tmp/manager_home.visible.html; then echo "Unexpected duplicate manager navigation: $forbidden"; exit 1; fi
           done
 
+          echo 'QA: daily control'
           run_dom manager_control manager operations
           grep -Fq 'Операционный день' /tmp/manager_control.visible.html
           grep -Fq 'Три результата дня' /tmp/manager_control.visible.html
           grep -Fq 'Что дальше' /tmp/manager_control.visible.html
           if grep -Fq '>Итог дня<' /tmp/manager_control.visible.html || grep -Fq 'Отчёт Роману' /tmp/manager_control.visible.html || grep -Fq 'Цифры дня' /tmp/manager_control.visible.html; then echo 'Legacy daily report/metrics are visible'; exit 1; fi
 
+          echo 'QA: numbers'
           run_dom manager_numbers manager sofa_numbers
           grep -Fq '<h1 id="pageTitle">Цифры клуба</h1>' /tmp/manager_numbers.visible.html
           grep -Fq '8 полей' /tmp/manager_numbers.visible.html
 
+          echo 'QA: meetings'
           run_dom manager_meetings manager sofa_meetings
           grep -Fq '<h1 id="pageTitle">Собрания</h1>' /tmp/manager_meetings.visible.html
           grep -Fq 'id="sofa3MeetingForm"' /tmp/manager_meetings.html
 
+          echo 'QA: motivation permissions'
           run_dom manager_motivation manager sofa_motivation
           grep -Fq '<h1 id="pageTitle">Мотивация Софы</h1>' /tmp/manager_motivation.visible.html
           if grep -Fq 'data-action="sofa3ToggleKpi"' /tmp/manager_motivation.visible.html; then echo 'Sofia can edit own KPI'; exit 1; fi
 
+          echo 'QA: manager system'
           run_dom manager_system manager sofa_system
           grep -Fq '<h1 id="pageTitle">Система управляющей</h1>' /tmp/manager_system.visible.html
           grep -Fq 'Что делать, если' /tmp/manager_system.visible.html
           grep -Fq 'Травма / угроза безопасности' /tmp/manager_system.visible.html
           grep -Fq 'Расхождение кассы / денег' /tmp/manager_system.visible.html
 
+          echo 'QA: shared operational pages'
           run_dom manager_tasks manager tasks
           run_dom manager_groups manager groups
           grep -Fq 'Группы' /tmp/manager_groups.visible.html
 
+          echo 'QA: hidden duplicate analytics'
           run_dom manager_hidden_analytics manager analytics
           grep -Fq '<h1 id="pageTitle">Главная Софы</h1>' /tmp/manager_hidden_analytics.visible.html
 
+          echo 'QA: owner permissions'
           run_dom owner_motivation owner sofa_motivation
           grep -Fq 'data-action="sofa3ToggleKpi"' /tmp/owner_motivation.visible.html
           grep -Fq 'data-action="sofa3LockSalary"' /tmp/owner_motivation.visible.html
@@ -209,7 +217,7 @@ jobs:
           done
           test "$ready" = 1
 
-      - name: Verify stable production and sync
+      - name: Verify stable production and cloud sync roundtrip
         if: github.ref == 'refs/heads/main'
         shell: bash
         run: |
@@ -225,9 +233,9 @@ jobs:
           chrome="$(command -v google-chrome || command -v google-chrome-stable || command -v chromium || command -v chromium-browser || true)"
           test -n "$chrome"
           key='fedcba9876543210fedcba9876543210fedcba9876543210fedcba9876543210'
-          timeout 130s "$chrome" --headless=new --no-sandbox --disable-gpu --disable-dev-shm-usage --disable-sync --disable-extensions --no-first-run --virtual-time-budget=15000 --dump-dom "${PROD_URL}/?qa=${GITHUB_SHA}#w=ek65-prod-v4-${GITHUB_RUN_ID}&k=${key}&r=manager&v=manager&t=prod-${GITHUB_RUN_ID}&qaSync=1" >/tmp/prod-dom.html 2>/tmp/prod-chrome.log || true
-          grep -Fq 'data-sofa-sync-selftest="ok"' /tmp/prod-dom.html
-          grep -Fq 'data-sofa-cloud-selftest="ok"' /tmp/prod-dom.html
+          timeout 150s "$chrome" --headless=new --no-sandbox --disable-gpu --disable-dev-shm-usage --disable-sync --disable-extensions --no-first-run --virtual-time-budget=15000 --dump-dom "${PROD_URL}/?qa=${GITHUB_SHA}#w=ek65-prod-v4-${GITHUB_RUN_ID}&k=${key}&r=manager&v=manager&t=prod-${GITHUB_RUN_ID}&qaSync=1" >/tmp/prod-dom.html 2>/tmp/prod-chrome.log || true
+          grep -Fq 'data-sofa-sync-selftest="ok"' /tmp/prod-dom.html || { echo 'Field merge selftest failed'; tail -100 /tmp/prod-chrome.log; exit 1; }
+          grep -Fq 'data-sofa-cloud-selftest="ok"' /tmp/prod-dom.html || { echo 'Cloud sync roundtrip failed'; tail -100 /tmp/prod-chrome.log; exit 1; }
           grep -Fq '<h1 id="pageTitle">Главная Софы</h1>' /tmp/prod-dom.html
           if grep -Fq 'id="bootText">Ошибка запуска' /tmp/prod-dom.html; then cat /tmp/prod-chrome.log; exit 1; fi
           echo 'SOFA_V4_PRODUCTION_QA_OK'
