@@ -1,10 +1,13 @@
-name: Deploy Growth OS 6.5 Sofia to production
+name: Validate and deploy Growth OS 6.5 Sofia v4
 
 on:
   push:
     branches:
       - main
+      - feat/sofa-cabinet-v4
     paths:
+      - "growth-os/index.html"
+      - "growth-os/sofa-cabinet-v4.patch.js"
       - ".github/workflows/deploy-growth65-sofa-production.yml"
   workflow_dispatch:
 
@@ -12,13 +15,13 @@ permissions:
   contents: read
 
 concurrency:
-  group: growth65-sofa-production
+  group: growth65-sofa-v4-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
-  deploy:
+  validate-and-deploy:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 25
     env:
       PROD_URL: https://extreme-kids-roller-control-v6.vercel.app
       PROJECT_NAME: extreme-kids-roller-control-v6
@@ -29,48 +32,129 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Validate Growth OS 6.5 source
+      - name: Build patched Growth OS 6.5
         shell: bash
         run: |
           set -euo pipefail
           test -s growth-os/index.html
-          grep -Fq "Growth OS 6.5" growth-os/index.html
-          grep -Fq "SOFA3_UNIQUE_MERGE_V1_START" growth-os/index.html
+          test -s growth-os/sofa-cabinet-v4.patch.js
           grep -Fq "SOFA65_FINISH_V2_START" growth-os/index.html
           grep -Fq "SOFA65_CORRECTIONS_V3_START" growth-os/index.html
-          grep -Fq "label:'Цифры клуба'" growth-os/index.html
-          grep -Fq "label:'Мотивация Софы'" growth-os/index.html
-          grep -Fq "sofa_meetings" growth-os/index.html
+          grep -Fq "SOFA65_CLEANUP_V4_START" growth-os/sofa-cabinet-v4.patch.js
           python - <<'PY'
           from pathlib import Path
           import re
-          html=Path('growth-os/index.html').read_text(encoding='utf-8')
+          base=Path('growth-os/index.html').read_text(encoding='utf-8')
+          patch=Path('growth-os/sofa-cabinet-v4.patch.js').read_text(encoding='utf-8')
+          marker="document.addEventListener('click',handleClick);"
+          if base.count(marker)!=1:
+              raise SystemExit(f'Expected one final click-listener marker, found {base.count(marker)}')
+          if 'SOFA65_CLEANUP_V4_START' in base:
+              raise SystemExit('V4 patch is already embedded in the base source')
+          html=base.replace(marker,patch+'\n'+marker)
+          Path('/tmp/index.html').write_text(html,encoding='utf-8')
           scripts=re.findall(r'<script[^>]*>([\s\S]*?)</script>',html,flags=re.I)
-          Path('/tmp/growth65.js').write_text('\n'.join(scripts),encoding='utf-8')
+          Path('/tmp/growth65-v4.js').write_text('\n'.join(scripts),encoding='utf-8')
+          print('patched html bytes',len(html.encode('utf-8')))
           PY
-          node --check /tmp/growth65.js
+          node --check /tmp/growth65-v4.js
+          grep -Fq "SOFA65_CLEANUP_V4_START" /tmp/index.html
+          grep -Fq "sofa65V4CloudRoundtrip" /tmp/index.html
+          grep -Fq "hideManager('Работа',['analytics','archive','payroll'])" /tmp/index.html
 
-      - name: Prepare production bundle
+      - name: Browser QA all Sofia tabs and synchronization
         shell: bash
         run: |
           set -euo pipefail
-          cp growth-os/index.html /tmp/index.html
+          chrome="$(command -v google-chrome || command -v google-chrome-stable || command -v chromium || command -v chromium-browser || true)"
+          test -n "$chrome"
+          python3 -m http.server 8765 --directory /tmp >/tmp/sofa-v4-http.log 2>&1 &
+          server_pid=$!
+          trap 'kill $server_pid 2>/dev/null || true' EXIT
+          sleep 1
+          key='0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef'
+          base="http://127.0.0.1:8765/index.html"
+          flags=(--headless=new --no-sandbox --disable-gpu --disable-dev-shm-usage --ignore-certificate-errors --disable-sync --disable-default-apps --disable-extensions --no-first-run --metrics-recording-only --virtual-time-budget=14000 --window-size=1440,1200)
+          run_dom () {
+            local name="$1" role="$2" view="$3" extra="${4:-}"
+            local workspace="ek65-v4-${GITHUB_RUN_ID}-${name}"
+            timeout 130s "$chrome" "${flags[@]}" --dump-dom "${base}#w=${workspace}&k=${key}&r=${role}&v=${view}&t=${GITHUB_RUN_ID}-${name}${extra}" >"/tmp/${name}.html" 2>"/tmp/${name}.log" || true
+            python - "/tmp/${name}.html" "/tmp/${name}.visible.html" <<'PY'
+          import re,sys
+          s=open(sys.argv[1],encoding='utf-8').read()
+          s=re.sub(r'<script\b[^>]*>[\s\S]*?</script>','',s,flags=re.I)
+          s=re.sub(r'<style\b[^>]*>[\s\S]*?</style>','',s,flags=re.I)
+          open(sys.argv[2],'w',encoding='utf-8').write(s)
+          PY
+            grep -Fq '<div class="app-shell" id="appShell">' "/tmp/${name}.visible.html"
+            if grep -Fq 'id="bootText">Ошибка запуска' "/tmp/${name}.visible.html"; then cat "/tmp/${name}.log"; exit 1; fi
+          }
+
+          run_dom manager_home manager manager '&qaSync=1'
+          grep -Fq '<h1 id="pageTitle">Главная Софы</h1>' /tmp/manager_home.visible.html
+          grep -Fq 'data-sofa-sync-selftest="ok"' /tmp/manager_home.html
+          grep -Fq 'data-sofa-cloud-selftest="ok"' /tmp/manager_home.html
+          grep -Fq 'Три результата сегодня' /tmp/manager_home.visible.html
+          grep -Fq 'Общая база' /tmp/manager_home.visible.html
+          for forbidden in 'Собрание УП' 'ЗП и мотивация' 'Аналитика и прогноз' 'Учебный год' 'План развития'; do
+            if grep -Fq "$forbidden" /tmp/manager_home.visible.html; then echo "Unexpected duplicate manager navigation: $forbidden"; exit 1; fi
+          done
+
+          run_dom manager_control manager operations
+          grep -Fq 'Операционный день' /tmp/manager_control.visible.html
+          grep -Fq 'Три результата дня' /tmp/manager_control.visible.html
+          grep -Fq 'Что дальше' /tmp/manager_control.visible.html
+          if grep -Fq '>Итог дня<' /tmp/manager_control.visible.html || grep -Fq 'Отчёт Роману' /tmp/manager_control.visible.html || grep -Fq 'Цифры дня' /tmp/manager_control.visible.html; then echo 'Legacy daily report/metrics are visible'; exit 1; fi
+
+          run_dom manager_numbers manager sofa_numbers
+          grep -Fq '<h1 id="pageTitle">Цифры клуба</h1>' /tmp/manager_numbers.visible.html
+          grep -Fq '8 полей' /tmp/manager_numbers.visible.html
+
+          run_dom manager_meetings manager sofa_meetings
+          grep -Fq '<h1 id="pageTitle">Собрания</h1>' /tmp/manager_meetings.visible.html
+          grep -Fq 'id="sofa3MeetingForm"' /tmp/manager_meetings.html
+
+          run_dom manager_motivation manager sofa_motivation
+          grep -Fq '<h1 id="pageTitle">Мотивация Софы</h1>' /tmp/manager_motivation.visible.html
+          if grep -Fq 'data-action="sofa3ToggleKpi"' /tmp/manager_motivation.visible.html; then echo 'Sofia can edit own KPI'; exit 1; fi
+
+          run_dom manager_system manager sofa_system
+          grep -Fq '<h1 id="pageTitle">Система управляющей</h1>' /tmp/manager_system.visible.html
+          grep -Fq 'Что делать, если' /tmp/manager_system.visible.html
+          grep -Fq 'Травма / угроза безопасности' /tmp/manager_system.visible.html
+          grep -Fq 'Расхождение кассы / денег' /tmp/manager_system.visible.html
+
+          run_dom manager_tasks manager tasks
+          run_dom manager_groups manager groups
+          grep -Fq 'Группы' /tmp/manager_groups.visible.html
+
+          run_dom manager_hidden_analytics manager analytics
+          grep -Fq '<h1 id="pageTitle">Главная Софы</h1>' /tmp/manager_hidden_analytics.visible.html
+
+          run_dom owner_motivation owner sofa_motivation
+          grep -Fq 'data-action="sofa3ToggleKpi"' /tmp/owner_motivation.visible.html
+          grep -Fq 'data-action="sofa3LockSalary"' /tmp/owner_motivation.visible.html
+          echo 'SOFA_V4_BROWSER_QA_OK'
+
+      - name: Prepare Vercel bundle
+        if: github.ref == 'refs/heads/main'
+        shell: bash
+        run: |
+          set -euo pipefail
           cat > /tmp/vercel.json <<'JSON'
           {
             "headers": [
-              {
-                "source": "/(.*)",
-                "headers": [
-                  {"key": "Cache-Control", "value": "public, max-age=0, must-revalidate"},
-                  {"key": "X-Robots-Tag", "value": "noindex, nofollow"},
-                  {"key": "Referrer-Policy", "value": "no-referrer"}
-                ]
-              }
+              {"source":"/(.*)","headers":[
+                {"key":"Cache-Control","value":"public, max-age=0, must-revalidate"},
+                {"key":"X-Robots-Tag","value":"noindex, nofollow"},
+                {"key":"Referrer-Policy","value":"no-referrer"}
+              ]}
             ]
           }
           JSON
 
       - name: Resolve Vercel credentials
+        if: github.ref == 'refs/heads/main'
         shell: bash
         env:
           TOKEN_PRIMARY: ${{ secrets.VERCEL_TOKEN }}
@@ -82,10 +166,7 @@ jobs:
         run: |
           set -euo pipefail
           TOKEN="${TOKEN_PRIMARY:-${TOKEN_ACCESS:-${TOKEN_API:-}}}"
-          if [ -z "$TOKEN" ]; then
-            echo "::error::Vercel token is not configured in GitHub Actions secrets"
-            exit 1
-          fi
+          test -n "$TOKEN" || { echo '::error::Vercel token is not configured'; exit 1; }
           TEAM_ID="${TEAM_SECRET:-${ORG_SECRET:-$DEFAULT_TEAM_ID}}"
           PROJECT_ID="${PROJECT_SECRET:-$DEFAULT_PROJECT_ID}"
           echo "::add-mask::$TOKEN"
@@ -93,137 +174,60 @@ jobs:
           echo "VERCEL_TEAM_ID=$TEAM_ID" >> "$GITHUB_ENV"
           echo "VERCEL_PROJECT_ID=$PROJECT_ID" >> "$GITHUB_ENV"
 
-      - name: Build Vercel deployment payload
+      - name: Deploy Sofia v4 to production
+        if: github.ref == 'refs/heads/main'
         shell: bash
         run: |
           set -euo pipefail
           python - <<'PY'
           from pathlib import Path
           import base64,json,os
-          def inline(path,deploy_path):
-              return {"file":deploy_path,"data":base64.b64encode(Path(path).read_bytes()).decode('ascii'),"encoding":"base64"}
+          def inline(path,name):
+              return {'file':name,'data':base64.b64encode(Path(path).read_bytes()).decode(),'encoding':'base64'}
           payload={
-              "name":os.environ["PROJECT_NAME"],
-              "project":os.environ["VERCEL_PROJECT_ID"],
-              "target":"production",
-              "files":[inline('/tmp/index.html','index.html'),inline('/tmp/vercel.json','vercel.json')],
-              "meta":{"release":"growth-os-6.5-sofia-finished","githubSha":os.environ.get('GITHUB_SHA','')},
-              "gitMetadata":{
-                  "remoteUrl":"https://github.com/romadav73-gif/extreme-kids-camp",
-                  "commitRef":os.environ.get('GITHUB_REF_NAME','main'),
-                  "commitSha":os.environ.get('GITHUB_SHA',''),
-                  "commitMessage":"Deploy finished Sofia cabinet in Growth OS 6.5",
-                  "ci":True,
-                  "ciType":"github-actions"
-              },
-              "projectSettings":{"framework":None,"skipGitConnectDuringLink":True}
+            'name':os.environ['PROJECT_NAME'],'project':os.environ['VERCEL_PROJECT_ID'],'target':'production',
+            'files':[inline('/tmp/index.html','index.html'),inline('/tmp/vercel.json','vercel.json')],
+            'meta':{'release':'growth-os-6.5-sofia-v4','githubSha':os.environ.get('GITHUB_SHA','')},
+            'gitMetadata':{'remoteUrl':'https://github.com/romadav73-gif/extreme-kids-camp','commitRef':'main','commitSha':os.environ.get('GITHUB_SHA',''),'commitMessage':'Deploy cleaned Sofia cabinet v4','ci':True,'ciType':'github-actions'},
+            'projectSettings':{'framework':None,'skipGitConnectDuringLink':True}
           }
-          Path('/tmp/deployment-payload.json').write_text(json.dumps(payload,ensure_ascii=False,separators=(',',':')),encoding='utf-8')
-          print('payload bytes',Path('/tmp/deployment-payload.json').stat().st_size)
+          Path('/tmp/deployment-payload.json').write_text(json.dumps(payload,separators=(',',':')),encoding='utf-8')
           PY
-
-      - name: Create production deployment
-        shell: bash
-        run: |
-          set -euo pipefail
-          ENDPOINT="https://api.vercel.com/v13/deployments?forceNew=1&skipAutoDetectionConfirmation=1&teamId=${VERCEL_TEAM_ID}"
-          HTTP_CODE=$(curl --silent --show-error --output /tmp/deployment-response.json --write-out '%{http_code}' --request POST "$ENDPOINT" --header "Authorization: Bearer ${VERCEL_TOKEN}" --header "Content-Type: application/json" --data-binary @/tmp/deployment-payload.json)
-          if [[ ! "$HTTP_CODE" =~ ^2 ]]; then
-            echo "::error::Vercel deployment request failed with HTTP $HTTP_CODE"
-            cat /tmp/deployment-response.json
-            exit 1
-          fi
-          DEPLOYMENT_ID=$(python - <<'PY'
-          import json
-          body=json.load(open('/tmp/deployment-response.json',encoding='utf-8'))
-          print(body.get('id') or '')
-          PY
-          )
-          DEPLOYMENT_URL=$(python - <<'PY'
-          import json
-          body=json.load(open('/tmp/deployment-response.json',encoding='utf-8'))
-          print(body.get('url') or '')
-          PY
-          )
+          endpoint="https://api.vercel.com/v13/deployments?forceNew=1&skipAutoDetectionConfirmation=1&teamId=${VERCEL_TEAM_ID}"
+          code=$(curl -sS -o /tmp/deployment-response.json -w '%{http_code}' -X POST "$endpoint" -H "Authorization: Bearer ${VERCEL_TOKEN}" -H 'Content-Type: application/json' --data-binary @/tmp/deployment-payload.json)
+          [[ "$code" =~ ^2 ]] || { cat /tmp/deployment-response.json; exit 1; }
+          DEPLOYMENT_ID=$(python -c "import json;print(json.load(open('/tmp/deployment-response.json')).get('id',''))")
           test -n "$DEPLOYMENT_ID"
           echo "DEPLOYMENT_ID=$DEPLOYMENT_ID" >> "$GITHUB_ENV"
-          echo "DEPLOYMENT_URL=$DEPLOYMENT_URL" >> "$GITHUB_ENV"
-          echo "Created deployment: $DEPLOYMENT_ID ($DEPLOYMENT_URL)"
-
-      - name: Wait for Vercel READY
-        shell: bash
-        run: |
-          set -euo pipefail
-          READY=0
+          ready=0
           for attempt in $(seq 1 72); do
-            HTTP_CODE=$(curl --silent --show-error --output /tmp/deployment-status.json --write-out '%{http_code}' "https://api.vercel.com/v13/deployments/${DEPLOYMENT_ID}?teamId=${VERCEL_TEAM_ID}" --header "Authorization: Bearer ${VERCEL_TOKEN}")
-            if [[ "$HTTP_CODE" =~ ^2 ]]; then
-              STATUS=$(python - <<'PY'
-          import json
-          body=json.load(open('/tmp/deployment-status.json',encoding='utf-8'))
-          print(body.get('readyState') or body.get('status') or body.get('state') or 'UNKNOWN')
-          PY
-              )
-              echo "Attempt $attempt: $STATUS"
-              case "$STATUS" in READY) READY=1; break;; ERROR|CANCELED|CANCELLED) cat /tmp/deployment-status.json; exit 1;; esac
-            fi
+            curl -sS "https://api.vercel.com/v13/deployments/${DEPLOYMENT_ID}?teamId=${VERCEL_TEAM_ID}" -H "Authorization: Bearer ${VERCEL_TOKEN}" -o /tmp/status.json
+            status=$(python -c "import json;d=json.load(open('/tmp/status.json'));print(d.get('readyState') or d.get('status') or d.get('state') or 'UNKNOWN')")
+            echo "Attempt $attempt: $status"
+            case "$status" in READY) ready=1; break;; ERROR|CANCELED|CANCELLED) cat /tmp/status.json; exit 1;; esac
             sleep 5
           done
-          test "$READY" = "1"
+          test "$ready" = 1
 
-      - name: Verify stable production source
+      - name: Verify stable production and sync
+        if: github.ref == 'refs/heads/main'
         shell: bash
         run: |
           set -euo pipefail
-          VERIFIED=0
+          verified=0
           for attempt in $(seq 1 60); do
-            if curl --silent --show-error --fail --location --header 'Cache-Control: no-cache' "${PROD_URL}/?release=${GITHUB_SHA}-${attempt}" --output /tmp/production.html; then
-              if grep -Fq "SOFA65_FINISH_V2_START" /tmp/production.html \
-                && grep -Fq "SOFA65_CORRECTIONS_V3_START" /tmp/production.html \
-                && grep -Fq "label:'Цифры клуба'" /tmp/production.html \
-                && grep -Fq "label:'Мотивация Софы'" /tmp/production.html; then
-                VERIFIED=1
-                echo "Stable production is running finished Sofia cabinet"
-                break
-              fi
+            if curl -sSfL -H 'Cache-Control: no-cache' "${PROD_URL}/?release=${GITHUB_SHA}-${attempt}" -o /tmp/prod.html; then
+              if grep -Fq 'SOFA65_CLEANUP_V4_START' /tmp/prod.html && grep -Fq 'sofa65V4CloudRoundtrip' /tmp/prod.html; then verified=1; break; fi
             fi
             sleep 5
           done
-          test "$VERIFIED" = "1"
-
-      - name: Browser smoke test production
-        shell: bash
-        run: |
-          set -euo pipefail
+          test "$verified" = 1
           chrome="$(command -v google-chrome || command -v google-chrome-stable || command -v chromium || command -v chromium-browser || true)"
           test -n "$chrome"
-          key='0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef'
-          flags=(--headless=new --no-sandbox --disable-gpu --disable-dev-shm-usage --ignore-certificate-errors --disable-background-networking --disable-sync --disable-default-apps --disable-extensions --no-first-run --metrics-recording-only --virtual-time-budget=11000)
-          run_dom () {
-            local name="$1"; local hash="$2"
-            timeout 120s "$chrome" "${flags[@]}" --dump-dom "${PROD_URL}/?qa=${GITHUB_SHA}-${name}#w=ek65-prod-${GITHUB_RUN_ID}-${name}&k=${key}&${hash}&t=release" >"/tmp/${name}.html" 2>"/tmp/${name}.log" || true
-            python - "/tmp/${name}.html" "/tmp/${name}.visible.html" <<'PY'
-          import re,sys
-          s=open(sys.argv[1],encoding='utf-8').read()
-          s=re.sub(r'<script\b[^>]*>[\s\S]*?</script>','',s,flags=re.I)
-          s=re.sub(r'<style\b[^>]*>[\s\S]*?</style>','',s,flags=re.I)
-          open(sys.argv[2],'w',encoding='utf-8').write(s)
-          PY
-            grep -Fq '<div class="app-shell" id="appShell">' "/tmp/${name}.visible.html"
-            if grep -Fq 'id="bootText">Ошибка запуска' "/tmp/${name}.visible.html"; then cat "/tmp/${name}.log"; exit 1; fi
-          }
-          run_dom manager_home 'r=manager&v=manager'
-          grep -Fq 'Один кабинет внутри Growth OS 6.5' /tmp/manager_home.visible.html
-          grep -Fq 'Цифры клуба' /tmp/manager_home.visible.html
-          grep -Fq 'Моя мотивация' /tmp/manager_home.visible.html
-          run_dom manager_numbers 'r=manager&v=sofa_numbers'
-          grep -Fq '<h1 id="pageTitle">Цифры клуба</h1>' /tmp/manager_numbers.visible.html
-          grep -Fq '8 полей' /tmp/manager_numbers.visible.html
-          run_dom manager_motivation 'r=manager&v=sofa_motivation'
-          grep -Fq '<h1 id="pageTitle">Мотивация Софы</h1>' /tmp/manager_motivation.visible.html
-          if grep -Fq 'data-action="sofa3ToggleKpi"' /tmp/manager_motivation.visible.html; then echo 'Manager can edit own KPI'; exit 1; fi
-          run_dom manager_meetings 'r=manager&v=sofa_meetings'
-          grep -Fq '<h1 id="pageTitle">Собрания</h1>' /tmp/manager_meetings.visible.html
-          run_dom manager_control 'r=manager&v=operations'
-          if grep -Fq '>Итог дня<' /tmp/manager_control.visible.html || grep -Fq 'Отчёт Роману' /tmp/manager_control.visible.html; then echo 'Daily report is still visible'; exit 1; fi
-          echo "PRODUCTION_QA_OK"
+          key='fedcba9876543210fedcba9876543210fedcba9876543210fedcba9876543210'
+          timeout 130s "$chrome" --headless=new --no-sandbox --disable-gpu --disable-dev-shm-usage --disable-sync --disable-extensions --no-first-run --virtual-time-budget=15000 --dump-dom "${PROD_URL}/?qa=${GITHUB_SHA}#w=ek65-prod-v4-${GITHUB_RUN_ID}&k=${key}&r=manager&v=manager&t=prod-${GITHUB_RUN_ID}&qaSync=1" >/tmp/prod-dom.html 2>/tmp/prod-chrome.log || true
+          grep -Fq 'data-sofa-sync-selftest="ok"' /tmp/prod-dom.html
+          grep -Fq 'data-sofa-cloud-selftest="ok"' /tmp/prod-dom.html
+          grep -Fq '<h1 id="pageTitle">Главная Софы</h1>' /tmp/prod-dom.html
+          if grep -Fq 'id="bootText">Ошибка запуска' /tmp/prod-dom.html; then cat /tmp/prod-chrome.log; exit 1; fi
+          echo 'SOFA_V4_PRODUCTION_QA_OK'
