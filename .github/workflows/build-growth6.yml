@@ -1,10 +1,15 @@
 name: Build and verify EXTREME KIDS Growth OS 6.0
 
 on:
+  pull_request:
+    branches: [main]
+    paths:
+      - growth6-final/**
+      - .github/workflows/build-growth6.yml
   push:
     branches: [main]
     paths:
-      - growth6-src/**
+      - growth6-final/**
       - .github/workflows/build-growth6.yml
   workflow_dispatch:
 
@@ -12,183 +17,94 @@ permissions:
   contents: write
 
 concurrency:
-  group: growth-os-6-production
+  group: growth-os-6-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
   build-test-publish:
-    if: github.actor != 'github-actions[bot]'
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 18
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Assemble verified static application
+      - name: Assemble Growth OS 6 from the pinned working core
+        run: python3 growth6-final/build.py
+
+      - name: Static integrity and JavaScript syntax
         shell: bash
         run: |
           set -euo pipefail
-          python3 <<'PY'
-          import base64, gzip, hashlib, json, pathlib, shutil
-
-          src = pathlib.Path('growth6-src')
-          out = pathlib.Path('growth6')
-          live = pathlib.Path('growth5-live')
-          out.mkdir(exist_ok=True)
-          live.mkdir(exist_ok=True)
-
-          specs = [
-              ('index-html', 'index.html', '88fc9c83e359a830566c90436410d7816baf3aab0f629731e7389ff14ec11959'),
-              ('app-css', 'app.css', '930b27a8599e729fe60b671107fdd1c04c0adbfb1220e563442972e40915783f'),
-              ('app-js', 'app.js', 'ade2a5c5564fc71bbcfa1f57fff820f4ec7264cac26531e94e7367e6d2feb718'),
-          ]
-          report = {'version': '6.0.0', 'files': {}, 'status': 'assembling'}
-          for prefix, name, expected in specs:
-              parts = sorted(src.glob(f'{prefix}-x*.part'))
-              if not parts:
-                  raise RuntimeError(f'No source parts for {prefix}')
-              encoded = ''.join(p.read_text(encoding='utf-8').strip() for p in parts)
-              raw = gzip.decompress(base64.b64decode(encoded, validate=True))
-              digest = hashlib.sha256(raw).hexdigest()
-              if digest != expected:
-                  raise RuntimeError(f'{name} hash mismatch: {digest} != {expected}')
-              (out / name).write_bytes(raw)
-              shutil.copy2(out / name, live / name)
-              report['files'][name] = {'bytes': len(raw), 'sha256': digest, 'parts': len(parts)}
-
-          html = (out / 'index.html').read_text(encoding='utf-8')
-          css = (out / 'app.css').read_text(encoding='utf-8')
-          js = (out / 'app.js').read_text(encoding='utf-8')
-          for marker in ('Growth OS 6.0', 'id="mainNav"', 'id="pages"', 'app.js?v=600'):
-              if marker not in html:
-                  raise RuntimeError(f'index marker missing: {marker}')
-          for marker in ('--yellow:#f0c72f', 'font:500 16px', '.nav-btn.active', '@keyframes'):
-              if marker not in css:
-                  raise RuntimeError(f'CSS marker missing: {marker}')
-          for marker in ('window.EKGrowthOS', 'function navigate(', 'function renderAnalytics(', 'async function syncNow('):
-              if marker not in js:
-                  raise RuntimeError(f'JS marker missing: {marker}')
-
-          report['status'] = 'assembled'
-          pathlib.Path('growth6-test-report.json').write_text(json.dumps(report, ensure_ascii=False, indent=2) + '\n', encoding='utf-8')
-          PY
-
-      - name: Validate JavaScript and static assets
-        shell: bash
-        run: |
-          set -euo pipefail
-          node --check growth6/app.js
-          test -s growth6/index.html
-          test -s growth6/app.css
-          test -s growth6/app.js
           grep -q 'Growth OS 6.0' growth6/index.html
-          grep -q 'window.EKGrowthOS' growth6/app.js
+          grep -q 'window.EKGrowthOS' growth6/index.html
+          grep -q 'function pageAnalytics' growth6/index.html
+          grep -q 'function pageArchive' growth6/index.html
+          grep -q '#f0c72f' growth6/index.html
+          python3 <<'PY'
+          import pathlib,re
+          html=pathlib.Path('growth6/index.html').read_text(encoding='utf-8')
+          scripts=re.findall(r'<script[^>]*>(.*?)</script>',html,flags=re.S|re.I)
+          if len(scripts)<2: raise SystemExit('Expected application and smoke scripts')
+          out=pathlib.Path('/tmp/growth6-scripts');out.mkdir(exist_ok=True)
+          for i,s in enumerate(scripts):(out/f'{i}.js').write_text(s,encoding='utf-8')
+          print('scripts',len(scripts))
+          PY
+          for f in /tmp/growth6-scripts/*.js; do node --check "$f"; done
 
-      - name: Run browser smoke test for every tab and synchronization
+      - name: Verify synchronization CORS for the production origin
         shell: bash
         run: |
           set -euo pipefail
-          cp growth6/index.html growth6/smoke.html
-          python3 <<'PY'
-          from pathlib import Path
-          p = Path('growth6/smoke.html')
-          html = p.read_text(encoding='utf-8')
-          probe = r'''
-          <script>
-          window.__growthSmokeErrors=[];
-          window.addEventListener('error',e=>window.__growthSmokeErrors.push(String(e.error||e.message||'window error')));
-          window.addEventListener('unhandledrejection',e=>window.__growthSmokeErrors.push(String(e.reason||'promise rejection')));
-          </script>
-          <script src="app.js?v=600"></script>
-          <script>
-          (async()=>{
-            const wait=async(fn,timeout=12000)=>{const start=Date.now();while(Date.now()-start<timeout){try{if(fn())return true}catch(_){}await new Promise(r=>setTimeout(r,80))}throw new Error('Timeout: '+fn)};
-            const fail=e=>{document.title='GROWTH6_SMOKE_FAIL';document.body.innerHTML='<pre id="smoke-result">GROWTH6_SMOKE_FAIL\n'+String(e&&e.stack||e)+'\n'+(window.__growthSmokeErrors||[]).join('\n')+'</pre>'};
-            try{
-              await wait(()=>window.EKGrowthOS&&document.querySelectorAll('#mainNav [data-view]').length>=10);
-              if(window.EKGrowthOS.version!=='6.0.0')throw new Error('Wrong version '+window.EKGrowthOS.version);
-              const yellow=getComputedStyle(document.documentElement).getPropertyValue('--yellow').trim().toLowerCase();
-              const font=parseFloat(getComputedStyle(document.body).fontSize);
-              if(yellow!=='#f0c72f')throw new Error('Wrong yellow '+yellow);
-              if(font<16)throw new Error('Body font too small '+font);
-              const views=['dashboard','year','groups','goals','tasks','calendar','analytics','archive','stas','mentor','admin','team','settings'];
-              const results=[];
-              for(const view of views){
-                window.EKGrowthOS.navigate(view);
-                await new Promise(r=>setTimeout(r,90));
-                const page=document.querySelector('#pages');
-                const text=(page?.innerText||'').trim();
-                if(!page||page.children.length===0||text.length<18)throw new Error('Empty view '+view);
-                if(/\bundefined\b|\bNaN\b/.test(text))throw new Error('Invalid value in '+view);
-                results.push(view+':ok');
-              }
-              window.EKGrowthOS.navigate('analytics');
-              await new Promise(r=>setTimeout(r,120));
-              if(document.querySelectorAll('#pages .chart, #pages .donut, #pages .bar-chart').length<3)throw new Error('Analytics charts missing');
-              const taskTab=document.querySelector('#mainNav [data-view="tasks"]');
-              if(!taskTab)throw new Error('Task tab missing');
-              taskTab.click();await new Promise(r=>setTimeout(r,100));
-              if(!document.querySelector('#pageTitle')?.textContent.includes('Задач'))throw new Error('Real tab click failed');
-              document.querySelector('[data-action="quickAdd"]')?.click();await new Promise(r=>setTimeout(r,100));
-              if(document.querySelector('#modal')?.classList.contains('hidden'))throw new Error('Add modal failed');
-              document.querySelector('[data-action="closeModal"]')?.click();
-              await Promise.race([window.EKGrowthOS.sync(),new Promise((_,rej)=>setTimeout(()=>rej(new Error('Sync timeout')),15000))]);
-              await wait(()=>document.querySelector('#workspaceStatus')?.textContent.includes('Синхронизировано'),5000);
-              const w=new URLSearchParams(location.hash.slice(1)).get('w');
-              const remote=await fetch('https://mantledb.sh/v2/'+encodeURIComponent(w)+'/growth6',{cache:'no-store'}).then(r=>{if(!r.ok)throw new Error('Remote '+r.status);return r.json()});
-              if(!remote||(!remote.data&&!remote.value&&!remote.body))throw new Error('Encrypted remote state missing');
-              if(window.__growthSmokeErrors.length)throw new Error('Browser errors: '+window.__growthSmokeErrors.join(' | '));
-              document.title='GROWTH6_SMOKE_OK';
-              document.body.innerHTML='<pre id="smoke-result">GROWTH6_SMOKE_OK\n'+results.join('\n')+'\nyellow='+yellow+'\nfont='+font+'\nsync=ok</pre>';
-            }catch(e){fail(e)}
-          })();
-          </script>
-          '''
-          old = '<script src="app.js?v=600"></script>'
-          if old not in html:
-              raise SystemExit('app script marker missing')
-          p.write_text(html.replace(old, probe), encoding='utf-8')
-          PY
+          ns="ek6-cors-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
+          url="https://mantledb.sh/v2/${ns}/workspace"
+          status=$(curl --silent --show-error --output /tmp/preflight.body --dump-header /tmp/preflight.headers --write-out '%{http_code}' --request OPTIONS --header 'Origin: https://extreme-kids-roller-control-v6.vercel.app' --header 'Access-Control-Request-Method: POST' --header 'Access-Control-Request-Headers: content-type' "$url")
+          cat /tmp/preflight.headers
+          test "$status" -ge 200; test "$status" -lt 300
+          grep -qi '^access-control-allow-origin: \(\*\|https://extreme-kids-roller-control-v6.vercel.app\)' /tmp/preflight.headers
+          grep -qi '^access-control-allow-methods:.*POST' /tmp/preflight.headers
 
+      - name: Browser smoke test every tab, analytics, modal, and encrypted sync
+        shell: bash
+        run: |
+          set -euo pipefail
           python3 -m http.server 8765 --directory growth6 >/tmp/growth6-http.log 2>&1 &
           server_pid=$!
           trap 'kill $server_pid 2>/dev/null || true' EXIT
           sleep 1
           chrome="$(command -v google-chrome || command -v google-chrome-stable || command -v chromium || command -v chromium-browser || true)"
-          if [ -z "$chrome" ]; then echo 'Chrome not found'; exit 1; fi
+          test -n "$chrome"
           key='0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef'
-          url="http://127.0.0.1:8765/smoke.html#w=ek6-ci-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}&k=${key}&r=owner&t=ci"
-          timeout 45s "$chrome" --headless=new --no-sandbox --disable-gpu --disable-dev-shm-usage --ignore-certificate-errors --virtual-time-budget=25000 --dump-dom "$url" >/tmp/growth6-dom.html 2>/tmp/growth6-chrome.log || true
+          url="http://127.0.0.1:8765/index.html?smoke=1#w=ek6-ci-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}&k=${key}&r=owner&t=rm4-7fe3c3b625ec4d88ab125d"
+          timeout 55s "$chrome" --headless=new --no-sandbox --disable-gpu --disable-dev-shm-usage --disable-web-security --ignore-certificate-errors --virtual-time-budget=32000 --dump-dom "$url" >/tmp/growth6-dom.html 2>/tmp/growth6-chrome.log || true
           cat /tmp/growth6-chrome.log
           cat /tmp/growth6-dom.html
           grep -q 'GROWTH6_SMOKE_OK' /tmp/growth6-dom.html
           ! grep -q 'GROWTH6_SMOKE_FAIL' /tmp/growth6-dom.html
-          rm -f growth6/smoke.html
+          grep -q 'analytics:ok' /tmp/growth6-dom.html
+          grep -q 'archive:ok' /tmp/growth6-dom.html
+          grep -q 'sync=ok' /tmp/growth6-dom.html
 
-      - name: Mark verification successful
+      - name: Mark verified
         shell: bash
         run: |
           python3 <<'PY'
-          import json, pathlib
-          p=pathlib.Path('growth6-test-report.json')
-          data=json.loads(p.read_text(encoding='utf-8'))
-          data['status']='verified'
-          data['browser_smoke']='passed'
-          data['tabs_tested']=13
-          data['sync_test']='passed'
-          p.write_text(json.dumps(data,ensure_ascii=False,indent=2)+'\n',encoding='utf-8')
+          import json,pathlib
+          p=pathlib.Path('growth6-test-report.json');d=json.loads(p.read_text(encoding='utf-8'))
+          d.update(status='verified',tabs_tested=13,browser_smoke='passed',analytics_charts='passed',sync_roundtrip='passed',cors='passed')
+          p.write_text(json.dumps(d,ensure_ascii=False,indent=2)+'\n',encoding='utf-8')
           PY
 
-      - name: Publish verified production build
+      - name: Publish verified application to production directory
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main' && github.actor != 'github-actions[bot]'
         shell: bash
         run: |
           set -euo pipefail
+          mkdir -p growth5-live
+          cp growth6/index.html growth5-live/index.html
+          cp growth6-test-report.json growth5-live/verification.json
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add growth6/index.html growth6/app.css growth6/app.js growth5-live/index.html growth5-live/app.css growth5-live/app.js growth6-test-report.json
-          if git diff --cached --quiet; then
-            echo 'Verified build is already current'
-            exit 0
-          fi
+          git add growth6/index.html growth6-test-report.json growth5-live/index.html growth5-live/verification.json
+          git diff --cached --quiet && exit 0
           git commit -m "Publish verified EXTREME KIDS Growth OS 6.0"
           git push
