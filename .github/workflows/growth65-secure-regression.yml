@@ -2,12 +2,12 @@ name: Growth 6.5 server security and PostgreSQL regression
 on:
   push:
     branches: [fix/growth65-server-security]
-    paths: ['secure-growth65/**', '.github/workflows/growth65-secure-regression.yml']
+    paths: ['secure-growth65/**', '.github/workflows/growth65-secure-regression.yml', '.github/scripts/growth65-apply-security-r2.cjs']
   pull_request:
     paths: ['secure-growth65/**', '.github/workflows/growth65-secure-regression.yml']
   workflow_dispatch:
 permissions:
-  contents: read
+  contents: write
 concurrency:
   group: growth65-secure-${{ github.ref }}
   cancel-in-progress: false
@@ -37,6 +37,8 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '24'
+      - name: Apply exact hash-verified source repairs
+        run: node ../.github/scripts/growth65-apply-security-r2.cjs
       - name: Install and build the existing 6.5 UI with secure transport
         run: |
           npm install --ignore-scripts
@@ -53,18 +55,35 @@ jobs:
           node tests/e2e.cjs | tee test-results/browser.log
       - name: Dependency security audit
         run: npm audit --omit=dev --audit-level=high
+      - name: Commit only tested repaired sources on the isolated repair branch
+        if: success() && github.event_name == 'push' && github.ref == 'refs/heads/fix/growth65-server-security'
+        run: |
+          set -euo pipefail
+          git fetch origin fix/growth65-server-security
+          test "$(git rev-parse FETCH_HEAD)" = "$GITHUB_SHA" || { echo 'Branch moved; do not overwrite another edit.'; exit 1; }
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add lib/client-bridge.js lib/service.cjs lib/policy.cjs lib/http.cjs scripts/build.cjs tests/e2e.cjs tests/security.test.cjs package.json package-lock.json repair-source-manifest.json
+          if ! git diff --cached --quiet; then
+            git commit -m 'Finalize verified Growth 6.5 security repairs and dependency lockfile'
+            git push origin HEAD:fix/growth65-server-security
+          fi
+          echo "VERIFIED_SOURCE_COMMIT=$(git rev-parse HEAD)" >> "$GITHUB_ENV"
       - name: Preserve exact sources, hashes, lockfile and QA results
         if: always()
         run: |
           mkdir -p test-results/verified-source
-          cp -r lib api scripts public tests package.json package-lock.json vercel.json test-results/verified-source/
+          cp -r lib api scripts public tests package.json package-lock.json vercel.json README.md test-results/verified-source/ || true
           cp build/manifest.json test-results/build-manifest.json || true
+          cp repair-source-manifest.json test-results/repair-source-manifest.json || true
           find lib api scripts tests -type f -print0 | sort -z | xargs -0 sha256sum > test-results/source-sha256.txt
           node - <<'JS'
           const fs=require('fs');
           const p='test-results/browser-report.json';
           const result=fs.existsSync(p)?JSON.parse(fs.readFileSync(p)).summary:null;
-          fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY,'# Growth OS 6.5 secure repair\n\nPostgreSQL 18 + real Chrome. Synthetic local CI database only. No production deployment or real club data modification.\n\n'+JSON.stringify(result)+'\n');
+          const record={browser:result,workflowCommit:process.env.GITHUB_SHA,verifiedSourceCommit:process.env.VERIFIED_SOURCE_COMMIT||null,productionDeployed:false,realClubDataChanged:false};
+          fs.writeFileSync('test-results/release-status.json',JSON.stringify(record,null,2));
+          fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY,'# Growth OS 6.5 secure repair\n\nPostgreSQL 18 + real Chrome. Synthetic isolated CI database only. No production deployment or real club data modification.\n\n'+JSON.stringify(record)+'\n');
           JS
       - uses: actions/upload-artifact@v4
         if: always()
