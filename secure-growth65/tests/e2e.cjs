@@ -11,16 +11,16 @@ const report={cases:[],errors:[],requests:[],forms:[]};const test=(n,ok,detail)=
   for(const[name,width]of[['roman',1440],['sofa',1440],['stas',1440],['ivan',1440],['tasya',1440],['anya',1440],['team',1440],['roman',390],['sofa',390],['tasya',390],['anya',390]]){
    let x;try{x=await login(name,width);contexts.push(x.ctx);const p=x.p;const nav=await p.locator('#mainNav [data-view]').evaluateAll(els=>els.map(e=>({id:e.dataset.view,label:e.textContent})));
     for(const n of nav){if(width<820)await p.locator('[data-action=toggleSidebar]').first().click();await p.locator('#mainNav [data-view="'+n.id+'"]').click();await p.waitForTimeout(35);const text=await p.locator('#pages').innerText();test('tab:'+name+':'+width+':'+n.id,text.length>20&&!/ReferenceError|TypeError/.test(text));const size=await p.evaluate(()=>({client:document.documentElement.clientWidth,scroll:document.documentElement.scrollWidth}));test('layout:'+name+':'+width+':'+n.id,size.scroll<=size.client+2,size.scroll>size.client+2?size:undefined)}
-    if(width===390||name==='roman')await p.screenshot({path:path.join(DIR,name+'-'+width+'.png'),fullPage:true});
+    await p.waitForTimeout(350);if(width===390||name==='roman')await p.screenshot({path:path.join(DIR,name+'-'+width+'.png'),fullPage:true});
     await x.ctx.close();
    }catch(e){test('boot:'+name+':'+width,false,e.message);if(x)await x.ctx.close()}
   }
   const o=await login('roman'),m=await login('sofa');contexts.push(o.ctx,m.ctx);const a=o.p,b=m.p;
-  async function navigate(p,id){await p.locator('#mainNav [data-view="'+id+'"]').click({force:true})}
+  async function navigate(p,id){await p.locator('#mainNav [data-view="'+id+'"]').click()}
   async function click(p,action){await p.locator('[data-action="'+action+'"]').first().click()}
   async function fill(p,form,values){for(const[k,v]of Object.entries(values)){const e=p.locator('#'+form+' [name="'+k+'"]');const t=await e.evaluate(e=>({tag:e.tagName,type:e.type}));if(t.tag==='SELECT')await e.selectOption(String(v));else if(t.type==='checkbox')await e.setChecked(!!v);else await e.fill(String(v))}}
   async function save(p,form){await p.locator('#'+form+' button[type=submit]').click();await p.waitForTimeout(900)}
-  async function close(p){const c=p.locator('#modal [data-action=closeModal]');if(await c.isVisible())await c.click()}
+  async function close(p){const c=p.locator('#modal [data-action=closeModal]').first();if(await c.isVisible())await c.click()}
   const cases=[['tasks','addTask','taskForm',{title:'QA native task',ownerId:'sofia',status:'todo',description:'UI creation'}],['groups','addGroup','groupForm',{name:'QA native group',mentorId:'tasya',time:'18:00–20:00',capacity:8,students:0}],['calendar','addEvent','eventForm',{title:'QA native event',date:'2026-09-09',time:'16:00'}],['admin','addAdminSale','adminSaleForm',{adminId:'anya',date:'2026-09-07',type:'group',amount:1000,client:'QA client',countInRevenue:true}],['mentor','addMentorPayment','mentorPaymentForm',{mentorId:'tasya',date:'2026-09-07',category:'Премия',amount:100,reason:'QA native payroll',status:'accrued'}],['documents','addStaffDocument','staffDocumentForm',{title:'QA native doc',url:'https://example.com/qa',notes:'Test'}]];
   for(const[view,action,form,values]of cases){try{await close(a);await navigate(a,view);await click(a,action);await fill(a,form,values);await save(a,form);const result=await a.evaluate(()=>window.EKGrowthOS.sync());test('native-save:'+form,result,{text:(await a.locator('#workspaceSub').innerText())})}catch(e){test('native-save:'+form,false,e.message)}}
   try{await navigate(b,'tasks');await b.evaluate(()=>window.EKGrowthOS.sync());test('owner-to-sofa-native-task',(await b.locator('#pages').innerText()).includes('QA native task'))}catch(e){test('owner-to-sofa-native-task',false,e.message)}
@@ -38,7 +38,8 @@ const report={cases:[],errors:[],requests:[],forms:[]};const test=(n,ok,detail)=
    await close(a);await navigate(a,'tasks');await click(a,'addTask');await fill(a,'taskForm',{title:'QA offline encrypted draft',ownerId:'sofia',description:'must survive reconnect'});await save(a,'taskForm');
    test('offline-does-not-report-success',!(await a.evaluate(()=>window.EKGrowthOS.sync())));
    const cache=await a.evaluate(()=>{const state=window.EKGrowthOS.getState();return Object.keys(localStorage).filter(k=>k.startsWith('EK65_SECURE')).map(k=>localStorage.getItem(k))});
-   const stored=await a.evaluate(()=>Object.keys(localStorage).filter(k=>k.startsWith('EK65_SECURE')).map(k=>localStorage.getItem(k)));
+   // Object.keys on a native Storage and on the in-memory test adapter differ.
+   const stored=await a.evaluate(()=>{return window.__qaCacheValues?window.__qaCacheValues():Object.keys(localStorage).filter(k=>k.startsWith('EK65_SECURE')).map(k=>localStorage.getItem(k))});
    test('local-draft-encrypted-no-plain-client-records',stored.length>0&&stored.every(x=>JSON.parse(x).alg==='A256GCM'&&!x.includes('QA offline encrypted draft')&&!x.includes('_SECRET')));
    await a.evaluate(()=>{window.fetch=window.__qaOfflineFetch});await a.evaluate(()=>window.EKGrowthOS.sync());await b.evaluate(()=>window.EKGrowthOS.sync());test('offline-draft-delivered-after-reconnect',(await b.evaluate(()=>window.EKGrowthOS.getState().tasks)).some(t=>t.title==='QA offline encrypted draft'));
   }catch(e){test('offline-encrypted-draft',false,e.message)}
@@ -48,6 +49,8 @@ const report={cases:[],errors:[],requests:[],forms:[]};const test=(n,ok,detail)=
    test('same-field-conflict-is-not-silent-overwrite',!(await b.evaluate(()=>window.EKGrowthOS.sync())));
    await click(b,'s65Conflict');await click(b,'s65KeepMine');await b.waitForTimeout(900);await a.evaluate(()=>window.EKGrowthOS.sync());test('explicit-conflict-choice-saved',(await a.evaluate(()=>window.EKGrowthOS.getState().tasks)).find(t=>t.id===id).description==='sofa same-field version');
   }catch(e){test('conflict-resolution-ui',false,e.message)}
+
   try{const t=await login('tasya');contexts.push(t.ctx);await t.p.goto('http://127.0.0.1:8766/app#r=owner&m=ivan&w=forged');await t.p.waitForSelector('#appShell:not(.hidden)');test('role-tamper-does-not-show-settings',await t.p.locator('#mainNav [data-view=settings]').count()===0);const state=await t.p.evaluate(()=>fetch('/api/state').then(r=>r.json()));test('tampered-link-still-receives-only-own-data',state.actor.role==='mentor'&&state.actor.personId==='tasya'&&!JSON.stringify(state).includes('IVAN_SALARY_SECRET'));}catch(e){test('role-tamper',false,e.message)}
+ await require('./extended-flow.cjs')({a,b,navigate,click,fill,save,close,test,DIR,login});
  }finally{test('no-uncaught-javascript-errors',report.errors.length===0,report.errors);await browser.close();await new Promise(r=>server.close(r));await store.close();report.summary={total:report.cases.length,passed:report.cases.filter(c=>c.ok).length,failed:report.cases.filter(c=>!c.ok).length};fs.writeFileSync(path.join(DIR,'browser-report.json'),JSON.stringify(report,null,2));console.log('SUMMARY',report.summary);if(report.summary.failed)process.exitCode=1}
 })().catch(e=>{console.error(e);process.exitCode=1});

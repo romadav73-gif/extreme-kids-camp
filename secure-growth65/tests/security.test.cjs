@@ -47,3 +47,15 @@ test('36 arbitrary workspace IDs are not an input to database reads',async()=>{c
 test('37 missing CSRF is rejected',()=>fail(service.patch(owner.cookie,undefined,packet([set(['tasks','@task-owner','status'],'todo','done')])),403));
 
 test('38 local draft key is unique to the account and not part of shared state',async()=>{const a=await service.getSession(staff.sofa.cookie),b=await service.getSession(staff.tasya.cookie);assert.notEqual(a.cacheKey,b.cacheKey);assert.equal(Buffer.from(a.cacheKey,'base64url').length,32);assert(!JSON.stringify(await service.getState(staff.sofa.cookie)).includes(a.cacheKey))});
+
+test('39 mentor attendance creates administrator follow-up only on the server',async()=>{
+ const changes=['2026-09-01','2026-09-03'].map((date,i)=>add(['attendanceSessions','@server-rule-'+i],{id:'server-rule-'+i,groupId:'group-tasya',date,mode:'actual',status:'completed',capacitySnapshot:8,enrolledSnapshot:2,expectedCount:1,presentCount:0,makeupCount:0,trialCount:0,guestCount:0,records:[{childId:'child-tasya',status:i?'noShow':'sick'}],notes:'Server-derived follow-up'}));
+ const response=await service.patch(staff.tasya.cookie,staff.tasya.csrf,packet(changes));
+ const whole=(await service.getState(owner.cookie)).state;
+ const generated=whole.tasks.filter(t=>t.attendanceAlertKey==='attendance:child-child-tasya-2026-08-31');assert.equal(generated.length,1);assert.equal(generated[0].ownerId,'anya');assert(!response.state.tasks.some(t=>t.id===generated[0].id));
+ await service.patch(staff.tasya.cookie,staff.tasya.csrf,packet([set(['attendanceSessions','@server-rule-1','notes'],'Server-derived follow-up','Confirmed attendance')]));
+ assert.equal((await service.getState(owner.cookie)).state.tasks.filter(t=>t.attendanceAlertKey===generated[0].attendanceAlertKey).length,1);
+});
+test('40 mentor cannot forge an administrator task with a system-looking marker',()=>fail(service.patch(staff.tasya.cookie,staff.tasya.csrf,packet([add(['tasks','@forged-attendance-task'],{id:'forged-attendance-task',title:'Forged',ownerId:'anya',status:'todo',monthKey:'2026-09',createdBy:'attendance',attendanceAlertKey:'attendance:forged'})])),403));
+test('41 mentor cannot disable server attendance follow-ups',()=>fail(service.patch(staff.tasya.cookie,staff.tasya.csrf,packet([add(['attendanceSettings','autoTasks'],false)])),403));
+test('42 staff cannot preclaim system alert keys to suppress administrator follow-up',()=>fail(service.patch(staff.tasya.cookie,staff.tasya.csrf,packet([add(['tasks','@preclaim-attendance-task'],{id:'preclaim-attendance-task',title:'Fake system record',ownerId:'tasya',status:'todo',monthKey:'2026-09',attendanceAlertKey:'attendance:child-child-tasya-2026-09-07'})])),403));

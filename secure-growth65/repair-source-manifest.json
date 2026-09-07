@@ -1,0 +1,34 @@
+[
+  {
+    "path": "lib/client-bridge.js",
+    "sha256": "39f6596d40fcf272d4b09d621e2a8ac302a9025ccf743060d19413d2e9ba2dcc"
+  },
+  {
+    "path": "lib/service.cjs",
+    "sha256": "edc144113c0e30ec7176aa9f661150779d3e14b422ddf7b0b378de4c48893573"
+  },
+  {
+    "path": "lib/policy.cjs",
+    "sha256": "e3774e82ab71a154450c2737df1ac2969c0ddd6b377b58b67e811632f871e8d5"
+  },
+  {
+    "path": "lib/http.cjs",
+    "sha256": "1f2fca273694060fcf9f7cb3c5f41bc33d562f71787cb71efea2a0315bc369ad"
+  },
+  {
+    "path": "scripts/build.cjs",
+    "sha256": "72683f8f24c4640755d5491c34357c9f14d9b77c011b3876fd1028432d1f8b8f"
+  },
+  {
+    "path": "tests/e2e.cjs",
+    "sha256": "d727b2ce0d29e98e98554c9fbd4aaa753356e1749b0c04400dcebe384524b0e4"
+  },
+  {
+    "path": "tests/security.test.cjs",
+    "sha256": "63a3a966a2d38dda0609b95e449ff843c6bc6bc1816a55f03a28200660aa8058"
+  },
+  {
+    "path": "package.json",
+    "sha256": "85c56862586bcc0ad9fcb88a5a4ab03ad0eeaeb6d4a0ef93db8f0637240a3802"
+  }
+]

@@ -6,7 +6,7 @@ const board=a=>managers(a)||a.role==='stas'||a.role==='mentor'&&a.scopes.include
 const live=x=>x&&!x.deletedAt;
 const pick=(o,keys)=>Object.fromEntries(keys.filter(k=>M.own(o||{},k)).map(k=>[k,M.clone(o[k])]));
 const commonEvent=['id','type','title','date','time','venue','status'];
-const taskFields=['id','title','description','ownerId','monthKey','deadline','priority','status','required','linkType','linkId','createdBy','deletedAt'];
+const taskFields=['id','title','description','ownerId','monthKey','deadline','priority','status','required','linkType','linkId','createdBy','deletedAt','attendanceAlertKey','attendanceWeek'];
 const groupFields=['id','mentorId','name','discipline','day','time','level','capacity','students','monthlyPrice','prime','rosterManaged','status','deletedAt'];
 const eventFields=commonEvent.concat(['ownerId','participantsPlan','participantsFact','gifts','plan','actual','notes','deletedAt','revenuePlan','revenueFact','costPlan','costFact','pricePlan','priceFact']);
 const collections={tasks:taskFields,groups:groupFields,events:eventFields,goals:['id','title','category','ownerId','deadline','progress','status','priority','metric','target','current','notes','deletedAt'],people:['id','name','role','title','area','avatar','active','archivedAt','deletedAt','compensation','managementRole','managementScope'],recommendations:['id','childName','mentorId','recommendation','status','notes','deletedAt'],mentorPayroll:['id','mentorId','date','category','reason','amount','status','deletedAt'],staffDocuments:['id','personId','title','type','url','notes','deletedAt'],staffDuties:['id','personId','title','description','deletedAt'],meetingAgenda:['id','title','notes','ownerId','personId','status','done','deletedAt'],attendanceChildren:['id','name','birthDate','parentContact','notes','active','deletedAt'],attendanceMemberships:['id','childId','groupId','startDate','endDate','status','notes','deletedAt'],attendanceSessions:['id','groupId','date','time','mentorId','mode','planned','present','sick','vacation','makeup','absent','noShow','cancelled','roster','marks','statuses','children','childStatuses','childStates','members','attendance','weekKey','status','enrolledSnapshot','capacitySnapshot','expectedCount','presentCount','sickCount','warnedCount','vacationCount','freezeCount','noShowCount','records','makeupCount','trialCount','guestCount','notes','deletedAt'],attendanceWeekArchives:null,managementMeetings:null,archive:null};
@@ -60,6 +60,7 @@ function permission(s,a,c){
   if(!candidate)return false;
   if(root==='people'||root==='mentorPayroll'||root==='archive')return a.role==='owner';
   if(root==='tasks'){
+   if(a.role!=='owner'&&(['attendanceAlertKey','attendanceWeek'].includes(p[2])||p.length===2&&['attendanceAlertKey','attendanceWeek'].some(k=>M.own(candidate,k))))return false;
    if(!board(a)&&record&&record.ownerId!==a.personId)return false;
    if(!board(a)&&p.length===2&&candidate.ownerId!==a.personId)return false;
    if(!board(a)&&['ownerId','required','createdBy','monthKey'].includes(p[2]))return false;

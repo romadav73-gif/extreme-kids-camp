@@ -1,6 +1,6 @@
 'use strict';
 const crypto=require('node:crypto');
-const M=require('./model.cjs'),P=require('./policy.cjs'),A=require('./auth.cjs');const {hash,cleanup,audit}=require('./store.cjs');
+const M=require('./model.cjs'),P=require('./policy.cjs'),A=require('./auth.cjs'),Attendance=require('./attendance.cjs');const {hash,cleanup,audit}=require('./store.cjs');
 function error(status,code,message){return Object.assign(Error(message),{status,code})}
 const assert=(v,status,code,message)=>{if(!v)throw error(status,code,message)};
 const username=s=>typeof s==='string'?s.trim().toLowerCase():'';
@@ -56,7 +56,9 @@ class Service{
     if(c.op==='remove'&&c.path.at(-1).startsWith('@'))d.tombstones[deletionKey]={at:new Date().toISOString(),userId:user.id};
    }
    P.validateState(data,applied);
-   if(applied.length){w.revision++;data.meta={...(data.meta||{}),revision:w.revision,updatedAt:new Date().toISOString()};w.data=data;audit(d,user,'state.patch',{requestId:body.requestId,revision:w.revision,paths:applied.map(c=>c.path),sha256:hash(M.canonical(data))},this.key)}
+   const generated=Attendance.generate(data,Attendance.affectedWeeks(w.data,data,applied)).filter(t=>!d.tombstones[w.id+':'+M.canonical(['tasks','@'+t.id])]);
+   if(generated.length){data.tasks.push(...generated);P.validateState(data,[{path:['tasks']}]);}
+   if(applied.length){w.revision++;data.meta={...(data.meta||{}),revision:w.revision,updatedAt:new Date().toISOString()};w.data=data;audit(d,user,'state.patch',{requestId:body.requestId,revision:w.revision,paths:applied.map(c=>c.path),generatedTaskIds:generated.map(t=>t.id),sha256:hash(M.canonical(data))},this.key)}
    d.requests[rid]={hash:digest,revision:w.revision,expiresAt:Date.now()+7*86400000};return view(w,user);
   });
  }
