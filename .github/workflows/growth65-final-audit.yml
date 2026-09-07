@@ -1,0 +1,44 @@
+name: Growth 6.5 final audit and release gate
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/growth65-final-audit.yml'
+      - '.github/scripts/growth65-final-audit.cjs'
+      - '.github/scripts/growth65-build-audited.cjs'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: growth65-final-audit
+  cancel-in-progress: false
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      AUDIT_MODE: candidate
+      CHROME_PATH: /usr/bin/google-chrome
+    steps:
+      - uses: actions/checkout@v4
+      - run: npm install --no-save --ignore-scripts playwright@1.55.1
+      - name: Full role, form, data and concurrency audit
+        run: node --check .github/scripts/growth65-final-audit.cjs && node .github/scripts/growth65-final-audit.cjs
+      - name: Preserve tested build, reports and screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: growth65-final-audit-${{ github.run_id }}
+          path: audit-output/
+          retention-days: 14
+      - name: Release gate - never turn security failures green
+        run: |
+          node - <<'JS'
+          const fs=require('fs');
+          const r=JSON.parse(fs.readFileSync('audit-output/candidate-report.json'));
+          const f=r.tests.filter(t=>!t.ok);
+          const summary={...r.summary,release:'BLOCKED',notDeployed:true};
+          console.log('FINAL_AUDIT '+JSON.stringify(summary));
+          if(process.env.GITHUB_STEP_SUMMARY)fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY,'# Growth OS 6.5: выпуск заблокирован\n\n'+JSON.stringify(summary)+'\n\n'+f.map(t=>'- '+t.name+': '+(t.error||t.detail||JSON.stringify(t.value))).join('\n'));
+          process.exit(f.length?1:0);
+          JS
