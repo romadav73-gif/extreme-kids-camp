@@ -1,0 +1,21 @@
+'use strict';
+const path=require('node:path');
+module.exports=async({a,b,navigate,click,fill,save,close,test,DIR,login})=>{
+ const check=async(name,fn)=>{try{await close(a);await close(b);test('extended:'+name,await fn())}catch(e){test('extended:'+name,false,e.message)}};
+ const sync=p=>p.evaluate(()=>window.EKGrowthOS.sync());
+ for(const [view,action,id,values] of [
+ ['admin','addAdminShift','adminShiftForm',{adminId:'anya',date:'2026-09-07',status:'worked',note:'QA SHIFT'}],
+ ['admin','addAdminAdjustment','adminAdjustmentForm',{adminId:'anya',date:'2026-09-07',type:'premium',amount:500,note:'QA ADMIN PREMIUM'}],
+ ['documents','addStaffDuty','staffDutyForm',{title:'QA DUTY',description:'QA duty body'}],
+ ['mentor','addRecommendation','recommendationForm',{childName:'QA synthetic child',mentorId:'tasya',recommendation:'QA next lesson',status:'new'}]
+ ])await check(id,async()=>{await navigate(a,view);await click(a,action);await fill(a,id,values);await save(a,id);return sync(a)});
+ await check('Sofa-three-priorities',async()=>{await navigate(b,'operations');await b.locator('[data-action=sofa3OpsTab][data-tab=today]').click();await fill(b,'sofa3PrioritiesForm',{p0:'QA PRIORITY',p1:'Second',p2:'Third'});await save(b,'sofa3PrioritiesForm');await sync(b);await sync(a);return a.evaluate(()=>JSON.stringify(window.EKGrowthOS.getState().operationsDays).includes('QA PRIORITY'))});
+ await check('meeting-creates-shared-task',async()=>{await navigate(b,'sofa_meetings');await b.locator('[data-sofa-meeting-field=notes]').fill('QA MEETING NOTES');await b.locator('[data-sofa-meeting-field=decision]').fill('QA MEETING DECISION');await b.locator('[data-sofa-meeting-field=tasks]').fill('QA MEETING TASK | Софа | 2026-09-10');await save(b,'sofa3MeetingForm');await sync(b);await sync(a);return a.evaluate(()=>window.EKGrowthOS.getState().tasks.some(t=>t.title==='QA MEETING TASK'))});
+ await check('attendance-child-membership',async()=>{await navigate(a,'attendance');await click(a,'attendanceAddChild');await fill(a,'attendanceChildForm',{name:'QA ROSTER CHILD',groupId:'group-tasya',parentContact:'SYNTHETIC',startDate:'2026-09-01'});await save(a,'attendanceChildForm');return sync(a)});
+ await check('attendance-session-and-followups',async()=>{await navigate(a,'attendance');await click(a,'attendanceAddSession');await fill(a,'attendanceSessionForm',{date:'2026-09-07',mode:'actual',notes:'QA ATTENDANCE',makeupCount:0,trialCount:0,guestCount:0});for(const el of await a.locator('#attendanceSessionForm [data-att-child]').all())await el.selectOption('present');await save(a,'attendanceSessionForm');return sync(a)});
+ await check('attendance-week-archive',async()=>{await navigate(a,'attendance');await a.locator('[data-action=attendanceTab][data-tab=archive]').click();await click(a,'attendanceCloseWeek');await fill(a,'attendanceCloseWeekForm',{comment:'QA WEEK ARCHIVE'});await save(a,'attendanceCloseWeekForm');return sync(a)});
+ await check('Sofa-KPI-owner-lock-visible-manager',async()=>{await navigate(a,'sofa_motivation');await a.locator('[data-action=sofa3ToggleKpi]').first().click();await click(a,'sofa3LockSalary');await sync(a);await sync(b);return b.evaluate(()=>!!window.EKGrowthOS.getState().sofiaMotivationByMonth['2026-09'].snapshot)});
+ await check('month-archive-frozen',async()=>{await navigate(a,'archive');await click(a,'closeMonth');await fill(a,'closeMonthForm',{fact:300000,load:60,tasksProgress:70,eventsCount:2,comment:'QA MONTH ARCHIVE'});await save(a,'closeMonthForm');return sync(a)});
+ await check('normal-mentor-attendance',async()=>{const x=await login('tasya');try{await navigate(x.p,'attendance');await click(x.p,'attendanceAddSession');await fill(x.p,'attendanceSessionForm',{date:'2026-09-08',mode:'actual',notes:'QA MENTOR ATTENDANCE',makeupCount:0,trialCount:0,guestCount:0});for(const el of await x.p.locator('#attendanceSessionForm [data-att-child]').all())await el.selectOption('present');await save(x.p,'attendanceSessionForm');return await sync(x.p)}finally{await x.ctx.close()}});
+ await check('captured-screen-main-Sofa',async()=>{await navigate(b,'manager');await b.waitForTimeout(400);await b.screenshot({path:path.join(DIR,'Sofa-desktop.png'),fullPage:true});return true});
+};
