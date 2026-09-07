@@ -1,0 +1,12 @@
+node_modules/
+build/
+public/app.html
+public/app.css
+test-results/
+.env
+.env.*
+!.env.example
+*.backup.json
+owner-invitation.txt
+migration-receipt.json
+*.zip

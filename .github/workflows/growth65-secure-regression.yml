@@ -1,0 +1,74 @@
+name: Growth 6.5 server security and PostgreSQL regression
+on:
+  push:
+    branches: [fix/growth65-server-security]
+    paths: ['secure-growth65/**', '.github/workflows/growth65-secure-regression.yml']
+  pull_request:
+    paths: ['secure-growth65/**', '.github/workflows/growth65-secure-regression.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: growth65-secure-${{ github.ref }}
+  cancel-in-progress: false
+jobs:
+  security-and-browser:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    services:
+      postgres:
+        image: postgres:18
+        env:
+          POSTGRES_USER: ek65_test
+          POSTGRES_PASSWORD: isolated-ci-test-only
+          POSTGRES_DB: ek65_test
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U ek65_test -d ek65_test"
+          --health-interval 5s --health-timeout 5s --health-retries 15
+    defaults:
+      run:
+        working-directory: secure-growth65
+    env:
+      TEST_DATABASE_URL: postgres://ek65_test:isolated-ci-test-only@127.0.0.1:5432/ek65_test
+      CHROME_PATH: /usr/bin/google-chrome
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Install and build the existing 6.5 UI with secure transport
+        run: |
+          npm install --ignore-scripts
+          npm run build
+          node --check build/app.js
+          mkdir -p test-results
+      - name: Real PostgreSQL transactions, authorization and HTTP tests
+        run: |
+          set -euo pipefail
+          node --test tests/*.test.cjs | tee test-results/server.tap
+      - name: Real browser login, all role tabs, forms, offline and conflict flows
+        run: |
+          set -euo pipefail
+          node tests/e2e.cjs | tee test-results/browser.log
+      - name: Dependency security audit
+        run: npm audit --omit=dev --audit-level=high
+      - name: Preserve exact sources, hashes, lockfile and QA results
+        if: always()
+        run: |
+          mkdir -p test-results/verified-source
+          cp -r lib api scripts public tests package.json package-lock.json vercel.json test-results/verified-source/
+          cp build/manifest.json test-results/build-manifest.json || true
+          find lib api scripts tests -type f -print0 | sort -z | xargs -0 sha256sum > test-results/source-sha256.txt
+          node - <<'JS'
+          const fs=require('fs');
+          const p='test-results/browser-report.json';
+          const result=fs.existsSync(p)?JSON.parse(fs.readFileSync(p)).summary:null;
+          fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY,'# Growth OS 6.5 secure repair\n\nPostgreSQL 18 + real Chrome. Synthetic local CI database only. No production deployment or real club data modification.\n\n'+JSON.stringify(result)+'\n');
+          JS
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: growth65-secure-qa-${{ github.run_id }}
+          path: secure-growth65/test-results/
+          retention-days: 14
