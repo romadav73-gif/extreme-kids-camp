@@ -1,0 +1,29 @@
+name: Growth 6.5 live browser transport health
+on:
+  push:
+    branches: [deploy/growth65-live]
+    paths: ['.github/workflows/growth65-live-browser-health.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  browser:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Run published login screen in Chrome
+        shell: bash
+        run: |
+          set -euo pipefail
+          chrome="$(command -v google-chrome || command -v chromium)"
+          url='https://extreme-kids-growth-os-6-5-mi5pb3.v2.appdeploy.ai/#login'
+          timeout 60s "$chrome" --headless=new --no-sandbox --disable-gpu --disable-dev-shm-usage --virtual-time-budget=12000 --dump-dom "$url" >/tmp/page.html 2>/tmp/chrome.log || true
+          grep -Fq 'id="login"' /tmp/page.html || { echo 'LOGIN_UI_MISSING'; tail -50 /tmp/chrome.log; exit 1; }
+          if grep -Fq 'Серверная база подключена' /tmp/page.html; then
+            echo BROWSER_GATEWAY_HEALTH_OK
+          else
+            echo BROWSER_GATEWAY_HEALTH_FAILED
+            grep -oE 'id="connection"[^>]*>[^<]+' /tmp/page.html || true
+            grep -oE 'id="message"[^>]*>[^<]+' /tmp/page.html || true
+            exit 1
+          fi
