@@ -2,7 +2,7 @@
 // This replaces the legacy transport, bootstrap and identity model, not the UI.
 const S65=window.EK65Model;
 let s65Actor=null,s65Csrf='',s65Base=null,s65Promise=null,s65Flight=null,s65Conflict=null,s65Polling=null,s65CacheKey=null,s65CacheSave=Promise.resolve();
-const s65LocalKey=()=>s65Actor?`EK65_SECURE:${s65Actor.workspaceId}:${s65Actor.id}`:null;
+const s65LocalKey=()=>s65Actor?`EK65_SECURE:${s65Actor.workspaceId}:${s65Actor.id}:${s65Actor.securityEpoch}`:null;
 function s65Bytes(s){return Uint8Array.from(atob(s.replace(/-/g,'+').replace(/_/g,'/')),c=>c.charCodeAt(0))}
 function s65B64(bytes){let out='';for(let i=0;i<bytes.length;i+=8192)out+=String.fromCharCode(...bytes.subarray(i,i+8192));return btoa(out)}
 async function s65ReadCache(raw){if(!raw)return null;const item=JSON.parse(raw);if(item.alg!=='A256GCM'||typeof item.iv!=='string'||typeof item.data!=='string')throw Error('Локальный черновик имеет другой формат. Не очищайте данные: сначала сохраните копию.');const plain=await crypto.subtle.decrypt({name:'AES-GCM',iv:s65Bytes(item.iv)},s65CacheKey,s65Bytes(item.data));return JSON.parse(new TextDecoder().decode(plain))}
@@ -20,7 +20,7 @@ async function s65Fetch(url,options={}){
  try{
   const res=await fetch(url,{cache:'no-store',credentials:'same-origin',...options,signal:controller.signal,headers:{...(options.body?{'Content-Type':'application/json','X-CSRF-Token':s65Csrf}:{}),...options.headers}});
   let data;try{data=await res.json()}catch{throw Error('Некорректный ответ сервера. Повторите позже.')}
-  if(!res.ok){if(res.status===401&&s65Actor){clearInterval(s65Polling);await s65CacheSave;state=null;location.replace('/login')}throw Object.assign(Error(data.message||'Ошибка обмена.'),{status:res.status,code:data.error})}
+  if(!res.ok){if(res.status===401&&s65Actor&&data.error==='AUTH_REQUIRED'){clearInterval(s65Polling);await s65CacheSave;state=null;location.replace('/login')}throw Object.assign(Error(data.message||'Ошибка обмена.'),{status:res.status,code:data.error})}
   return data;
  }catch(e){if(e.name==='AbortError')throw Error('Сервер не ответил вовремя. Не закрывайте вкладку. Повторная отправка использует тот же идентификатор.');throw e}
  finally{clearTimeout(timer)}

@@ -14,12 +14,12 @@ if(/955889|54602\.03|99602\.03/.test(js))throw Error('Legacy payroll fixture not
 js=js.replaceAll('fact:2162988','fact:0');
 js=js.replaceAll('https://mantledb.sh/v2/','/api/disabled-legacy/');
 js=js.replace("if(!/^([01]\\d|2[0-3]):[0-5]\\d$/.test(v.time||''))", "if(!/^([01]\\d|2[0-3]):[0-5]\\d(?:[–-]([01]\\d|2[0-3]):[0-5]\\d)?$/.test(v.time||''))");
-js=js.replace(marker,fs.readFileSync(path.join(root,'lib/client-bridge.js'),'utf8')+'\n'+marker);
+js=js.replace(marker,fs.readFileSync(path.join(root,'lib/client-bridge.js'),'utf8')+'\n'+fs.readFileSync(path.join(root,'lib/client-hardening.js'),'utf8')+'\n'+marker);
 // Do not export legacy credentials or the reset entry point through diagnostics.
 js=js.replace(/window\.EKGrowthOS=\{version:VERSION,build:BUILD,getState:[^\n]+;/,"window.EKGrowthOS={version:VERSION,build:BUILD,getState:()=>state,setView,sync:()=>syncNow({quiet:true})};");
 fs.mkdirSync(path.join(root,'build'),{recursive:true});fs.writeFileSync(path.join(root,'build/app.js'),js);
 fs.writeFileSync(path.join(root,'public/app.css'),styles+'\n.top-title>div{min-width:0;overflow:hidden}.top-title .crumb{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.mobile-menu-btn{flex-shrink:0} @media(max-width:560px){.top-actions{flex-wrap:wrap;max-width:50%}.topbar{height:auto;min-height:72px}.top-actions>[data-action="s65Logout"]{font-size:11px;padding:6px}.top-title{min-width:0}}');
 html=html.replace(/<link[^>]*rel="(?:icon|manifest)"[^>]*>/gi,'').replace(/<style[^>]*>[\s\S]*?<\/style>/gi,'').replace(/<script[^>]*>[\s\S]*?<\/script>/gi,'').replace('</head>','<link rel="stylesheet" href="/app.css"><script src="/model.js" defer></script><script src="/api/app" defer></script></head>');
 fs.writeFileSync(path.join(root,'public/app.html'),html);
-fs.writeFileSync(path.join(root,'build/manifest.json'),JSON.stringify({version:'6.5-security.1',builtAt:new Date().toISOString(),sha256:crypto.createHash('sha256').update(js).digest('hex'),sourceSha256:crypto.createHash('sha256').update(fs.readFileSync(source)).digest('hex'),transport:'authenticated same-origin API',legacyTransport:false},null,2));
+fs.writeFileSync(path.join(root,'build/manifest.json'),JSON.stringify({version:'6.5-security.3',builtAt:new Date().toISOString(),sha256:crypto.createHash('sha256').update(js).digest('hex'),sourceSha256:crypto.createHash('sha256').update(fs.readFileSync(source)).digest('hex'),transport:'authenticated same-origin API',legacyTransport:false},null,2));
 console.log('Built Growth OS 6.5 secure bundle');

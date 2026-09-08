@@ -16,7 +16,7 @@ function handler(service,{origin,secure=true}={}){
    const mutating=!['GET','HEAD'].includes(req.method);
    if(mutating){if(req.headers.origin!==origin)throw error(403,'ORIGIN','Запрос с другого сайта отклонён.');if(req.headers['sec-fetch-site']&&req.headers['sec-fetch-site']!=='same-origin'&&req.headers['sec-fetch-site']!=='none')throw error(403,'ORIGIN','Запрос с другого сайта отклонён.')}
    const sid=cookie(req,secure),csrf=req.headers['x-csrf-token'];
-   if(route==='/api/health'&&req.method==='GET')return json(res,200,{service:'ek65-secure',version:'6.5-security.1'});
+   if(route==='/api/health'&&req.method==='GET')return json(res,200,{service:'ek65-secure',version:'6.5-security.3'});
    if(route==='/api/login'&&req.method==='POST'){const result=await service.login(await body(req),process.env.VERCEL?String(req.headers['x-vercel-forwarded-for']||'vercel').split(',')[0]:req.socket?.remoteAddress||'local');setCookie(res,result.cookie,secure);delete result.cookie;return json(res,200,result)}
    if(route==='/api/activate'&&req.method==='POST'){const result=await service.activate(await body(req));setCookie(res,result.cookie,secure);delete result.cookie;return json(res,200,result)}
    if(route==='/api/session'&&req.method==='GET')return json(res,200,await service.getSession(sid));
@@ -27,6 +27,8 @@ function handler(service,{origin,secure=true}={}){
    if(route==='/api/users'&&req.method==='GET')return json(res,200,await service.listUsers(sid));
    if(route==='/api/invite'&&req.method==='POST')return json(res,200,await service.invite(sid,csrf,await body(req)));
    if(route==='/api/revoke'&&req.method==='POST')return json(res,200,await service.disableUser(sid,csrf,await body(req)));
+   if(route==='/api/access'&&req.method==='POST')return json(res,200,await service.setAccess(sid,csrf,await body(req)));
+   if(route==='/api/reissue'&&req.method==='POST')return json(res,200,await service.reissueInvite(sid,csrf,await body(req)));
    if(route==='/api/audit'&&req.method==='GET')return json(res,200,await service.auditLog(sid));
    if(route==='/api/backup'&&req.method==='GET'){res.setHeader('Content-Disposition','attachment; filename="ek65-backup.json"');return json(res,200,await service.exportState(sid))}
    const files={'/':'public/login.html','/login':'public/login.html','/auth.js':'public/auth.js','/login.css':'public/login.css','/app':'public/app.html','/app.css':'public/app.css','/model.js':'lib/model.cjs','/api/app':'build/app.js'};

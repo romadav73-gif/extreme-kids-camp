@@ -56,6 +56,7 @@ class Service{
     if(c.op==='remove'&&c.path.at(-1).startsWith('@'))d.tombstones[deletionKey]={at:new Date().toISOString(),userId:user.id};
    }
    P.validateState(data,applied);
+   require('./hardening.cjs').reconcileUsers(d,user,w,data,this.key);
    const generated=Attendance.generate(data,Attendance.affectedWeeks(w.data,data,applied)).filter(t=>!d.tombstones[w.id+':'+M.canonical(['tasks','@'+t.id])]);
    if(generated.length){data.tasks.push(...generated);P.validateState(data,[{path:['tasks']}]);}
    if(applied.length){w.revision++;data.meta={...(data.meta||{}),revision:w.revision,updatedAt:new Date().toISOString()};w.data=data;audit(d,user,'state.patch',{requestId:body.requestId,revision:w.revision,paths:applied.map(c=>c.path),generatedTaskIds:generated.map(t=>t.id),sha256:hash(M.canonical(data))},this.key)}
@@ -70,3 +71,5 @@ class Service{
  async exportState(cookie){return this.store.tx(d=>{const{user}=authenticate(d,cookie);assert(user.role==='owner',403,'FORBIDDEN','Доступ только собственнику.');const w=workspace(d,user),data=M.clone(w.data);return{format:'ek65-backup-v1',workspaceId:w.id,revision:w.revision,createdAt:new Date().toISOString(),sha256:hash(M.canonical(data)),data}})}
 }
 module.exports={Service,error,authenticate,cleanImport};
+
+require('./hardening.cjs').install(module.exports);

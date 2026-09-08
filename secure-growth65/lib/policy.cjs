@@ -27,7 +27,7 @@ function projection(s,a){
  if(managers(a)||a.role==='admin'||a.role==='stas')for(const [k,m] of Object.entries(s.months||{}))out.months[k]={...pick(m,['key','label','minimum','target','stretch','loadTarget']),fact:m.daily?.length?m.daily.reduce((n,r)=>n+Number(r.amount||0),0):m.fact||0,daily:[],focus:''};
  if(!Object.keys(out.months).length)out.months=M.emptyState(s.settings?.currentMonth).months;
  out.recommendations=(s.recommendations||[]).filter(x=>board(a)||a.role==='admin'||x.mentorId===a.personId);
- out.mentorPayroll=(s.mentorPayroll||[]).filter(x=>x.mentorId===a.personId);
+ out.mentorPayroll=['mentor','stas'].includes(a.role)?(s.mentorPayroll||[]).filter(x=>x.mentorId===a.personId):[];
  out.staffDocuments=(s.staffDocuments||[]).filter(x=>board(a)||x.personId===a.personId);
  out.staffDuties=(s.staffDuties||[]).filter(x=>board(a)||x.personId===a.personId);
  out.attendanceMemberships=(s.attendanceMemberships||[]).filter(x=>gids.has(x.groupId));
