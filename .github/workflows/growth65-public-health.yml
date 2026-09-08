@@ -1,0 +1,23 @@
+name: Growth 6.5 public service health
+on:
+  push:
+    branches: [deploy/growth65-live]
+    paths: ['.github/workflows/growth65-public-health.yml']
+permissions:
+  contents: read
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - name: Public health and anonymous access guard
+        run: |
+          python3 - <<'PY'
+          import urllib.request,urllib.error,json
+          for action,expected in [('health',200),('state',401)]:
+            req=urllib.request.Request('https://ljypjljlzfuarzsfuepn.supabase.co/functions/v1/growth65-live',data=json.dumps({'action':action}).encode(),headers={'Content-Type':'application/json'})
+            try:
+              with urllib.request.urlopen(req,timeout=30) as r: code,out=r.status,r.read().decode()
+            except urllib.error.HTTPError as e: code,out=e.code,e.read().decode()
+            print(action,code,out[:500]);assert code==expected
+          PY
