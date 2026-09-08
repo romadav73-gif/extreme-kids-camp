@@ -1,0 +1,53 @@
+name: Growth 6.5 live portable bundle
+on:
+  push:
+    branches: [deploy/growth65-live]
+    paths: ['.github/workflows/growth65-live-bundle.yml']
+permissions:
+  contents: write
+jobs:
+  bundle:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Build portable service without embedded credentials
+        run: |
+          set -euo pipefail
+          cd secure-growth65
+          npm ci --ignore-scripts
+          npm run build
+          mkdir -p edge
+          cat > edge/entry.cjs <<'JS'
+          const api=require('../lib/service.cjs');
+          const Model=require('../lib/model.cjs');
+          const Policy=require('../lib/policy.cjs');
+          const Integrity=require('../lib/integrity.cjs');
+          module.exports={...api,Model,Policy,Integrity};
+          JS
+          # One hash operation at a time on the memory-limited Edge runtime.
+          cp lib/auth.cjs /tmp/ek65-auth.cjs
+          sed -i 's/if(active>=2)/if(active>=1)/' lib/auth.cjs
+          npm exec --yes --package=esbuild@0.25.10 -- esbuild edge/entry.cjs --bundle --platform=node --format=esm --target=es2022 --minify --external:pg --banner:js="import * as edgeCrypto from 'node:crypto'; import * as edgeUtil from 'node:util'; const require=(id)=>id==='node:crypto'?edgeCrypto:id==='node:util'?edgeUtil:(()=>{throw new Error('Unsupported runtime import: '+id)})();" --outfile=edge/core.mjs
+          cp /tmp/ek65-auth.cjs lib/auth.cjs
+          node --check edge/core.mjs
+          node --input-type=module - <<'JS'
+          import Core from './edge/core.mjs';
+          if(!Core.Service||!Core.authenticate||!Core.Model||!Core.Policy)throw Error('Incomplete portable service');
+          Core.Integrity.validate(Core.Model.emptyState());
+          console.log('Portable service exports verified');
+          JS
+          node - <<'JS'
+          const fs=require('fs'),crypto=require('crypto');const digest=p=>crypto.createHash('sha256').update(fs.readFileSync(p)).digest('hex');
+          fs.writeFileSync('edge/manifest.json',JSON.stringify({source:process.env.GITHUB_SHA,version:'6.5-live.1',files:Object.fromEntries(['edge/core.mjs','build/app.js','public/app.html','public/app.css','lib/model.cjs'].map(p=>[p,digest(p)])),note:'Backend secrets and club data are not bundled.'},null,2));
+          JS
+      - name: Save portable bundle on isolated deployment branch
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -f secure-growth65/edge/core.mjs secure-growth65/edge/manifest.json secure-growth65/build/app.js secure-growth65/public/app.html secure-growth65/public/app.css
+          git commit -m 'Build pinned portable Growth 6.5 frontend and Edge service'
+          git push origin HEAD:deploy/growth65-live
