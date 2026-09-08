@@ -1,0 +1,22 @@
+name: Growth 6.5 exact debug response
+on:
+  push:
+    branches: [deploy/growth65-live]
+    paths: ['.github/workflows/growth65-debug-get.yml']
+permissions:
+  contents: read
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - shell: bash
+        run: |
+          set -euo pipefail
+          curl -sS --connect-timeout 10 --max-time 30 'https://ljypjljlzfuarzsfuepn.supabase.co/functions/v1/growth65-debug' | tee /tmp/debug.json
+          python - <<'PY'
+          import json
+          d=json.load(open('/tmp/debug.json'))
+          print('\nDEBUG_RESULT')
+          print(json.dumps(d,ensure_ascii=False,indent=2))
+          PY
