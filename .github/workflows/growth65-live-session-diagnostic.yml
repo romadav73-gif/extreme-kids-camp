@@ -1,0 +1,50 @@
+name: Growth 6.5 authenticated live diagnostic
+on:
+  push:
+    branches: [deploy/growth65-live]
+    paths: ['.github/workflows/growth65-live-session-diagnostic.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Probe authenticated session, state and idempotent patch
+        shell: bash
+        run: |
+          set -euo pipefail
+          edge='https://ljypjljlzfuarzsfuepn.supabase.co/functions/v1/growth65-live'
+          session='qa65_diag_session_20260908'
+          csrf='qa65_diag_csrf_20260908'
+          post(){
+            name="$1"; body="$2"; expected="$3"
+            code=$(curl -sS --connect-timeout 10 --max-time 30 -o "/tmp/${name}.json" -w '%{http_code}' -X POST "$edge" -H 'Content-Type: application/json' --data-binary "$body")
+            echo "$name HTTP=$code"
+            python - "$name" <<'PY'
+          import json,sys
+          p='/tmp/'+sys.argv[1]+'.json'
+          d=json.load(open(p))
+          safe={k:v for k,v in d.items() if k not in ('session','cookie','csrf','token','cacheKey','state')}
+          print(json.dumps(safe,ensure_ascii=False)[:1600])
+          PY
+            test "$code" = "$expected"
+          }
+          post session "{\"action\":\"session\",\"session\":\"$session\",\"csrf\":\"\",\"body\":{}}" 200
+          post state "{\"action\":\"state\",\"session\":\"$session\",\"csrf\":\"\",\"body\":{}}" 200
+          request='11111111-2222-4333-8444-555555555555'
+          body="{\"action\":\"patch\",\"session\":\"$session\",\"csrf\":\"$csrf\",\"body\":{\"requestId\":\"$request\",\"changes\":[{\"op\":\"set\",\"path\":[\"tasks\",\"@diag-live-task\"],\"previous\":{\"exists\":false},\"value\":{\"id\":\"diag-live-task\",\"title\":\"QA live diagnostic\",\"description\":\"Synthetic isolated workspace only\",\"ownerId\":\"sofia\",\"monthKey\":\"2026-09\",\"deadline\":\"2026-09-30\",\"priority\":\"medium\",\"status\":\"todo\",\"required\":false}}]}}"
+          code=$(curl -sS --connect-timeout 10 --max-time 30 -o /tmp/patch.json -w '%{http_code}' -X POST "$edge" -H 'Content-Type: application/json' --data-binary "$body")
+          echo "patch HTTP=$code"
+          python - <<'PY'
+          import json
+          d=json.load(open('/tmp/patch.json'))
+          print(json.dumps({k:v for k,v in d.items() if k not in ('state','csrf','cacheKey','session','cookie')},ensure_ascii=False)[:1600])
+          PY
+          test "$code" = 200
+          code2=$(curl -sS --connect-timeout 10 --max-time 30 -o /tmp/replay.json -w '%{http_code}' -X POST "$edge" -H 'Content-Type: application/json' --data-binary "$body")
+          echo "replay HTTP=$code2"
+          test "$code2" = 200
+          grep -q '"replayed":true' /tmp/replay.json
+          echo AUTHENTICATED_EDGE_CHAIN_OK
