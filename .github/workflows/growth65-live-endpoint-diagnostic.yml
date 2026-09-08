@@ -1,0 +1,38 @@
+name: Growth 6.5 live endpoint diagnostic
+on:
+  push:
+    branches: [deploy/growth65-live]
+    paths: ['.github/workflows/growth65-live-endpoint-diagnostic.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Probe Supabase Edge and AppDeploy gateway
+        shell: bash
+        run: |
+          set -euo pipefail
+          edge='https://ljypjljlzfuarzsfuepn.supabase.co/functions/v1/growth65-live'
+          app='https://extreme-kids-growth-os-6-5-mi5pb3.v2.appdeploy.ai/api/club/health'
+          post(){
+            name="$1"; url="$2"; body="$3"; expected="$4"
+            code=$(curl -sS --connect-timeout 10 --max-time 25 -o "/tmp/${name}.json" -w '%{http_code}' -X POST "$url" -H 'Content-Type: application/json' --data-binary "$body" || true)
+            echo "$name HTTP=$code"
+            python - "$name" <<'PY'
+          import json,sys
+          p='/tmp/'+sys.argv[1]+'.json'
+          try:
+              d=json.load(open(p))
+              safe={k:v for k,v in d.items() if k not in ('session','cookie','csrf','token','cacheKey','state')}
+              print(json.dumps(safe,ensure_ascii=False)[:1200])
+          except Exception as e: print('unreadable response')
+          PY
+            test "$code" = "$expected"
+          }
+          post edge_health "$edge" '{"action":"health","session":"","csrf":"","body":{}}' 200
+          post edge_bad_login "$edge" '{"action":"login","session":"","csrf":"","body":{"username":"__diagnostic_probe__","password":"not-a-real-password"}}' 401
+          post edge_anon_state "$edge" '{"action":"state","session":"","csrf":"","body":{}}' 401
+          post app_health "$app" '{"session":"","csrf":"","body":{}}' 200
