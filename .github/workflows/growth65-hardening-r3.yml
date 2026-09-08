@@ -1,0 +1,91 @@
+name: Growth 6.5 R3 hardening and release evidence
+on:
+  push:
+    branches: [fix/growth65-hardening-r3]
+    paths: ['secure-growth65/**', '.github/scripts/growth65-apply-hardening-r3.cjs', '.github/workflows/growth65-hardening-r3.yml']
+  pull_request:
+    paths: ['secure-growth65/**', '.github/workflows/growth65-hardening-r3.yml']
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency:
+  group: growth65-r3-${{ github.ref }}
+  cancel-in-progress: false
+jobs:
+  regression:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: ek65_test
+          POSTGRES_PASSWORD: isolated-ci-test-only
+          POSTGRES_DB: ek65_test
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U ek65_test -d ek65_test"
+          --health-interval 5s --health-timeout 5s --health-retries 15
+    defaults:
+      run:
+        working-directory: secure-growth65
+    env:
+      TEST_DATABASE_URL: postgres://ek65_test:isolated-ci-test-only@127.0.0.1:5432/ek65_test
+      CHROME_PATH: /usr/bin/google-chrome
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Integrate exact reviewed R3 changes
+        run: node ../.github/scripts/growth65-apply-hardening-r3.cjs
+      - name: Reproducible build
+        run: |
+          npm ci --ignore-scripts
+          npm run build
+          node --check build/app.js
+          mkdir -p test-results
+      - name: Server and real PostgreSQL security tests
+        run: |
+          set -euo pipefail
+          node --test --test-concurrency=1 tests/*.test.cjs | tee test-results/server.tap
+      - name: Existing complete browser suite against repaired server
+        run: |
+          set -euo pipefail
+          node tests/e2e.cjs | tee test-results/browser.log
+      - name: Runtime dependency vulnerability audit
+        run: npm audit --omit=dev --audit-level=high
+      - name: Commit only the exact source integration that passed tests
+        if: success() && github.event_name == 'push' && github.ref == 'refs/heads/fix/growth65-hardening-r3'
+        run: |
+          set -euo pipefail
+          git fetch origin fix/growth65-hardening-r3
+          test "$(git rev-parse FETCH_HEAD)" = "$GITHUB_SHA" || { echo 'Branch moved; leaving source intact.'; exit 1; }
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add lib/service.cjs lib/http.cjs lib/policy.cjs lib/client-bridge.js scripts/build.cjs hardening-r3-manifest.json
+          if ! git diff --cached --quiet; then
+            git commit -m 'Finalize verified R3 hardening integration in Growth 6.5'
+            git push origin HEAD:fix/growth65-hardening-r3
+          fi
+          echo "VERIFIED_SOURCE_COMMIT=$(git rev-parse HEAD)" >> "$GITHUB_ENV"
+      - name: Preserve source, migration, report and build fingerprints
+        if: always()
+        run: |
+          mkdir -p test-results/verified-source
+          cp -r lib api scripts public tests migrations source package.json package-lock.json vercel.json README.md test-results/verified-source/ || true
+          cp build/manifest.json test-results/build-manifest.json || true
+          cp hardening-r3-manifest.json test-results/hardening-r3-manifest.json || true
+          find lib api scripts tests migrations -type f -print0 | sort -z | xargs -0 sha256sum > test-results/source-sha256.txt
+          node - <<'JS'
+          const fs=require('fs');const p='test-results/browser-report.json';
+          const record={version:'6.5-security.3',browser:fs.existsSync(p)?JSON.parse(fs.readFileSync(p)).summary:null,workflowCommit:process.env.GITHUB_SHA,verifiedSourceCommit:process.env.VERIFIED_SOURCE_COMMIT||null,productionDeployed:false,realClubDataChanged:false,newAccountLifecycleBrowserCoverage:'Server integration tests only; existing browser regression retained'};
+          fs.writeFileSync('test-results/release-status.json',JSON.stringify(record,null,2));
+          fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY,'# Growth 6.5 R3\n\n'+JSON.stringify(record)+'\n');
+          JS
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: growth65-r3-${{ github.run_id }}
+          path: secure-growth65/test-results/
+          retention-days: 14
