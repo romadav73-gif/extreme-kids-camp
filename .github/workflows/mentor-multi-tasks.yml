@@ -1,7 +1,7 @@
 name: Mentor manual payroll and multiple recipients
 on:
   push:
-    branches: [fix/mentor-multi-tasks-20260910]
+    branches: [fix/mentor-multi-tasks-ready]
   workflow_dispatch:
 permissions:
   contents: read
@@ -28,7 +28,8 @@ jobs:
           if(crypto.createHash('sha256').update(text).digest('hex')!=='a0afc9492d9a08273364aa27710d196e9c27f5b990a99451738f9bd695a6545b')throw Error('Base source drift');
           const hook="document.addEventListener('click',handleClick);";
           if(text.split(hook).length!==2)throw Error('Unknown bootstrap');
-          fs.writeFileSync(p,text.replace(hook,fs.readFileSync('mentor-tasks.js','utf8')+'\n'+hook));
+          const prepared=require('./mentor-work-ui.cjs')(text);
+          fs.writeFileSync(p,prepared.replace(hook,fs.readFileSync('mentor-tasks.js','utf8')+'\n'+hook));
           JS
           node --check base/build/app.js
       - run: pip install playwright==1.55.0

@@ -1,61 +1,9 @@
-// Growth OS 6.5: group finances stay out of coach workflows; payroll is manual.
-// New multi-recipient assignments use ordinary independent task records and the
-// existing atomic server patch. No new role, shared completion, or data migration.
-const mt65Coach = () => ['mentor', 'stas'].includes(s65Actor?.role);
+// Growth OS 6.5: one task form, multiple independent recipients.
+// Uses existing authenticated atomic state patches; no schema or role changes.
 const mt65CanAssign = () => !!s65Actor && canSeeAllTasks();
 const mt65People = () => (state?.people || []).filter(p => p.active !== false
   && !p.archivedAt && !p.deletedAt
   && ['owner', 'manager', 'stas', 'mentor', 'admin'].includes(p.role));
-
-// This is also enforced in the existing server policy for mentorPayroll.
-canManageMentorPayroll = () => s65Actor?.role === 'owner';
-
-const mt65GroupModal = groupModal;
-groupModal = function (item = null) {
-  mt65GroupModal(item);
-  if (!mt65Coach()) return;
-  const form = document.getElementById('groupForm');
-  const field = form?.querySelector('[name="monthlyPrice"]')?.closest('.field');
-  if (!field) return;
-  const hidden = document.createElement('input');
-  hidden.type = 'hidden';
-  hidden.name = 'monthlyPrice';
-  hidden.value = String(item?.monthlyPrice ?? 0);
-  // Preserve a stored value when editing roster counts; do not reset finance.
-  field.replaceWith(hidden);
-};
-
-const mt65Groups = renderGroups;
-renderGroups = function () {
-  const html = mt65Groups();
-  if (!mt65Coach()) return html;
-  const template = document.createElement('template');
-  template.innerHTML = html;
-  const root = template.content;
-  for (const table of root.querySelectorAll('.data-table')) {
-    const headings = Array.from(table.querySelectorAll('thead tr:first-child th'));
-    const column = headings.findIndex(th => th.textContent.trim() === 'Цена / мес.');
-    if (column >= 0) {
-      for (const row of table.querySelectorAll('tr')) row.children[column]?.remove();
-    }
-  }
-  for (const label of root.querySelectorAll('.metric-label')) {
-    if (['Текущая оценка', 'Резерв выручки'].includes(label.textContent.trim())) {
-      label.closest('.metric-card')?.remove();
-    }
-  }
-  for (const grid of root.querySelectorAll('.grid-4')) {
-    if (grid.children.length === 2) grid.classList.add('mt65-two-metrics');
-  }
-  const head = root.querySelector('.page-head');
-  for (const element of head?.querySelectorAll('.eyebrow, p') || []) {
-    if (element.textContent.includes('РАСПИСАНИЕ И ДЕНЬГИ')) element.textContent = 'РАСПИСАНИЕ И ЗАГРУЗКА';
-    if (element.textContent.includes('потенциальная выручка')) {
-      element.textContent = 'Наставник → группа → вместимость → дети → свободные места';
-    }
-  }
-  return template.innerHTML;
-};
 
 function mt65Selection(form) {
   return Array.from(form.querySelectorAll('[name="taskRecipients"]:checked'))
@@ -122,22 +70,6 @@ const mt65Submit = handleSubmit;
 handleSubmit = function (event) {
   const form = event.target;
   if (!(form instanceof HTMLFormElement)) return mt65Submit(event);
-  if (form.id === 'groupForm' && mt65Coach()) {
-    const record = state.groups.find(group => group.id === form.dataset.id);
-    const price = form.elements.namedItem('monthlyPrice');
-    if (price) price.value = String(record?.monthlyPrice ?? 0);
-    // Non-manager projections omit price altogether. The legacy form handler
-    // used to synthesize monthlyPrice: 0 and send an unauthorized hidden change.
-    const beforeUpsert = upsert;
-    upsert = function (list, candidate) {
-      if (list === state.groups && !Object.prototype.hasOwnProperty.call(record || {}, 'monthlyPrice')) {
-        delete candidate.monthlyPrice;
-      }
-      return beforeUpsert(list, candidate);
-    };
-    try { return mt65Submit(event); }
-    finally { upsert = beforeUpsert; }
-  }
   if (form.id !== 'taskForm' || form.dataset.mt65Multi !== 'true') return mt65Submit(event);
   event.preventDefault();
   if (form.dataset.mt65Saving === 'true') return;
@@ -199,7 +131,6 @@ handleSubmit = function (event) {
 const mt65Style = document.createElement('style');
 mt65Style.id = 'ek65-mentor-multi-tasks';
 mt65Style.textContent = `
-  .mt65-two-metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .mt65-recipients { min-inline-size: 0; min-width: 0; border: 0; padding: 0; margin: 0; }
   .mt65-recipients legend { margin: 0 0 6px; font-weight: 600; color: var(--text); }
   .mt65-recipients > p { margin: 0 0 10px; font-size: 13px; line-height: 1.5; }
