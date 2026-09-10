@@ -1,0 +1,41 @@
+name: Live device transport and login screen
+on:
+  push:
+    branches: [fix/mentor-calendar-device]
+    paths: ['.github/workflows/live-device-transport-smoke.yml']
+permissions:
+  contents: read
+jobs:
+  live:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - run: pip install playwright==1.55.0
+      - name: Read-only published-browser and API verification
+        run: |
+          python - <<'PY'
+          from playwright.sync_api import sync_playwright
+          import json
+          with sync_playwright() as p:
+            browser=p.chromium.launch(executable_path='/usr/bin/google-chrome',headless=True,args=['--no-sandbox'])
+            page=browser.new_page(viewport={'width':390,'height':844})
+            errors=[]
+            page.on('pageerror',lambda e:errors.append(str(e)))
+            page.goto('https://extreme-kids-growth-os-6-5-mi5pb3.v2.appdeploy.ai/',wait_until='domcontentloaded')
+            page.locator('#login [name=rememberDevice]').wait_for(timeout=45000)
+            assert page.locator('#login [name=rememberDevice]').is_checked()
+            health=page.evaluate("window.EK65Transport.request('/api/health')")
+            assert health.get('ok') and health.get('version')=='6.5-live.3', health
+            result=page.evaluate("""async()=>{const pair=await crypto.subtle.generateKey({name:'ECDSA',namedCurve:'P-256'},false,['sign','verify']);const publicKey=await crypto.subtle.exportKey('jwk',pair.publicKey);const out=[];for(const [name,body]of [['device-enroll',{publicKey}],['device-challenge',{deviceId:'nonexistent-public-test-device'}],['device-forget',{deviceId:'nonexistent-public-test-device'}]]){try{await window.EK65Transport.request('/api/'+name,{method:'POST',body});out.push({name,incorrectlyAllowed:true})}catch(e){out.push({name,status:e.status,code:e.code})}}return out}""")
+            assert all(r.get('status')==401 for r in result), result
+            assert not errors,errors
+            page.screenshot(path='published-login-mobile.png',full_page=True,animations='disabled')
+            print(json.dumps({'publishedLoginRememberControl':True,'serverVersion':health['version'],'guards':result,'runtimeErrors':errors,'realAccountsUsed':False},ensure_ascii=False))
+            browser.close()
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: published-device-login-screen
+          path: published-login-mobile.png
+          retention-days: 7
