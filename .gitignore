@@ -1,0 +1,4 @@
+.qa-auth.json
+*.log
+previous/
+base/
