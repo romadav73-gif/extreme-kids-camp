@@ -1,0 +1,6 @@
+.qa-login.json
+previous/
+base/
+*.png
+server.log
+test-results.json

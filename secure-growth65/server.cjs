@@ -1,6 +1,0 @@
-'use strict';
-const http=require('node:http');const {PostgresStore,MemoryStore}=require('./lib/store.cjs');const{Service}=require('./lib/service.cjs');const{handler}=require('./lib/http.cjs');
-async function start(){const dev=process.env.NODE_ENV!=='production';if(!dev&&process.env.EK65_MEMORY==='1')throw Error('Memory persistence is forbidden in production');const store=process.env.EK65_MEMORY==='1'?new MemoryStore():new PostgresStore(process.env.DATABASE_URL,{local:dev&&process.env.EK65_LOCAL_DB==='1'});if(store.migrate&&process.env.EK65_MIGRATE==='1')await store.migrate();const service=new Service(store,{securityKey:process.env.SECURITY_KEY});
- if(dev&&process.env.EK65_TEST_SEED){const seed=require(process.env.EK65_TEST_SEED);await service.bootstrap({username:'roman',data:seed,password:'QA-only-safe-password-2026'});console.log('TEST seed loaded; synthetic data only')}
- const port=Number(process.env.PORT||8766),origin=process.env.APP_ORIGIN||`http://127.0.0.1:${port}`;const server=http.createServer(handler(service,{origin,secure:!dev}));server.requestTimeout=20000;server.headersTimeout=10000;server.listen(port,'127.0.0.1',()=>console.log('EK65 listening '+origin));return{server,service,store};}
-if(require.main===module)start().catch(e=>{console.error(e.message);process.exitCode=1});module.exports={start};

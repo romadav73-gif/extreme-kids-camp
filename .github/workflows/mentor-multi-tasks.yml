@@ -1,0 +1,50 @@
+name: Mentor manual payroll and multiple recipients
+on:
+  push:
+    branches: [fix/mentor-multi-tasks-20260910]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  qa:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+        with:
+          ref: 4bfae20bce0cd0bfd873a2db08734ece399457ff
+          path: previous
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: |
+          ln -s previous/secure-growth65 base
+          node base/scripts/build.cjs
+          node --check mentor-tasks.js
+          node - <<'JS'
+          const fs=require('fs'),crypto=require('crypto');
+          const p='base/build/app.js',text=fs.readFileSync(p,'utf8');
+          if(crypto.createHash('sha256').update(text).digest('hex')!=='a0afc9492d9a08273364aa27710d196e9c27f5b990a99451738f9bd695a6545b')throw Error('Base source drift');
+          const hook="document.addEventListener('click',handleClick);";
+          if(text.split(hook).length!==2)throw Error('Unknown bootstrap');
+          fs.writeFileSync(p,text.replace(hook,fs.readFileSync('mentor-tasks.js','utf8')+'\n'+hook));
+          JS
+          node --check base/build/app.js
+      - run: pip install playwright==1.55.0
+      - name: Isolated full browser forms and role checks
+        run: |
+          node local-server.cjs > server.log 2>&1 &
+          for i in $(seq 1 30); do curl -fsS http://127.0.0.1:8886/login >/dev/null && break || sleep 1; done
+          python browser-test.py
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: mentor-multiple-tasks-evidence
+          path: |
+            test-results.json
+            multi-task-desktop.png
+            multi-task-mobile.png
+            mentor-salary-manual.png
+            server.log
+          retention-days: 7
