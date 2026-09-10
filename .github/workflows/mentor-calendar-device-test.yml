@@ -1,0 +1,39 @@
+name: Mentor calendar and remembered-device QA
+on:
+  push:
+    branches: [fix/mentor-calendar-device]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  qa:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+        with:
+          ref: 4bfae20bce0cd0bfd873a2db08734ece399457ff
+          path: previous
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: |
+          ln -s previous/secure-growth65 base
+          cd base && node scripts/build.cjs
+      - run: pip install playwright==1.55.0
+      - run: |
+          node device-server.test.mjs
+          node local-server.mjs > local-server.log 2>&1 &
+          for i in $(seq 1 30); do curl -fsS http://127.0.0.1:8877/ >/dev/null && break || sleep 1; done
+          python browser-test.py
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: mentor-calendar-device-evidence
+          path: |
+            browser-results.json
+            calendar-desktop.png
+            calendar-mobile.png
+            local-server.log
+          retention-days: 7
