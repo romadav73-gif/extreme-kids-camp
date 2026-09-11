@@ -17,7 +17,7 @@ jobs:
       - run: pip install playwright==1.55.0
       - name: Prepare pinned synthetic service without production credentials
         run: |
-          mkdir -p qa evidence
+          mkdir -p qa evidence lib
           python - <<'PY'
           import urllib.request
           from pathlib import Path
@@ -25,6 +25,7 @@ jobs:
           files={
             'core.mjs':'4bfae20bce0cd0bfd873a2db08734ece399457ff/secure-growth65/edge/core.mjs',
             'fixture.cjs':'4bfae20bce0cd0bfd873a2db08734ece399457ff/secure-growth65/tests/fixture.cjs',
+            '../lib/model.cjs':'4bfae20bce0cd0bfd873a2db08734ece399457ff/secure-growth65/lib/model.cjs',
             'device.mjs':'9573ebd5ed6f46dae4681f30c536fa75c9d33ef0/device-server.mjs',
             'smm-server.mjs':'63c0e93ccb671fce49aebad6f978ce7e2bc6e996/smm65/src/smm-server.mjs',
             'smm-core.mjs':'63c0e93ccb671fce49aebad6f978ce7e2bc6e996/smm65/src/smm-core.mjs'
@@ -83,6 +84,7 @@ jobs:
           JS
           node qa/server.mjs > evidence/synthetic-server.log 2>&1 &
           for i in $(seq 1 30); do curl -fsS http://127.0.0.1:8898/ready >/dev/null && break || sleep 1; done
+          curl -fsS http://127.0.0.1:8898/ready >/dev/null
       - name: Exact published UI, safe failures, preserved roles and device recovery
         run: |
           python - <<'PY'
