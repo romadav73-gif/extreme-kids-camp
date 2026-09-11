@@ -1,0 +1,52 @@
+name: Growth 6.5 public transport inspection
+on:
+  push:
+    branches: [fix/reliability-20260911]
+    paths: ['.github/workflows/reliability-transport-probe.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 4
+    steps:
+      - run: pip install playwright==1.55.0
+      - name: Inspect own public page only
+        run: |
+          mkdir -p evidence/assets
+          python - <<'PY'
+          import json, hashlib
+          from pathlib import Path
+          from urllib.parse import urlsplit
+          from playwright.sync_api import sync_playwright
+          host='extreme-kids-growth-os-6-5-mi5pb3.v2.appdeploy.ai'
+          evidence=Path('evidence'); records=[]; errors=[]
+          with sync_playwright() as p:
+              b=p.chromium.launch(executable_path='/usr/bin/google-chrome',args=['--no-sandbox'])
+              c=b.new_context(); page=c.new_page(); responses=[]
+              page.on('response',lambda r: responses.append(r))
+              page.on('pageerror',lambda e: errors.append({'type':'runtime','name':str(e).split(':')[0][:60]}))
+              page.goto('https://'+host+'/',wait_until='networkidle',timeout=60000)
+              page.locator('#retry').click()
+              page.wait_for_timeout(2000)
+              for r in responses:
+                  u=urlsplit(r.url)
+                  if u.hostname!=host: continue
+                  record={'path':u.path,'status':r.status,'type':r.headers.get('content-type',''),'method':r.request.method}
+                  record['headers']={k:v for k,v in r.headers.items() if k in ['server','alt-svc','content-security-policy','cache-control']}
+                  record['setCookiePresent']='set-cookie' in r.headers
+                  records.append(record)
+                  if r.status==200 and ('javascript' in record['type'] or u.path.endswith('.js')):
+                      try: evidence.joinpath('assets',hashlib.sha256(u.path.encode()).hexdigest()[:12]+'.js').write_bytes(r.body())
+                      except: pass
+              evidence.joinpath('transport.json').write_text(json.dumps({'responses':records,'errors':errors,'cookies':[{'name':x['name'],'domain':x['domain'],'path':x['path'],'secure':x['secure'],'httpOnly':x['httpOnly'],'sameSite':x['sameSite']} for x in c.cookies()]},indent=2))
+              print(json.dumps({'responses':records,'errors':errors},ensure_ascii=False))
+              b.close()
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: growth65-public-transport
+          path: evidence/
+          retention-days: 7
