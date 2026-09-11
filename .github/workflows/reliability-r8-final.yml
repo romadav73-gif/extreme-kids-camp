@@ -1,0 +1,47 @@
+name: Growth 6.5 R8 final release verification
+on:
+  push:
+    branches: [fix/reliability-20260911]
+    paths: ['.github/workflows/reliability-r8-final.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: pip install playwright==1.55.0 pyyaml
+      - name: Prepare the pinned isolated service and test scripts
+        run: |
+          python - <<'PY'
+          import urllib.request, yaml
+          from pathlib import Path
+          url='https://raw.githubusercontent.com/romadav73-gif/extreme-kids-camp/e408c29dce547c51cc796ce7c83bdd5d04b2c92d/.github/workflows/reliability-r8-verify.yml'
+          suite=yaml.safe_load(urllib.request.urlopen(url,timeout=30).read())
+          steps=suite['jobs']['verify']['steps']
+          prepare=next(s['run'] for s in steps if s.get('name','').startswith('Prepare pinned'))
+          verify=next(s['run'] for s in steps if s.get('name','').startswith('Exact published'))
+          old="q.locator('[data-action=s65Logout]').click()"
+          new="q.get_by_role('button',name='Выйти',exact=True).click()"
+          assert verify.count(old)==1
+          verify=verify.replace(old,new)
+          old="p.locator('#mainNav [data-view=operations]').count()==1"
+          new="p.evaluate(\"async()=>(await window.EK65Transport.request('/api/session')).actor.role\")=='manager'"
+          assert verify.count(old)==1
+          verify=verify.replace(old,new)
+          Path('prepare.sh').write_text(prepare)
+          Path('verify.sh').write_text(verify)
+          PY
+          bash -e prepare.sh
+      - name: Exact published UI and isolated authenticated workflows
+        run: bash -e verify.sh
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: growth65-r8-final
+          path: evidence/
+          retention-days: 14
