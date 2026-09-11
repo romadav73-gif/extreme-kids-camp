@@ -1,0 +1,50 @@
+name: SMM 6.5 live smoke
+on:
+  push:
+    branches: [feature/karina-smm-20260911]
+    paths: ['.github/workflows/smm65-live-smoke.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - run: pip install playwright==1.55.0
+      - name: Public live release and protected endpoint verification
+        run: |
+          mkdir -p evidence
+          python - <<'PY'
+          from playwright.sync_api import sync_playwright
+          from pathlib import Path
+          import json
+          results=[]
+          with sync_playwright() as pw:
+              browser=pw.chromium.launch(executable_path='/usr/bin/google-chrome',headless=True,args=['--no-sandbox'])
+              page=browser.new_page(viewport={'width':1280,'height':900})
+              errors=[]
+              page.on('pageerror',lambda e:errors.append(str(e)))
+              page.goto('https://extreme-kids-growth-os-6-5-mi5pb3.v2.appdeploy.ai/',wait_until='networkidle',timeout=60000)
+              health=page.evaluate("async () => await window.EK65Transport.request('/api/health')")
+              results.append({'name':'live SMM-enabled server connected','ok':health.get('ok') is True and health.get('version')=='6.5-live.6-smm'})
+              denied=page.evaluate("async () => {try{await window.EK65Transport.request('/api/smm',{method:'POST',body:JSON.stringify({action:'overview'})});return {accepted:true}}catch(e){return {status:e.status,code:e.code}}}")
+              results.append({'name':'anonymous cannot read SMM records','ok':denied.get('status')==401 and denied.get('code')=='AUTH_REQUIRED'})
+              results.append({'name':'login remains available','ok':page.locator('#login').is_visible()})
+              results.append({'name':'remembered-device checkbox preserved','ok':page.locator('#login [name=rememberDevice]').count()==1})
+              page.screenshot(path='evidence/live-login-desktop.png')
+              page.set_viewport_size({'width':375,'height':812})
+              results.append({'name':'mobile public page fits','ok':page.evaluate('document.documentElement.scrollWidth<=innerWidth+1')})
+              page.screenshot(path='evidence/live-login-mobile.png')
+              results.append({'name':'no public page runtime errors','ok':not errors})
+              browser.close()
+          Path('evidence/live-results.json').write_text(json.dumps({'tests':results,'errors':errors,'scope':'Public production gateway only; authenticated workflows are covered by the separate synthetic SMM suite.'},ensure_ascii=False,indent=2))
+          print(json.dumps(results,ensure_ascii=False))
+          assert all(r['ok'] for r in results)
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: smm65-live-smoke
+          path: evidence/
+          retention-days: 14
