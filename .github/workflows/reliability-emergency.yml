@@ -1,0 +1,21 @@
+name: Verify fail-closed login before release
+on:
+  push:
+    branches: [fix/reliability-20260911]
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    steps:
+      - uses: actions/checkout@v4
+      - run: pip install playwright==1.55.0
+      - name: Verify candidate forms without customer credentials
+        run: python verify_forms.py
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: safe-login-evidence
+          path: evidence/
+          retention-days: 14

@@ -1,1 +1,0 @@
-Trigger Roman Finance build after workflow installation.
