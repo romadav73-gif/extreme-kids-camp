@@ -31,6 +31,7 @@ jobs:
           p=Path('smm65/tests/browser-test.py')
           s=p.read_text()
           s=s.replace("'Предварительный расчёт' in k.locator('#pages').inner_text()", "'предварительный расчёт' in k.locator('#pages').inner_text().lower()")
+          s=s.replace("wait_for_function(\"document.querySelector('#sm65FormError').textContent.length>0\")", "wait_for_function(\"() => document.querySelector('#sm65FormError')?.textContent.length > 0\")")
           s=s.replace("            check('No horizontal overflow ' + str(width)", "            if k.evaluate('document.documentElement.scrollWidth>innerWidth+1'):\n                print('OVERFLOW', k.evaluate(\"Array.from(document.querySelectorAll('body *')).filter(e=>e.getBoundingClientRect().right>innerWidth+1&&e.getBoundingClientRect().width>0).slice(0,15).map(e=>({tag:e.tagName,cls:e.className,right:e.getBoundingClientRect().right,width:e.getBoundingClientRect().width}))\"), flush=True)\n                k.screenshot(path=str(ROOT/'evidence/overflow.png'),full_page=True)\n            check('No horizontal overflow ' + str(width)")
           p.write_text(s)
           PY
