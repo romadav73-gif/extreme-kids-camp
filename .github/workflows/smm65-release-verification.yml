@@ -1,0 +1,50 @@
+name: SMM 6.5 release verification
+on:
+  push:
+    branches: [feature/karina-smm-20260911]
+    paths: ['smm65/**', '.github/workflows/smm65-release-verification.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+        with:
+          ref: 4bfae20bce0cd0bfd873a2db08734ece399457ff
+          path: previous
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Prepare isolated pinned application
+        run: |
+          ln -s ../previous/secure-growth65 smm65/base
+          cd previous/secure-growth65
+          node scripts/build.cjs
+      - run: pip install playwright==1.55.0
+      - name: Server permission and motivation tests
+        working-directory: smm65
+        run: |
+          mkdir -p evidence
+          set -o pipefail
+          node --test tests/server.test.mjs | tee evidence/server.tap
+      - name: Browser SMM workflows
+        working-directory: smm65
+        run: |
+          node tests/local-server.mjs > evidence/server.log 2>&1 &
+          for i in $(seq 1 30); do curl -fsS http://127.0.0.1:8894/login >/dev/null && break || sleep 1; done
+          python tests/browser-test.py
+      - name: Preserve exact module sources
+        if: always()
+        run: |
+          mkdir -p smm65/evidence/release-source
+          cp -r smm65/src smm65/tests smm65/evidence/release-source/
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: smm65-release-evidence
+          path: smm65/evidence/
+          retention-days: 14
