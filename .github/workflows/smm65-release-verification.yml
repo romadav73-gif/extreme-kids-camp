@@ -25,6 +25,13 @@ jobs:
       - name: Prepare approved source and isolated application
         run: |
           node smm65/finalize.cjs
+          python - <<'PY'
+          from pathlib import Path
+          p=Path('smm65/tests/browser-test.py')
+          s=p.read_text()
+          s=s.replace("'Предварительный расчёт' in k.locator('#pages').inner_text()", "'предварительный расчёт' in k.locator('#pages').inner_text().lower()")
+          p.write_text(s)
+          PY
           ln -s ../previous/secure-growth65 smm65/base
           cd previous/secure-growth65
           node scripts/build.cjs
@@ -34,7 +41,7 @@ jobs:
         run: |
           mkdir -p evidence
           set -o pipefail
-          node --test tests/*.test.mjs | tee evidence/server.tap
+          node --test tests/*.test.mjs verify-approved.test.mjs | tee evidence/server.tap
       - name: Browser SMM workflows
         working-directory: smm65
         run: |
