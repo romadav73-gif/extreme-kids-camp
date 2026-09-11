@@ -111,16 +111,19 @@ export function smmController({ store, authenticate, M, P, getSecurityKey }) {
     if (candidate.kind === 'shoot' && candidate.archiveUrl) urls.add(candidate.archiveUrl);
     for (const e of Object.values(smm.entries || {})) {
       if (e.id === id || e.deletedAt || e.status === 'draft') continue;
+      if (candidate.kind === 'story' && e.kind === 'story' && candidate.archiveUrl
+          && e.archiveUrl === candidate.archiveUrl && candidate.links.some(l => e.links.some(x => x.platform === l.platform)))
+        fail(409, 'SMM_DUPLICATE', 'Это подтверждение сторис уже использовано для выбранной площадки.');
       const other = e.links.map(l => l.url).filter(Boolean);
       if (e.kind === 'shoot') other.push(e.archiveUrl);
       if (other.some(u => urls.has(u))) fail(409, 'SMM_DUPLICATE', 'Эта ссылка уже есть в отчёте. Откройте исходный материал вместо повторного начисления.');
     }
   }
   function rulesInput(raw) {
-    const fields = ['base', 'regularBonus', 'productionBonus', 'cap', 'postEvery', 'storyFrames', 'storyPlatforms', 'postPlatforms', 'videoPlatforms', 'videoDays', 'shootDays', 'workDays', 'accounts'];
+    const fields = ['base', 'storyBonus', 'postBonus', 'productionBonus', 'cap', 'postEvery', 'storyFrames', 'storyPlatforms', 'postPlatforms', 'videoPlatforms', 'videoDays', 'shootDays', 'workDays', 'accounts'];
     if (!keysOnly(raw, fields) || fields.some(k => !Object.hasOwn(raw, k))) fail(422, 'SMM_RULES', 'Нужно передать полные настройки месяца.');
-    for (const k of ['base', 'regularBonus', 'productionBonus', 'cap']) if (!Number.isInteger(raw[k]) || !number(raw[k], 0, 50000)) fail(422, 'SMM_CAP', 'Пилотная мотивация ограничена 50 000 ₽ за полный месяц.');
-    if (raw.base + raw.regularBonus + raw.productionBonus > raw.cap) fail(422, 'SMM_CAP', 'Сумма частей не должна превышать месячный потолок.');
+    for (const k of ['base', 'storyBonus', 'postBonus', 'productionBonus', 'cap']) if (!Number.isInteger(raw[k]) || !number(raw[k], 0, 50000)) fail(422, 'SMM_CAP', 'Пилотная мотивация ограничена 50 000 ₽ за полный месяц.');
+    if (raw.base + raw.storyBonus + raw.postBonus + raw.productionBonus > raw.cap) fail(422, 'SMM_CAP', 'Сумма частей не должна превышать месячный потолок.');
     if (!Number.isInteger(raw.postEvery) || !number(raw.postEvery, 1, 7) || !Number.isInteger(raw.storyFrames) || !number(raw.storyFrames, 1, 30)) fail(422, 'SMM_RULES', 'Проверьте периодичность постов и количество сторис.');
     for (const k of ['storyPlatforms', 'postPlatforms', 'videoPlatforms']) if (!Array.isArray(raw[k]) || raw[k].length > 5 || raw[k].some(p => !Object.hasOwn(SMM_PLATFORMS, p)) || new Set(raw[k]).size !== raw[k].length) fail(422, 'SMM_RULES', 'Некорректные площадки.');
     for (const k of ['videoDays', 'shootDays', 'workDays']) if (!Array.isArray(raw[k]) || raw[k].length > 7 || raw[k].some(n => !Number.isInteger(n) || !number(n, 0, 6)) || new Set(raw[k]).size !== raw[k].length) fail(422, 'SMM_RULES', 'Некорректные дни недели.');
@@ -151,6 +154,7 @@ export function smmController({ store, authenticate, M, P, getSecurityKey }) {
         if (user.role !== 'smm' || user.personId !== next.config.personId) fail(403, 'FORBIDDEN', 'Материал добавляет Карина из своего кабинета; руководители проверяют.');
         if (!uuid(body.id)) fail(422, 'SMM_ID', 'Некорректный идентификатор материала.');
         const previous = next.entries[body.id]; version(previous, body.version);
+        if (previous?.deletedAt) fail(409, 'SMM_DELETED', 'Материал удалён. Создайте новую запись.');
         if (previous?.personId && previous.personId !== user.personId) fail(403, 'FORBIDDEN', 'Чужая запись.');
         if (previous) locked(next, previous.date.slice(0, 7));
         if (body.action === 'delete') {

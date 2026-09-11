@@ -103,7 +103,7 @@ test('Manager may agree an exception, author cannot, reason and CAS required', a
   assert((await request(smm, { action: 'overview' })).score.slots.find(s => s.id === slot.id).exception);
 });
 test('Salary coefficients editable only by owner and total cap enforced', async () => {
-  const cfg = smmDefaults('2026-08-01'), fields = ['base', 'regularBonus', 'productionBonus', 'cap', 'postEvery', 'storyFrames', 'storyPlatforms', 'postPlatforms', 'videoPlatforms', 'videoDays', 'shootDays', 'workDays', 'accounts'];
+  const cfg = smmDefaults('2026-08-01'), fields = ['base', 'storyBonus', 'postBonus', 'productionBonus', 'cap', 'postEvery', 'storyFrames', 'storyPlatforms', 'postPlatforms', 'videoPlatforms', 'videoDays', 'shootDays', 'workDays', 'accounts'];
   const rules = Object.fromEntries(fields.map(k => [k, cfg[k]]));
   await rejects(request(manager, { action: 'rules', rules, version: 0, note: 'Новые правила' }), 403);
   await rejects(request(owner, { action: 'rules', rules: { ...rules, cap: 90000 }, version: 0, note: 'Превышение' }), 422);

@@ -8,7 +8,7 @@ export const smmDistance = (a, b) => Math.round((Date.parse(b + 'T12:00:00Z') - 
 export function smmDefaults(start = smmDay()) {
   const end = new Date(start + 'T12:00:00Z'); end.setUTCMonth(end.getUTCMonth() + 2);
   return { version: 1, personId: 'karina', start, end: smmAddDays(end.toISOString().slice(0, 10), -1),
-    base: 25000, regularBonus: 15000, productionBonus: 10000, cap: 50000,
+    base: 25000, storyBonus: 10000, postBonus: 7500, productionBonus: 7500, cap: 50000,
     storyPlatforms: ['instagram', 'vk', 'telegram'], postPlatforms: ['instagram', 'vk', 'telegram'],
     videoPlatforms: ['instagram', 'vk', 'tiktok', 'likee'], postEvery: 2, storyFrames: 3,
     videoDays: [2, 5], shootDays: [2, 5], workDays: [1, 2, 4, 5], accounts: {} };
@@ -73,26 +73,36 @@ export function smmScore(data, month, now = smmDay()) {
   const approved = entries.filter(e => e.status === 'approved');
   const matched = new Map();
   for (const slot of slots) {
-    const e = approved.find(e => e.date === slot.date && e.kind === slot.kind
-      && (!slot.platform || e.links.some(l => l.platform === slot.platform))
-      && (slot.kind !== 'story' || e.storyFrames >= rules.storyFrames)
-      && (!slot.eventIds.length || slot.eventIds.every(id => e.eventIds.includes(id))));
-    if (e) matched.set(slot.id, e.id);
+    const candidates = approved.filter(e => e.date === slot.date && e.kind === slot.kind
+      && (!slot.platform || e.links.some(l => l.platform === slot.platform)));
+    if (slot.kind === 'story') {
+      const frames = candidates.reduce((n, e) => n + e.storyFrames, 0);
+      if (frames >= rules.storyFrames && slot.eventIds.every(id => candidates.some(e => e.eventIds.includes(id))))
+        matched.set(slot.id, candidates[0].id);
+    } else {
+      const e = candidates.find(e => slot.eventIds.every(id => e.eventIds.includes(id)));
+      if (e) matched.set(slot.id, e.id);
+    }
   }
   const eligible = slots.filter(s => !s.exception && active.includes(s.date));
   const fraction = active.length / allDates.length;
-  const regular = eligible.filter(s => ['story', 'post'].includes(s.kind));
+  const stories = eligible.filter(s => s.kind === 'story');
+  const posts = eligible.filter(s => s.kind === 'post');
+  const regular = [...stories, ...posts];
   const production = eligible.filter(s => ['video', 'shoot'].includes(s.kind));
   const done = list => list.filter(s => matched.has(s.id)).length;
   const ratio = list => list.length ? done(list) / list.length : 0;
-  const base = Math.round(rules.base * fraction), regularMax = Math.round(rules.regularBonus * fraction), productionMax = Math.round(rules.productionBonus * fraction), cap = Math.round(rules.cap * fraction);
-  const regularEarned = Math.round(regularMax * ratio(regular)), productionEarned = Math.round(productionMax * ratio(production));
+  const base = Math.round(rules.base * fraction), storyMax = Math.round(rules.storyBonus * fraction), postMax = Math.round(rules.postBonus * fraction), productionMax = Math.round(rules.productionBonus * fraction), cap = Math.round(rules.cap * fraction);
+  const storyEarned = Math.round(storyMax * ratio(stories)), postEarned = Math.round(postMax * ratio(posts));
+  const regularMax = storyMax + postMax, regularEarned = storyEarned + postEarned, productionEarned = Math.round(productionMax * ratio(production));
   const channels = Object.keys(SMM_PLATFORMS).map(platform => {
     const planned = slots.filter(s => s.platform === platform && !s.exception);
     const links = entries.flatMap(e => e.links.filter(l => l.platform === platform).map(l => ({ ...l, status: e.status })));
     return { platform, planned: planned.length, accepted: done(planned), submitted: links.length, views: links.reduce((n, l) => n + (l.views || 0), 0) };
   });
   return { month, rules, activeDays: active.length, daysInMonth: allDates.length, slots: slots.map(s => ({ ...s, entryId: matched.get(s.id) || null })),
+    stories: { planned: stories.length, done: done(stories), max: storyMax, earned: storyEarned },
+    posts: { planned: posts.length, done: done(posts), max: postMax, earned: postEarned },
     regular: { planned: regular.length, done: done(regular), max: regularMax, earned: regularEarned },
     production: { planned: production.length, done: done(production), max: productionMax, earned: productionEarned },
     base, cap, estimate: Math.min(cap, base + regularEarned + productionEarned),
