@@ -2,16 +2,16 @@ from playwright.sync_api import sync_playwright
 from http.server import ThreadingHTTPServer, BaseHTTPRequestHandler
 from threading import Thread
 from pathlib import Path
-import urllib.request, re, json, hashlib
+import urllib.request, re, json
 live='https://extreme-kids-growth-os-6-5-mi5pb3.v2.appdeploy.ai/'
 Path('evidence').mkdir(exist_ok=True)
-# Public HTML only; never request a customer session or export.
 original=urllib.request.urlopen(live,timeout=30).read().decode()
 Path('evidence/before.html').write_text(original)
 assert '<form id="login"' in original and '<form id="activate"' in original
-html=original.replace('<head>','<head><meta http-equiv="Content-Security-Policy" content="form-action \'none\'; base-uri \'self\'; object-src \'none\'">',1)
-html=html.replace('<form id="login">','<form id="login" method="post" action="#">').replace('<form id="activate" hidden>','<form id="activate" method="post" action="#" hidden>')
-# Unavailable modules/assets is the exact failure scenario being tested.
+html=re.sub(r'<head[^>]*>',lambda m:m[0]+'<meta http-equiv="Content-Security-Policy" content="form-action \'none\'; base-uri \'self\'; object-src \'none\'">',original,count=1)
+for f in ['login','activate']:
+    html,n=re.subn(r'<form\b([^>]*\bid="'+f+r'"[^>]*)>',lambda m:'<form '+re.sub(r'\s(?:method|action)="[^"]*"','',m[1])+' method="post" action="#">',html)
+    assert n==1
 html=re.sub(r'<script\b[^>]*>[\s\S]*?</script>|<link\b[^>]*>','',html,flags=re.I)
 class Handler(BaseHTTPRequestHandler):
     def log_message(self,*args): pass
@@ -31,12 +31,12 @@ with sync_playwright() as pw:
             if form=='login':p.locator('#login [name=username]').fill('synthetic-qa')
             p.locator('#'+form+' [name=password]').fill('SyntheticOnlyPassword12')
             if form=='activate':p.locator('#activate [name=repeat]').fill('SyntheticOnlyPassword12')
-            p.locator('#'+form+' button').click();p.wait_for_timeout(200)
+            p.locator('#'+form+' button').evaluate('(e)=>e.click()');p.wait_for_timeout(200)
             ok=any('form-action' in x for x in logs) and not any('password=' in x or 'SyntheticOnlyPassword' in x for x in navigations+[p.url])
-            results.append({'form':form,'javascript':js,'native_form_blocked':ok,'method':p.locator('#'+form).get_attribute('method')})
-            assert ok and p.locator('#'+form).get_attribute('method')=='post'
+            row={'form':form,'javascript':js,'native_form_blocked':ok,'method':p.locator('#'+form).get_attribute('method')}
+            print(json.dumps(row),flush=True);results.append(row)
+            assert ok and row['method']=='post'
             c.close()
     browser.close()
 Path('evidence/form-results.json').write_text(json.dumps(results,indent=2))
-print(json.dumps(results))
 server.shutdown()
