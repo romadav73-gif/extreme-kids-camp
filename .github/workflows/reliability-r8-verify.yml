@@ -1,0 +1,178 @@
+name: Growth 6.5 R8 published UI and isolated auth verification
+on:
+  push:
+    branches: [fix/reliability-20260911]
+    paths: ['.github/workflows/reliability-r8-verify.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: pip install playwright==1.55.0
+      - name: Prepare pinned synthetic service without production credentials
+        run: |
+          mkdir -p qa evidence
+          python - <<'PY'
+          import urllib.request
+          from pathlib import Path
+          root='https://raw.githubusercontent.com/romadav73-gif/extreme-kids-camp/'
+          files={
+            'core.mjs':'4bfae20bce0cd0bfd873a2db08734ece399457ff/secure-growth65/edge/core.mjs',
+            'fixture.cjs':'4bfae20bce0cd0bfd873a2db08734ece399457ff/secure-growth65/tests/fixture.cjs',
+            'device.mjs':'9573ebd5ed6f46dae4681f30c536fa75c9d33ef0/device-server.mjs',
+            'smm-server.mjs':'63c0e93ccb671fce49aebad6f978ce7e2bc6e996/smm65/src/smm-server.mjs',
+            'smm-core.mjs':'63c0e93ccb671fce49aebad6f978ce7e2bc6e996/smm65/src/smm-core.mjs'
+          }
+          for name,source in files.items(): Path('qa',name).write_bytes(urllib.request.urlopen(root+source,timeout=30).read())
+          PY
+          cat > qa/server.mjs <<'JS'
+          import http from 'node:http';
+          import fs from 'node:fs';
+          import { createRequire } from 'node:module';
+          import { randomBytes } from 'node:crypto';
+          import Core from './core.mjs';
+          import { deviceController,revokeRememberedOnLogout } from './device.mjs';
+          import { installSmm,smmController } from './smm-server.mjs';
+          import { smmDefaults } from './smm-core.mjs';
+          const require=createRequire(import.meta.url),{Service,Model:M,Policy:P,Integrity:I,authenticate}=Core;
+          installSmm(P,M,I);
+          class MemoryStore {
+            data={format:1,users:{},sessions:{},invites:{},workspaces:{},requests:{},tombstones:{},rates:{},audit:[]};
+            queue=Promise.resolve();
+            tx(fn){const result=this.queue.then(async()=>{const data=structuredClone(this.data),value=await fn(data);this.data=data;return value;});this.queue=result.catch(()=>{});return result;}
+          }
+          const store=new MemoryStore(),key=randomBytes(32).toString('hex'),password=randomBytes(20).toString('base64url');
+          const service=new Service(store,{securityKey:key}),data=M.clone(require('./fixture.cjs'));
+          data.people.push({id:'karina',name:'Карина',role:'team',active:true});
+          await service.bootstrap({username:'roman',password,data});
+          const owner=await service.login({username:'roman',password});
+          for(const [username,personId,role] of [['tasya','tasya','mentor'],['sofa','sofia','manager'],['karina','karina','smm']]){
+            const i=await service.invite(owner.cookie,owner.csrf,{username,personId,role});await service.activate({token:i.token,password});
+          }
+          await store.tx(d=>{d.workspaces[owner.actor.workspaceId].data.smm={version:0,config:smmDefaults(),entries:{},payroll:{},exceptions:{},rulesByMonth:{}};});
+          const devices=deviceController(store,authenticate),forget=revokeRememberedOnLogout(store,authenticate);
+          const smm=smmController({store,authenticate,M,P,getSecurityKey:async()=>key});
+          fs.writeFileSync('qa/auth.json',JSON.stringify({password}));
+          http.createServer(async(req,res)=>{
+            res.setHeader('Content-Type','application/json');
+            if(req.url==='/ready'){res.end('{"ok":true}');return;}
+            try{
+              let bytes='';for await(const part of req)bytes+=part;
+              const q=JSON.parse(bytes),b=q.body||{},action=req.url.split('/').at(-1);let r;
+              if(action==='health')r={ok:true,version:'synthetic'};
+              else if(action==='login')r=await service.login(b,'qa:'+b.username);
+              else if(action==='activate')r=await service.activate(b);
+              else if(action==='session')r=await service.getSession(q.session);
+              else if(action==='state')r=await service.getState(q.session);
+              else if(action==='patch')r=await service.patch(q.session,q.csrf,b);
+              else if(action==='smm')r=await smm(q.session,q.csrf,b);
+              else if(action==='logout'){await forget(q.session,q.csrf,b.deviceId);r=await service.logout(q.session,q.csrf);}
+              else if(action==='migration-status')r={status:'imported'};
+              else if(action.startsWith('device-'))r=await devices(action,q.session,q.csrf,b);
+              else throw Object.assign(Error('Unsupported synthetic action'),{status:400});
+              if(r.cookie){r.session=r.cookie;delete r.cookie;}
+              res.end(JSON.stringify(r));
+            }catch(e){res.statusCode=e.status||500;res.end(JSON.stringify({error:e.code||'SYNTHETIC',message:e.message}));}
+          }).listen(8898,'127.0.0.1',()=>console.log('Synthetic service ready'));
+          JS
+          node qa/server.mjs > evidence/synthetic-server.log 2>&1 &
+          for i in $(seq 1 30); do curl -fsS http://127.0.0.1:8898/ready >/dev/null && break || sleep 1; done
+      - name: Exact published UI, safe failures, preserved roles and device recovery
+        run: |
+          python - <<'PY'
+          import json, urllib.request, urllib.error
+          from urllib.parse import urlsplit
+          from pathlib import Path
+          from playwright.sync_api import sync_playwright, expect
+          BASE='https://extreme-kids-growth-os-6-5-mi5pb3.v2.appdeploy.ai/'
+          PREFIX='/app/extreme-kids-growth-os-6-5-mi5pb3'
+          PATTERN='https://api-v2.appdeploy.ai'+PREFIX+'/**'
+          password=json.loads(Path('qa/auth.json').read_text())['password']
+          results=[]; errors=[]
+          def check(name,ok):
+              results.append({'name':name,'ok':bool(ok)});print(name,bool(ok),flush=True)
+              if not ok: raise AssertionError(name)
+          def intercept(route):
+              r=route.request
+              headers={'access-control-allow-origin':BASE.rstrip('/'),'access-control-allow-credentials':'true','access-control-allow-headers':'content-type,x-appdeploy-keys-prefix','access-control-allow-methods':'POST,GET,OPTIONS','content-type':'application/json'}
+              if r.method=='OPTIONS':route.fulfill(status=204,headers=headers,body='');return
+              target='http://127.0.0.1:8898'+urlsplit(r.url).path.removeprefix(PREFIX)
+              req=urllib.request.Request(target,data=(r.post_data or '{}').encode(),headers={'Content-Type':'application/json'},method=r.method)
+              try:
+                  with urllib.request.urlopen(req,timeout=25) as v: status=v.status;content=v.read()
+              except urllib.error.HTTPError as e:status=e.code;content=e.read()
+              route.fulfill(status=status,headers=headers,body=content)
+          def synthetic(browser,mobile=False):
+              c=browser.new_context(viewport={'width':375 if mobile else 1280,'height':812});c.route(PATTERN,intercept);return c
+          def login(page,user='tasya'):
+              page.goto(BASE,wait_until='networkidle',timeout=60000)
+              page.locator('#login [name=username]').fill(user);page.locator('#login [name=password]').fill(password)
+              page.locator('#login button[type=submit]').click();page.wait_for_selector('#appShell:not(.hidden)',timeout=20000)
+          with sync_playwright() as pw:
+              browser=pw.chromium.launch(executable_path='/usr/bin/google-chrome',args=['--no-sandbox'])
+              try:
+                  c=browser.new_context();p=c.new_page();p.goto(BASE,wait_until='networkidle',timeout=60000)
+                  check('Published guarded release loaded',p.evaluate("window.EK65Boot.snapshot().release")=='6.5-reliability.8')
+                  check('Actual production health still connected',p.evaluate("async()=>await window.EK65Transport.request('/api/health')")['ok'])
+                  a=p.evaluate("async()=>await window.EK65Transport.request('/api/client-capabilities')")
+                  b=p.evaluate("async()=>await window.EK65Transport.request('/api/client-capabilities')")
+                  cookie_records=[{k:x[k] for k in ['name','domain','path','secure','httpOnly','sameSite']} for x in c.cookies()]
+                  Path('evidence/cookie-roundtrip.json').write_text(json.dumps({'first':a,'second':b,'cookies':cookie_records},indent=2))
+                  check('Capability probe has not changed authentication',b['sessionMigrationEnabled'] is False)
+                  denied=p.evaluate("async()=>{try{await window.EK65Transport.request('/api/state');return 200}catch(e){return e.status}}")
+                  check('Production anonymous state remains forbidden',denied==401)
+                  p.screenshot(path='evidence/live-login.png');c.close()
+                  c=browser.new_context(java_script_enabled=False);p=c.new_page();p.goto(BASE,timeout=60000)
+                  check('Without JavaScript credentials are disabled',p.locator('#login [name=password]').is_disabled())
+                  check('Native credential forms remain POST',p.locator('#login').get_attribute('method')=='post' and p.locator('#activate').get_attribute('method')=='post');c.close()
+                  c=synthetic(browser);p=c.new_page();p.on('pageerror',lambda e:errors.append(str(e)))
+                  seen=[]
+                  p.on('request',lambda r:seen.append({'passwordInURL':password in r.url,'loginPOST':r.url.endswith('/api/club/login') and r.method=='POST' and bool(r.post_data)}))
+                  login(p)
+                  check('Login sent only through JSON POST',any(x['loginPOST'] for x in seen) and not any(x['passwordInURL'] for x in seen))
+                  check('Mentor has own role and no owner settings',p.locator('#mainNav [data-view=settings]').count()==0)
+                  p.reload();p.wait_for_selector('#appShell:not(.hidden)')
+                  check('Existing session survives reload',p.evaluate("!!JSON.parse(sessionStorage.getItem('EK65_SIGNIN:/')).session"))
+                  q=c.new_page();q.goto(BASE);q.wait_for_selector('#appShell:not(.hidden)',timeout=20000)
+                  check('New tab recovers real signed device login',q.locator('#mainNav [data-view=settings]').count()==0)
+                  before=q.evaluate("sessionStorage.getItem('EK65_SIGNIN:/')")
+                  def outage(route):route.fulfill(status=503,headers={'access-control-allow-origin':BASE.rstrip('/'),'access-control-allow-credentials':'true','content-type':'application/json'},body='{"error":"GATEWAY"}')
+                  q.route('**/api/club/session',outage)
+                  error=q.evaluate("async()=>{try{await window.EK65Transport.request('/api/session')}catch(e){return e.code}}")
+                  check('503 does not clear session or authenticated screen',error=='GATEWAY' and before==q.evaluate("sessionStorage.getItem('EK65_SIGNIN:/')") and q.locator('#appShell').is_visible())
+                  q.unroute('**/api/club/session',outage)
+                  check('Retry recovers same actor',q.evaluate("async()=>(await window.EK65Transport.request('/api/session')).actor.personId")=='tasya')
+                  diag=q.evaluate('window.EK65Boot.snapshot()')
+                  check('Diagnostics exclude credentials',password not in json.dumps(diag) and json.loads(before)['session'] not in json.dumps(diag))
+                  q.locator('[data-action=s65Logout]').click();q.wait_for_selector('#login:not([hidden])',timeout=20000)
+                  n=c.new_page();n.goto(BASE,wait_until='networkidle');expect(n.locator('#login')).to_be_visible()
+                  check('Explicit logout revokes remembered device',n.locator('#appShell').count()==0);c.close()
+                  c=synthetic(browser);p=c.new_page();p.route('**/assets/club-app-*.js',lambda r:r.abort())
+                  p.goto(BASE,wait_until='networkidle');p.locator('#login [name=username]').fill('sofa');p.locator('#login [name=password]').fill(password);p.locator('#login button[type=submit]').click()
+                  expect(p.locator('#message')).to_contain_text('Не удалось загрузить кабинет',timeout=20000)
+                  check('Failed cabinet chunk restores form and preserves session',p.locator('#login').is_visible() and p.evaluate("!!JSON.parse(sessionStorage.getItem('EK65_SIGNIN:/')).session"))
+                  check('Password cleared before cabinet loading',p.locator('#login [name=password]').input_value()=='')
+                  p.unroute('**/assets/club-app-*.js');p.locator('#retry').click();p.wait_for_selector('#appShell:not(.hidden)',timeout=20000)
+                  check('Manager recovers after module reload',p.locator('#mainNav [data-view=operations]').count()==1)
+                  check('Manager daily reports still visible',p.locator('#mainNav').inner_text().lower().find('ежедневный отчёт')>=0);c.close()
+                  c=synthetic(browser,True);p=c.new_page();login(p,'karina')
+                  check('SMM retains distinct cabinet',p.locator('#mainNav [data-view=smm]').count()==1 and p.locator('#mainNav [data-view=settings]').count()==0)
+                  check('SMM mobile has no overflow',p.evaluate('document.documentElement.scrollWidth<=innerWidth+1'))
+                  p.screenshot(path='evidence/smm-mobile.png');c.close()
+                  check('Normal mentor flow has no uncaught errors',not errors)
+              finally:
+                  Path('evidence/results.json').write_text(json.dumps({'tests':results,'errors':errors,'scope':'Exact public frontend with isolated in-memory pinned auth/role/device service. Real production used only for anonymous health, denial and cookie probe; no customer credentials or data writes.'},ensure_ascii=False,indent=2))
+                  browser.close()
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: growth65-r8-verification
+          path: evidence/
+          retention-days: 14
