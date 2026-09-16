@@ -1,0 +1,84 @@
+name: Roster exact published frontend verification
+on:
+  push:
+    branches: [fix/mentor-roster-20260916]
+    paths: ['.github/workflows/roster65-published-ui.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  published:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: pip install playwright==1.55.0 pyyaml
+      - name: Prepare isolated fixture and exact published-browser suite
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import yaml
+          steps=yaml.safe_load(Path('.github/workflows/roster65-qa.yml').read_text())['jobs']['verify']['steps']
+          Path('/tmp/prepare.sh').write_text(next(s['run'] for s in steps if s.get('name','').startswith('Prepare pinned')))
+          script=next(s['run'] for s in steps if s.get('name','').startswith('Real UI'))
+          script=script.replace('import json,shutil','import json,shutil,urllib.request,urllib.error\nfrom urllib.parse import urlsplit')
+          start=script.index('def context(browser,user,width=1280):')
+          end=script.index('with sync_playwright() as pw:',start)
+          replacement='''BASE='https://extreme-kids-growth-os-6-5-mi5pb3.v2.appdeploy.ai/'
+          PREFIX='/app/extreme-kids-growth-os-6-5-mi5pb3'
+          PATTERN='https://api-v2.appdeploy.ai'+PREFIX+'/**'
+          def intercept(route):
+              r=route.request
+              headers={'access-control-allow-origin':BASE.rstrip('/'),'access-control-allow-credentials':'true','access-control-allow-headers':'content-type,x-appdeploy-keys-prefix','access-control-allow-methods':'POST,GET,OPTIONS','content-type':'application/json'}
+              if r.method=='OPTIONS':route.fulfill(status=204,headers=headers,body='');return
+              action=urlsplit(r.url).path.split('/')[-1]
+              q=json.loads(r.post_data or '{}');q['action']=action
+              req=urllib.request.Request('http://127.0.0.1:8898/qa/api',data=json.dumps(q).encode(),headers={'Content-Type':'application/json'},method='POST')
+              try:
+                  with urllib.request.urlopen(req,timeout=25) as result:status=result.status;content=result.read()
+              except urllib.error.HTTPError as e:status=e.code;content=e.read()
+              route.fulfill(status=status,headers=headers,body=content)
+          def context(browser,user,width=1280):
+              c=browser.new_context(viewport={'width':width,'height':850});c.route(PATTERN,intercept)
+              a=auth['accounts'][user]
+              state={'session':a['cookie'],'csrf':a['csrf'],'actorId':a.get('actor',{}).get('id','')}
+              c.add_init_script("if(location.origin==="+json.dumps(BASE.rstrip('/'))+")sessionStorage.setItem('EK65_SIGNIN:/',"+json.dumps(json.dumps(state))+");")
+              p=c.new_page();p.on('pageerror',lambda e:errors.append(str(e)))
+              p.goto(BASE,wait_until='networkidle',timeout=60000)
+              p.wait_for_selector('#appShell:not(.hidden)',timeout=30000)
+              check('published roster release loaded',p.evaluate('window.EK65Roster?.release')=='2026.09.16-roster.1')
+              return c,p
+          '''
+          import textwrap
+          replacement=textwrap.dedent(replacement)
+          script=script[:start]+replacement+script[end:]
+          script=script.replace("'scope':'isolated synthetic workspace; no production mutations'", "'scope':'Exact public frontend; every club API call routed to local synthetic accounts and in-memory service. No production mutations.'")
+          Path('/tmp/published.sh').write_text(script)
+          PY
+          bash -e /tmp/prepare.sh
+      - name: Full mentor workflows on published frontend with synthetic data
+        run: bash -e /tmp/published.sh
+      - name: Real new edge endpoint healthy and unauthorized without a session
+        run: |
+          python - <<'PY'
+          import json,urllib.request,urllib.error
+          url='https://ljypjljlzfuarzsfuepn.supabase.co/functions/v1/growth65-roster'
+          def call(body):
+              req=urllib.request.Request(url,data=json.dumps(body).encode(),headers={'Content-Type':'application/json'},method='POST')
+              try:
+                  with urllib.request.urlopen(req,timeout=30) as r:return r.status,json.load(r)
+              except urllib.error.HTTPError as e:return e.code,json.load(e)
+          status,result=call({'action':'health'});assert status==200 and result['ok'] and result['version']=='6.5-roster.2';print('DEPLOYED_ROSTER_2_HEALTH_OK')
+          status,result=call({'action':'group-roster','session':'','csrf':'','body':{'action':'add'}});assert status==401;print('DEPLOYED_ROSTER_UNAUTHENTICATED_WRITE_DENIED')
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: roster65-published-evidence
+          path: |
+            evidence/
+            qa/unit-results.json
+          retention-days: 7
