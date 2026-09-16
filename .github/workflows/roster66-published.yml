@@ -1,0 +1,45 @@
+name: Roster board exact published verification
+on:
+  push:
+    branches: [fix/mentor-roster-20260916]
+    paths: ['.github/workflows/roster66-published.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: pip install playwright==1.55.0 pyyaml
+      - name: Prepare pinned isolated service and published suite
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import yaml
+          p=Path('.github/workflows/roster65-qa.yml');s=p.read_text()
+          old="p.locator('#rg65GroupPick').select_option('qa-roster')\n              p.locator('[data-roster65-entry] [data-action=rg65Roster]').click()"
+          new="p.locator('[data-roster66-entry] [data-action=rg66Open][data-id=qa-roster]').click()"
+          assert s.count(old)==1;s=s.replace(old,new)
+          s=s.replace("p.locator('#rg65GroupPick').inner_text()", "p.locator('[data-roster66-entry]').inner_text()")
+          p.write_text(s)
+          steps=yaml.safe_load(Path('.github/workflows/roster65-published-ui.yml').read_text())['jobs']['published']['steps']
+          setup=next(s['run'] for s in steps if s.get('name','').startswith('Prepare isolated'))
+          setup=setup.replace("p.evaluate('window.EK65Roster?.release')=='2026.09.16-roster.1'", "p.evaluate('window.EK65RosterBoard?.release')=='2026.09.16-roster-board.2'")
+          Path('/tmp/setup-published.sh').write_text(setup)
+          PY
+          bash -e /tmp/setup-published.sh
+      - name: Published role-scoped pupil CRUD and attendance history
+        run: bash -e /tmp/published.sh
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: roster66-published
+          path: |
+            evidence/
+            qa/unit-results.json
+          retention-days: 7
