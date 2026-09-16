@@ -1,0 +1,69 @@
+name: Roster projected-state preconditions and full regression
+on:
+  push:
+    branches: [fix/mentor-roster-20260916]
+    paths: ['.github/workflows/roster65-projected-preconditions.yml']
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  fix-and-verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: pip install playwright==1.55.0 pyyaml
+      - name: Apply only three deterministic source corrections
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import yaml
+          def replace(path, old, new):
+              p=Path(path);s=p.read_text();assert s.count(old)==1,(path,old,s.count(old));p.write_text(s.replace(old,new))
+          replace('roster65/roster-service.mjs',"if (String(member.updatedAt || '') !== String(body.previousUpdatedAt || ''))", "if (JSON.stringify([member.startDate || '', member.endDate || '', member.status || '']) !== JSON.stringify(body.previousMembership))")
+          replace('roster65/roster-ui.js',"previousUpdatedAt: member.updatedAt || ''", "previousMembership: [member.startDate || '', member.endDate || '', member.status || '']")
+          replace('roster65/roster-ui.js',"${rg65Busy ? 'disabled' : ''}", '')
+          replace('roster65/qa.mjs',"previousUpdatedAt: m.updatedAt", "previousMembership: [m.startDate || '', m.endDate || '', m.status || '']")
+          suite=yaml.safe_load(Path('.github/workflows/roster65-qa.yml').read_text())
+          steps=suite['jobs']['verify']['steps']
+          Path('/tmp/roster-prepare.sh').write_text(next(s['run'] for s in steps if s.get('name','').startswith('Prepare pinned')))
+          Path('/tmp/roster-browser.sh').write_text(next(s['run'] for s in steps if s.get('name','').startswith('Real UI')))
+          PY
+      - name: Full isolated service regression
+        run: bash -e /tmp/roster-prepare.sh
+      - name: Full authenticated browser regression
+        run: bash -e /tmp/roster-browser.sh
+      - name: Read-only deployed endpoint health and anonymous denial
+        run: |
+          python - <<'PY'
+          import json,urllib.request,urllib.error
+          url='https://ljypjljlzfuarzsfuepn.supabase.co/functions/v1/growth65-roster'
+          def call(body):
+              req=urllib.request.Request(url,data=json.dumps(body).encode(),headers={'Content-Type':'application/json'},method='POST')
+              try:
+                  with urllib.request.urlopen(req,timeout=30) as r:return r.status,json.load(r)
+              except urllib.error.HTTPError as e:return e.code,json.load(e)
+          status,result=call({'action':'health'});assert status==200 and result['ok'];print('ROSTER_EDGE_HEALTH_OK')
+          status,result=call({'action':'group-roster','session':'','csrf':'','body':{'action':'add'}});assert status==401;print('ROSTER_EDGE_ANONYMOUS_DENIED')
+          PY
+      - name: Commit only validated roster source fixes to feature branch
+        run: |
+          set -euo pipefail
+          git config user.name 'EXTREME KIDS source validation'
+          git config user.email 'actions@users.noreply.github.com'
+          git add roster65/roster-service.mjs roster65/roster-ui.js roster65/qa.mjs
+          git commit -m 'Use stable projected membership fields for optimistic removal; retain browser-tested pupil history'
+          git push origin HEAD:fix/mentor-roster-20260916
+          echo ROSTER_VALIDATED_COMMIT=$(git rev-parse HEAD)
+          git ls-tree HEAD roster65/roster-service.mjs roster65/roster-ui.js roster65/roster-math.js
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: roster65-validated
+          path: |
+            evidence/
+            qa/unit-results.json
+          retention-days: 7
