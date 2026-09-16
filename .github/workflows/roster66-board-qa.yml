@@ -1,0 +1,106 @@
+name: Roster board 6.6 usability and recovery checks
+on:
+  push:
+    branches: [fix/mentor-roster-20260916]
+    paths: ['roster65/roster-board.js', '.github/workflows/roster66-board-qa.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: pip install playwright==1.55.0 pyyaml
+      - name: Prepare isolated server, preserve inherited regression and test board math
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import yaml
+          board=Path('roster65/roster-board.js').read_text()
+          Path('roster65/roster-ui.js').write_text(Path('roster65/roster-ui.js').read_text()+'\n'+board)
+          # Expose helpers ONLY inside the local test build, never in deployed sources.
+          with Path('roster65/roster-ui.js').open('a') as f:
+              f.write('\nwindow.__RG66_TEST={observe:rg66Observation,collect:rg66CollectDrafts,readCache:s65ReadCache};\n')
+          steps=yaml.safe_load(Path('.github/workflows/roster65-qa.yml').read_text())['jobs']['verify']['steps']
+          Path('/tmp/prepare.sh').write_text(next(s['run'] for s in steps if s.get('name','').startswith('Prepare pinned')))
+          script=next(s['run'] for s in steps if s.get('name','').startswith('Real UI'))
+          script=script.replace("    p.locator('#rg65GroupPick').select_option('qa-roster')\n    p.locator('[data-roster65-entry] [data-action=rg65Roster]').click()", "    p.locator('[data-roster66-entry] [data-action=rg66Open][data-id=qa-roster]').click()")
+          script=script.replace("p.locator('#rg65GroupPick').inner_text()", "p.locator('[data-roster66-entry]').inner_text()")
+          Path('/tmp/inherited.sh').write_text(script)
+          PY
+          bash -e /tmp/prepare.sh
+      - name: Inherited add, rename, attendance, removal and roles regressions
+        run: bash -e /tmp/inherited.sh
+      - name: Direct navigation, absence signals and draft recovery
+        run: |
+          python - <<'PY'
+          import json,shutil
+          from pathlib import Path
+          from playwright.sync_api import sync_playwright,expect
+          auth=json.loads(Path('qa/auth.json').read_text()); checks=[]; errors=[]
+          def check(name,ok):
+              checks.append({'name':name,'ok':bool(ok)});print(name,bool(ok),flush=True)
+              if not ok:raise AssertionError(name)
+          with sync_playwright() as pw:
+              browser=pw.chromium.launch(executable_path=shutil.which('google-chrome') or shutil.which('chromium'),args=['--no-sandbox'])
+              try:
+                  c=browser.new_context(viewport={'width':1280,'height':850});c.add_init_script('window.__QA_AUTH='+json.dumps(auth['accounts']['tasya'])+';')
+                  p=c.new_page();p.on('pageerror',lambda e:errors.append(str(e)));p.goto('http://127.0.0.1:8898/',wait_until='networkidle');p.wait_for_selector('#appShell:not(.hidden)')
+                  check('mentor home exposes one-click group cards',p.locator('[data-roster66-entry] [data-action=rg66Open][data-id=qa-roster]').count()==1)
+                  p.locator('#mainNav [data-view=groups]').click()
+                  p.locator('button[data-rg66-direct][data-id=qa-roster]').first.click()
+                  expect(p.locator('.rg66-board')).to_be_visible()
+                  check('group name opens pupil list, not settings',p.locator('.rg66-board .rg66-pupil').count()==2)
+                  p.locator('[data-rg66-filter]').select_option('noData');expect(p.locator('.rg66-board')).to_be_visible()
+                  check('unknown and old data are not labelled regular',p.locator('.rg66-pupil').count()==0 or 'Регулярно по журналу' not in p.locator('.rg66-pupils').inner_text())
+                  p.locator('[data-rg66-filter]').select_option('all')
+                  p.locator('[data-rg66-search]').fill('Петров')
+                  check('FIO search shows only matching pupil',p.locator('.rg66-pupil:visible').count()==1)
+                  p.locator('#modal .close-btn').click()
+                  result=p.evaluate('''() => {
+                    const now='2026-09-16', c={id:'c',name:'Ученик'},m={id:'m',childId:'c',groupId:'g',startDate:'2026-08-01',status:'active'};
+                    const s={attendanceChildren:[c],attendanceMemberships:[m],attendanceSessions:[['2026-08-31','present'],['2026-09-02','sick'],['2026-09-07','warned'],['2026-09-14','noShow']].map(([date,status],i)=>({id:'s'+i,groupId:'g',date,mode:'actual',records:[{childId:'c',status}]}))};
+                    const a=window.__RG66_TEST.observe(s,'g','c',now);
+                    const noData=window.__RG66_TEST.observe({...s,attendanceSessions:[{id:'total',groupId:'g',date:'2026-09-15',presentCount:3,records:[]}]},'g','c',now);
+                    const paused=window.__RG66_TEST.observe({...s,attendanceSessions:s.attendanceSessions.concat({id:'pause',groupId:'g',date:'2026-09-15',records:[{childId:'c',status:'freeze'}]})},'g','c',now);
+                    const cache={base:{attendanceChildren:[],attendanceMemberships:[]},state:{attendanceChildren:[c],attendanceMemberships:[m]}};
+                    const names=window.__RG66_TEST.collect(cache);
+                    return {frequent:a.frequent,long:a.long,consecutive:a.consecutive,attention:a.attention,misses:a.recent.misses,percent:a.recent.percent,noData:noData.noData,noFalseAbsence:noData.recent.misses===0,paused:paused.paused,noPauseAlert:!paused.attention,names:names.length,name:names[0].name,noMutation:cache.base.attendanceChildren.length===0};
+                  }''')
+                  for k in ['frequent','long','consecutive','attention','noData','noFalseAbsence','paused','noPauseAlert','noMutation']:check(k,result[k])
+                  check('frequency is three observed misses',result['misses']==3)
+                  check('percent from known records only',result['percent']==25)
+                  check('local-only FIO can be detected without inventing',result['names']==1 and result['name']=='Ученик')
+                  # Exercise genuine encryption/decryption cache path in a wholly synthetic browser.
+                  recovered=p.evaluate('''async () => {
+                    const sess=await window.EK65Transport.request('/api/session');
+                    const raw=Uint8Array.from(atob(sess.cacheKey.replace(/-/g,'+').replace(/_/g,'/')),c=>c.charCodeAt(0));
+                    const key=await crypto.subtle.importKey('raw',raw,{name:'AES-GCM'},false,['encrypt']);
+                    const saved={base:{attendanceChildren:[],attendanceMemberships:[]},state:{attendanceChildren:[{id:'lost-1',name:'Черновик Тестовый',active:true}],attendanceMemberships:[{id:'lost-m',childId:'lost-1',groupId:'qa-roster',startDate:'2026-09-01',status:'active'}]},ui:{}};
+                    const iv=crypto.getRandomValues(new Uint8Array(12));const cipher=new Uint8Array(await crypto.subtle.encrypt({name:'AES-GCM',iv},key,new TextEncoder().encode(JSON.stringify(saved))));
+                    const packet=JSON.stringify({alg:'A256GCM',iv:btoa(String.fromCharCode(...iv)),data:btoa(String.fromCharCode(...cipher))});
+                    const found=await window.__RG66_TEST.readCache(packet);
+                    return found.ui.roster66Drafts.map(x=>x.name);
+                  }''')
+                  check('encrypted orphan names survive preboot scan',recovered==['Черновик Тестовый'])
+                  p.screenshot(path='evidence/board-desktop.png');c.close()
+                  c=browser.new_context(viewport={'width':375,'height':812});c.add_init_script('window.__QA_AUTH='+json.dumps(auth['accounts']['tasya'])+';');p=c.new_page();p.goto('http://127.0.0.1:8898/',wait_until='networkidle');p.wait_for_selector('#appShell:not(.hidden)')
+                  p.locator('[data-roster66-entry] [data-id=qa-roster]').click();expect(p.locator('.rg66-board')).to_be_visible()
+                  check('mobile board fits screen',p.evaluate('document.documentElement.scrollWidth<=innerWidth+1'))
+                  p.locator('[data-rg66-filter]').select_option('all');p.locator('[data-rg66-search]').fill('Петров');check('mobile search works',p.locator('.rg66-pupil:visible').count()==1)
+                  p.screenshot(path='evidence/board-mobile.png');c.close()
+                  check('no uncaught exceptions',not errors)
+              finally:
+                  Path('evidence/board-results.json').write_text(json.dumps({'checks':checks,'errors':errors,'scope':'Synthetic fixture only. Production DB not written.'},ensure_ascii=False,indent=2));browser.close()
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: roster66-board-evidence
+          path: evidence/
+          retention-days: 7
