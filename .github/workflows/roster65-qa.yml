@@ -47,7 +47,7 @@ jobs:
               print(name,bool(ok),flush=True)
               if not ok: raise AssertionError(name)
           def open_group(p):
-              p.locator('#mainNav [data-view=groups]').click()
+              if not p.locator('[data-roster65-entry]').count(): p.locator('#mainNav [data-view=groups]').click()
               p.locator('#rg65GroupPick').select_option('qa-roster')
               p.locator('[data-roster65-entry] [data-action=rg65Roster]').click()
           def add(p,name):
@@ -97,11 +97,11 @@ jobs:
                   row.locator('[data-action=rg65Student]').click()
                   expect(p.locator('[data-stat=present]')).to_have_text('1')
                   check('student card contains recorded visit',p.locator('[data-stat=present]').inner_text()=='1')
-                  p.locator('[data-action=rg65Roster]').click()
+                  p.locator('#modal [data-action=rg65Roster]').click()
                   p.once('dialog',lambda d:d.accept('Переезд'))
                   p.locator('.rg65-child').filter(has_text='Иванов Иван Сергеевич').locator('[data-action=rg65Remove]').click()
                   expect(p.locator('.rg65-child')).to_have_count(2,timeout=15000)
-                  p.locator('[data-action=rg65Archived]').click()
+                  p.locator('#modal [data-action=rg65Archived]').click()
                   expect(p.locator('.rg65-child')).to_have_count(1)
                   p.locator('.rg65-child [data-action=rg65Student]').click()
                   expect(p.locator('[data-stat=present]')).to_have_text('1')
