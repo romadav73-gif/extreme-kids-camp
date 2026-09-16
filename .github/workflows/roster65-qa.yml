@@ -1,0 +1,136 @@
+name: Roster 6.5 isolated regression
+on:
+  push:
+    branches: [fix/mentor-roster-20260916]
+    paths: ['roster65/**', '.github/workflows/roster65-qa.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: pip install playwright==1.55.0
+      - name: Prepare pinned source; no production data or credentials
+        run: |
+          mkdir -p qa/lib qa/tests evidence
+          python - <<'PY'
+          import urllib.request
+          from pathlib import Path
+          root='https://raw.githubusercontent.com/romadav73-gif/extreme-kids-camp/4bfae20bce0cd0bfd873a2db08734ece399457ff/secure-growth65/'
+          files={'edge/core.mjs':'qa/core.mjs','lib/model.cjs':'qa/lib/model.cjs','tests/fixture.cjs':'qa/tests/fixture.cjs','build/app.js':'qa/base-app.js','public/app.html':'qa/app.html','public/app.css':'qa/app.css'}
+          for src,dst in files.items(): Path(dst).write_bytes(urllib.request.urlopen(root+src,timeout=45).read())
+          PY
+          node --check roster65/roster-service.mjs
+          node --check roster65/roster-ui.js
+          node --check roster65/roster-math.js
+          node roster65/qa.mjs > evidence/service.log 2>&1 &
+          for i in $(seq 1 40); do curl -fsS http://127.0.0.1:8898/ready >/dev/null && break || sleep 1; done
+          cat evidence/service.log
+          curl -fsS http://127.0.0.1:8898/ready >/dev/null
+          node --check qa/app.js
+      - name: Real UI against isolated authenticated service
+        run: |
+          python - <<'PY'
+          import json,shutil
+          from pathlib import Path
+          from playwright.sync_api import sync_playwright,expect
+          auth=json.loads(Path('qa/auth.json').read_text())
+          checks=[];errors=[]
+          def check(name,ok):
+              checks.append({'name':name,'ok':bool(ok)})
+              print(name,bool(ok),flush=True)
+              if not ok: raise AssertionError(name)
+          def open_group(p):
+              p.locator('#mainNav [data-view=groups]').click()
+              p.locator('#rg65GroupPick').select_option('qa-roster')
+              p.locator('[data-roster65-entry] [data-action=rg65Roster]').click()
+          def add(p,name):
+              p.locator('.rg65-roster [data-action=rg65Add]').click()
+              p.locator('#rg65Form [name=studentName]').fill(name)
+              p.locator('#rg65Form [name=startDate]').fill('2026-09-01')
+              p.locator('#rg65Form button[type=submit]').click()
+              expect(p.locator('.rg65-roster')).to_be_visible(timeout=15000)
+          def synced(p):
+              p.wait_for_function('!window.EK65SecureStatus.pending',timeout=15000)
+          def context(browser,user,width=1280):
+              c=browser.new_context(viewport={'width':width,'height':850})
+              c.add_init_script('window.__QA_AUTH='+json.dumps(auth['accounts'][user])+';')
+              p=c.new_page();p.on('pageerror',lambda e:errors.append(str(e)))
+              p.goto('http://127.0.0.1:8898/',wait_until='networkidle')
+              p.wait_for_selector('#appShell:not(.hidden)',timeout=15000)
+              return c,p
+          with sync_playwright() as pw:
+              browser=pw.chromium.launch(executable_path=shutil.which('google-chrome') or shutil.which('chromium'),args=['--no-sandbox'])
+              try:
+                  c,p=context(browser,'tasya')
+                  check('mentor sees roster entry',p.locator('[data-roster65-entry]').count()==1)
+                  open_group(p)
+                  for name in ['Иванов Иван Иванович','Петров Пётр Петрович','Сидорова Анна Ивановна']:add(p,name)
+                  expect(p.locator('.rg65-child')).to_have_count(3)
+                  check('three pupils retained in UI',p.locator('.rg65-child').count()==3)
+                  p.reload(wait_until='networkidle');p.wait_for_selector('#appShell:not(.hidden)');open_group(p)
+                  expect(p.locator('.rg65-child')).to_have_count(3)
+                  check('three pupils retained after reload',p.locator('.rg65-child').count()==3)
+                  row=p.locator('.rg65-child').filter(has_text='Иванов Иван Иванович')
+                  first=row.get_attribute('data-roster-child')
+                  row.locator('[data-action=rg65Rename]').click()
+                  p.locator('#rg65Form [name=studentName]').fill('Иванов Иван Сергеевич')
+                  p.locator('#rg65Form button[type=submit]').click()
+                  expect(p.locator('.rg65-child').filter(has_text='Иванов Иван Сергеевич')).to_be_visible(timeout=15000)
+                  check('rename updates same child',p.locator('.rg65-child').filter(has_text='Иванов Иван Сергеевич').get_attribute('data-roster-child')==first)
+                  p.locator('#modal .close-btn').click()
+                  p.locator('#mainNav [data-view=attendance]').click()
+                  p.locator('[data-action=attendanceSessionForGroup][data-id=qa-roster]').first.click()
+                  p.locator('#attendanceSessionForm [name=date]').fill('2026-09-08')
+                  marks=p.locator('#attendanceSessionForm [data-att-child]')
+                  check('all three pupils available for named attendance',marks.count()==3)
+                  for i,status in enumerate(['present','sick','noShow']):marks.nth(i).select_option(status)
+                  p.locator('#attendanceSessionForm button[type=submit]').click();synced(p)
+                  open_group(p)
+                  row=p.locator('.rg65-child').filter(has_text='Иванов Иван Сергеевич')
+                  row.locator('[data-action=rg65Student]').click()
+                  expect(p.locator('[data-stat=present]')).to_have_text('1')
+                  check('student card contains recorded visit',p.locator('[data-stat=present]').inner_text()=='1')
+                  p.locator('[data-action=rg65Roster]').click()
+                  p.once('dialog',lambda d:d.accept('Переезд'))
+                  p.locator('.rg65-child').filter(has_text='Иванов Иван Сергеевич').locator('[data-action=rg65Remove]').click()
+                  expect(p.locator('.rg65-child')).to_have_count(2,timeout=15000)
+                  p.locator('[data-action=rg65Archived]').click()
+                  expect(p.locator('.rg65-child')).to_have_count(1)
+                  p.locator('.rg65-child [data-action=rg65Student]').click()
+                  expect(p.locator('[data-stat=present]')).to_have_text('1')
+                  check('removal retains archived pupil statistics',p.locator('[data-stat=present]').inner_text()=='1')
+                  p.locator('#modal .close-btn').click()
+                  p.locator('#mainNav [data-view=attendance]').click()
+                  p.locator('[data-action=attendanceTab][data-tab=log]').click()
+                  p.locator('[data-action=attendanceEditSession]').first.click()
+                  check('editing past lesson keeps departed pupil',p.locator('[data-att-child="'+first+'"]').count()==1)
+                  p.locator('#attendanceSessionForm button[type=submit]').click();synced(p)
+                  p.screenshot(path='evidence/mentor-desktop.png')
+                  c.close()
+                  c,p=context(browser,'sofa');open_group(p)
+                  expect(p.locator('.rg65-child')).to_have_count(2)
+                  check('manager sees same durable roster',p.locator('.rg65-child').count()==2);c.close()
+                  c,p=context(browser,'tasya',375);open_group(p)
+                  check('mobile group controls have no horizontal overflow',p.evaluate('document.documentElement.scrollWidth<=innerWidth+1'))
+                  check('foreign groups not exposed to ordinary mentor','Ролики Иван' not in p.locator('#rg65GroupPick').inner_text())
+                  p.screenshot(path='evidence/mentor-mobile.png');c.close()
+                  check('no uncaught browser exceptions',not errors)
+              finally:
+                  Path('evidence/browser.json').write_text(json.dumps({'checks':checks,'errors':errors,'scope':'isolated synthetic workspace; no production mutations'},ensure_ascii=False,indent=2))
+                  browser.close()
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: roster65-qa
+          path: |
+            evidence/
+            qa/unit-results.json
+          retention-days: 7
