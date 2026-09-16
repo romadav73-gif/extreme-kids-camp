@@ -71,7 +71,7 @@ export function rosterApply(data, actor, body, P, now = rosterToday()) {
       child.name = name; child.updatedAt = at;
     } else {
       if (!enrolled(member)) fail(409, 'ROSTER_CONFLICT', 'Ученик уже убран из действующего состава.');
-      if (String(member.updatedAt || '') !== String(body.previousUpdatedAt || '')) fail(409, 'ROSTER_CONFLICT', 'Привязка ученика изменилась. Обновите состав.');
+      if (JSON.stringify([member.startDate || '', member.endDate || '', member.status || '']) !== JSON.stringify(body.previousMembership)) fail(409, 'ROSTER_CONFLICT', 'Привязка ученика изменилась. Обновите состав.');
       if (typeof body.reason !== 'string' || !body.reason.trim() || body.reason.length > 500) fail(422, 'ROSTER_REASON', 'Укажите причину удаления из состава.');
       const recordedDates = (out.attendanceSessions || []).filter(s => !s.deletedAt && s.groupId === group.id
         && (s.records || []).some(r => r.childId === childId)).map(s => s.date);

@@ -37,7 +37,7 @@ function rg65Roster(groupId, archived = false) {
         const s = rg65StudentStats(state, groupId, child.id, rg65Day());
         return `<article class="rg65-child" data-roster-child="${esc(child.id)}"><div><h3>${esc(child.name)}</h3><p>${active ? 'В группе с ' + formatDateShort(membership.startDate) : 'Выбыл из состава · история сохранена'}</p><small>Пришёл: ${s.present} · пропустил: ${s.misses} · посещаемость: ${rg65Percent(s.percent)}</small>${s.streak >= 2 ? `<p class="rg65-warning-text">Последние отмеченные тренировки: ${s.streak} пропуска подряд</p>` : ''}</div><div class="rg65-actions">${rg65Button('Статистика', 'rg65Student', `data-group="${esc(groupId)}" data-child="${esc(child.id)}"`)}${active ? rg65Button('Исправить ФИО', 'rg65Rename', `data-group="${esc(groupId)}" data-child="${esc(child.id)}" data-member="${esc(membership.id)}"`) + rg65Button('Убрать из группы', 'rg65Remove', `data-group="${esc(groupId)}" data-child="${esc(child.id)}" data-member="${esc(membership.id)}"`) : ''}</div></article>`;
       }).join('') || '<div class="empty">В этом списке пока нет учеников.</div>'}</div>
-      <label class="rg65-complete"><input type="checkbox" data-rg65-complete="${esc(groupId)}" ${group.rosterManaged ? 'checked' : ''} ${rg65Busy ? 'disabled' : ''}> Именной список полный — считать по нему количество детей</label>
+      <label class="rg65-complete"><input type="checkbox" data-rg65-complete="${esc(groupId)}" ${group.rosterManaged ? 'checked' : ''} > Именной список полный — считать по нему количество детей</label>
       <p class="readable-note">Пока список неполный, прежнее количество в карточке группы (${group.students || 0}) не уменьшается. Удаление из состава не удаляет ученика и прошлые занятия.</p>
       <div class="form-actions">${rg65Button('Закрыть', 'closeModal')}${rg65Button('+ Добавить ученика', 'rg65Add', `data-group="${esc(groupId)}"`, true)}</div>
     </div>` });
@@ -156,7 +156,7 @@ function rg65Remove(groupId, childId, membershipId) {
   const child = (state.attendanceChildren || []).find(c => c.id === childId); if (!member || !child) return;
   const reason = prompt(`Убрать «${child.name}» из действующего состава? Прошлые занятия и статистика сохранятся.\nПричина:`);
   if (!reason?.trim()) return;
-  void rg65Save({ action: 'remove', groupId, childId, membershipId, reason: reason.trim(), previousUpdatedAt: member.updatedAt || '', requestId: crypto.randomUUID() });
+  void rg65Save({ action: 'remove', groupId, childId, membershipId, reason: reason.trim(), previousMembership: [member.startDate || '', member.endDate || '', member.status || ''], requestId: crypto.randomUUID() });
 }
 const rg65ChangeBefore = handleChange;
 handleChange = function (event) {
