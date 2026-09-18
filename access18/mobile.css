@@ -1,0 +1,90 @@
+/* Access18: layout only. No financial or membership state is changed. */
+#ax18Account {
+  display: flex; align-items: center; justify-content: space-between; gap: 16px;
+  padding: 12px 30px; border-bottom: 1px solid var(--line, #3d321a);
+  background: #14120c; color: var(--text, #f5eedc); min-width: 0;
+}
+#ax18Account .ax18-person { min-width: 0; display: flex; flex-wrap: wrap; align-items: baseline; column-gap: 10px; row-gap: 2px; }
+#ax18Account .ax18-person span, #ax18Account .ax18-person small { color: var(--muted, #aaa08c); font-size: 12px; line-height: 1.4; }
+#ax18Account .ax18-person b { font-size: 16px; line-height: 1.4; overflow-wrap: anywhere; }
+#ax18Account .ax18-exit { min-height: 44px; min-width: 82px; flex: 0 0 auto; padding: 10px 16px; border: 1px solid #8b7024; background: #29210d; color: #ffdf62; font-size: 14px; }
+.club-mode .top-actions > [data-action='s65Logout'], .club-mode .top-actions > .role-switch { display: none !important; }
+.club-mode .sidebar-footer { flex-wrap: wrap; gap: 8px; }
+.club-mode .sidebar-footer .profile-mini { flex: 1 1 150px; min-width: 0; }
+.club-mode .sidebar-footer .profile-mini > div { min-width: 0; }
+.club-mode .sidebar-footer .profile-mini b { white-space: normal; overflow-wrap: anywhere; }
+.club-mode .ax18-side-exit { min-height: 44px; padding: 9px 13px; }
+.club-mode .main, .club-mode .content, .club-mode #pages { min-width: 0; }
+.club-mode button:focus-visible, .club-mode a:focus-visible { outline: 2px solid #ffdd5a; outline-offset: 3px; }
+.club-mode .modal-card { display: flex; flex-direction: column; min-width: 0; overflow: hidden; }
+.club-mode .modal-head { flex: 0 0 auto; min-width: 0; }
+.club-mode .modal-body { flex: 1 1 auto; min-height: 0; overflow-y: auto; overscroll-behavior: contain; }
+.club-mode .modal-head .close-btn { flex: 0 0 44px; width: 44px; height: 44px; }
+.club-mode .form-actions { gap: 10px; flex-wrap: wrap; }
+@media (max-width: 820px) {
+  #ax18Account { padding: 10px 16px; gap: 12px; }
+  #ax18Account .ax18-person { display: grid; grid-template-columns: minmax(0, 1fr); }
+  #ax18Account .ax18-person span { display: none; }
+  #ax18Account .ax18-person b { font-size: 16px; }
+  #ax18Account .ax18-person small { font-size: 11px; }
+  .club-mode .topbar { position: relative; top: auto; display: grid; grid-template-columns: minmax(0, 1fr); height: auto; min-height: 0; padding: 12px 16px; gap: 10px; }
+  .club-mode .top-title { width: 100%; flex: 1 1 auto; min-width: 0; gap: 12px; }
+  .club-mode .top-title > div { min-width: 0; overflow: visible; }
+  .club-mode .top-title h1 { white-space: normal !important; text-overflow: clip; overflow: visible; font-size: 22px; line-height: 1.25; overflow-wrap: anywhere; }
+  .club-mode .top-title .crumb { white-space: normal; line-height: 1.4; font-size: 10px; overflow-wrap: anywhere; }
+  .club-mode .top-actions { width: 100%; max-width: 100% !important; display: flex; flex-wrap: wrap; justify-content: flex-start; gap: 8px; }
+  .club-mode .top-actions > * { min-width: 0; max-width: 100%; }
+  .club-mode .top-actions > .btn { flex: 1 1 auto; min-height: 44px; white-space: normal; font-size: 12px; line-height: 1.35; padding: 10px 12px; }
+  .club-mode .month-select-wrap { flex: 1 1 150px; max-width: 100%; }
+  .club-mode .month-select-wrap .select { width: 100%; min-height: 44px; }
+  .club-mode .content { padding: 16px 14px calc(104px + env(safe-area-inset-bottom, 0px)); }
+  .club-mode .page, .club-mode .card, .club-mode .card > div, .club-mode .field, .club-mode .form-grid { min-width: 0; }
+  .club-mode .card.pad { padding: 16px; }
+  .club-mode .page-head, .club-mode .card-head, .club-mode .toolbar, .club-mode .filters, .club-mode .hero-actions, .club-mode .hero-top { flex-wrap: wrap; gap: 10px; min-width: 0; }
+  .club-mode .page-head > *, .club-mode .card-head > *, .club-mode .toolbar > *, .club-mode .filters > * { min-width: 0; max-width: 100%; }
+  .club-mode .page-head h2, .club-mode .hero-title { font-size: clamp(23px, 6vw, 30px); line-height: 1.25; white-space: normal; overflow-wrap: anywhere; }
+  .club-mode .card-head h3, .club-mode .card h3, .club-mode .task-card h4 { white-space: normal; line-height: 1.35; overflow-wrap: anywhere; }
+  .club-mode #pages p, .club-mode #pages small, .club-mode #pages label { line-height: 1.5; overflow-wrap: anywhere; }
+  .club-mode .input, .club-mode .select, .club-mode .textarea { font-size: 16px; max-width: 100%; min-width: 0; box-sizing: border-box; }
+  .club-mode .btn { min-height: 44px; white-space: normal; line-height: 1.4; text-align: center; overflow-wrap: anywhere; }
+  .club-mode .icon-btn, .club-mode .table-actions button, .club-mode .task-delete { min-width: 40px; min-height: 40px; flex-shrink: 0; }
+  .club-mode .table-wrap, .club-mode .sl65-table-wrap { min-width: 0; max-width: 100%; overflow-x: auto; overscroll-behavior-x: contain; }
+  .club-mode .kanban { display: grid; grid-template-columns: minmax(0, 1fr); min-width: 0; overflow: visible; }
+  .club-mode .kanban-col { min-width: 0; }
+  .club-mode .task-footer { flex-wrap: wrap; gap: 8px; }
+  .club-mode .task-footer > span { min-width: 0; overflow-wrap: anywhere; }
+  .club-mode #sidebar { width: min(304px, calc(100vw - 28px)); max-width: calc(100vw - 28px); height: 100dvh; max-height: 100dvh; padding-bottom: env(safe-area-inset-bottom, 0px); z-index: 1200; }
+  .club-mode #sidebar .nav { flex: 1 1 auto; min-height: 0; overflow-y: auto; overscroll-behavior: contain; }
+  .club-mode #sidebar .brand, .club-mode #sidebar .workspace-pill, .club-mode #sidebar .sidebar-footer { flex-shrink: 0; }
+  .club-mode #sidebarScrim { z-index: 1190; }
+  .club-mode #mobileNav { display: grid !important; grid-template-columns: repeat(var(--ax18-nav-count, 5), minmax(0, 1fr)); left: 8px; right: 8px; bottom: max(8px, env(safe-area-inset-bottom, 0px)); padding: 6px; height: auto; min-height: 62px; gap: 3px; }
+  .club-mode #mobileNav.hidden { display: none !important; }
+  .club-mode #mobileNav button { min-width: 0; min-height: 48px; padding: 6px 1px; white-space: normal; font-size: 10px; line-height: 1.25; gap: 4px; }
+  .club-mode #mobileNav button > span { min-width: 0; max-width: 100%; }
+  .club-mode #mobileNav svg { width: 20px; height: 20px; }
+  .club-mode .ax18-menu-symbol { font-size: 21px; line-height: 20px; }
+  .club-mode #modal { padding: 8px; }
+  .club-mode #modal .modal-card { width: 100%; max-width: 100%; max-height: calc(100dvh - 16px - env(safe-area-inset-bottom, 0px)); }
+  .club-mode #modal .modal-head { padding: 14px; gap: 10px; }
+  .club-mode #modal .modal-head h2 { font-size: 21px; line-height: 1.25; }
+  .club-mode #modal .modal-body { padding: 14px; }
+  .club-mode #modal .form-grid { grid-template-columns: minmax(0, 1fr); gap: 14px; }
+  .club-mode #modal .form-grid > * { grid-column: 1 / -1; min-width: 0; }
+  .club-mode #modal .form-actions { position: sticky; bottom: -14px; margin-top: 14px; padding: 12px 0 max(12px, env(safe-area-inset-bottom, 0px)); background: #15130d; z-index: 3; }
+  .club-mode #modal .form-actions > .btn { flex: 1 1 120px; max-width: 100%; }
+  .club-mode .attendance-child-row { gap: 10px; grid-template-columns: minmax(0, 1fr); flex-wrap: wrap; }
+  .club-mode .attendance-child-row > span { min-width: 0; white-space: normal; overflow-wrap: anywhere; }
+  .club-mode .attendance-child-row .select { width: 100%; }
+  .club-mode .rg65-child .rg65-actions .btn { flex: 1 1 120px; font-size: 13px; min-height: 44px; }
+}
+@media (max-width: 560px) {
+  .club-mode .grid-2, .club-mode .grid-3, .club-mode .grid-main, .club-mode .readable-grid, .club-mode .attendance-kpis { grid-template-columns: minmax(0, 1fr); }
+  .club-mode .grid-4 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .club-mode .grid-4 > *, .club-mode .grid-2 > * { min-width: 0; }
+  .club-mode .metric-value { font-size: clamp(23px, 7vw, 32px); overflow-wrap: anywhere; }
+  .club-mode .operations-date-actions, .club-mode .attendance-week-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+  .club-mode .attendance-weekbar, .club-mode .attendance-week-nav { flex-wrap: wrap; gap: 10px; }
+  .club-mode .attendance-tabs { display: flex; flex-wrap: wrap; gap: 7px; }
+  .club-mode .attendance-tabs button { min-height: 40px; }
+}
+@media (max-width: 359px) { .club-mode .grid-4 { grid-template-columns: minmax(0, 1fr); } }
