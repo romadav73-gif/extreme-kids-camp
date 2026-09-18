@@ -1,0 +1,48 @@
+name: Access18 durable published workflows
+on:
+  push:
+    branches: [fix/logout-mobile-20260918]
+    paths: ['.github/workflows/access18-durable-qa.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: pip install playwright==1.55.0 pyyaml
+      - name: Prepare isolated service and durable test assertions
+        run: |
+          python - <<'PY'
+          import yaml
+          from pathlib import Path
+          steps=yaml.safe_load(Path('.github/workflows/access18-diagnose.yml').read_text())['jobs']['inspect']['steps']
+          prepare=next(s['run'] for s in steps if s.get('name','').startswith('Prepare only'))
+          start=prepare.index("base='https://extreme-kids-growth");end=prepare.index('\nPY',start)
+          Path('/tmp/prepare.sh').write_text(prepare[:start]+prepare[end:])
+          p=Path('access18/verify.py');s=p.read_text()
+          old="marker = len(calls); p.goto(BASE + '#login', wait_until='networkidle')"
+          assert s.count(old)==1
+          s=s.replace(old,old+"; expect(p.locator('#login')).to_be_visible(timeout=20000)")
+          old="p.goto(BASE, wait_until='networkidle'); expect(p.locator('#access18Continue')).to_contain_text('Стас')"
+          assert s.count(old)==1
+          s=s.replace(old,"p.goto(BASE, wait_until='networkidle'); p.reload(wait_until='networkidle'); expect(p.locator('#access18Continue')).to_contain_text('Стас')")
+          old="    finally:\n        Path('evidence/access18-results.json')"
+          assert s.count(old)==1
+          s=s.replace(old,"    finally:\n        try:\n            p.screenshot(path='evidence/last-screen.png',full_page=True)\n            Path('evidence/last-dom.txt').write_text(p.locator('body').inner_text())\n        except Exception: pass\n        Path('evidence/access18-results.json')")
+          p.write_text(s)
+          PY
+          bash -e /tmp/prepare.sh
+      - name: Exact published UI and isolated auth/device workflows
+        run: python access18/verify.py
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: access18-durable-evidence
+          path: evidence/
+          retention-days: 7
