@@ -1,0 +1,39 @@
+name: Access18 live browser diagnosis
+on:
+  push:
+    branches: [fix/logout-mobile-20260918]
+    paths: ['.github/workflows/access18-diagnose-browser.yml']
+permissions:
+  contents: read
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: pip install playwright==1.55.0 pyyaml
+      - name: Prepare diagnostic scripts from the reviewed suite
+        run: |
+          python - <<'PY'
+          import yaml
+          from pathlib import Path
+          steps=yaml.safe_load(Path('.github/workflows/access18-diagnose.yml').read_text())['jobs']['inspect']['steps']
+          prepare=next(s['run'] for s in steps if s.get('name','').startswith('Prepare only'))
+          start=prepare.index("base='https://extreme-kids-growth")
+          end=prepare.index('\nPY',start)
+          prepare=prepare[:start]+prepare[end:]
+          Path('/tmp/prepare.sh').write_text(prepare)
+          Path('/tmp/browser.sh').write_text(next(s['run'] for s in steps if s.get('name','').startswith('Actual frontend')))
+          PY
+          bash -e /tmp/prepare.sh
+      - name: Inspect existing published UI with real synthetic authentication
+        run: bash -e /tmp/browser.sh
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: access18-browser-before
+          path: evidence/
+          retention-days: 7
