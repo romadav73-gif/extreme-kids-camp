@@ -32,6 +32,12 @@ jobs:
           old="p.goto(BASE, wait_until='networkidle'); expect(p.locator('#access18Continue')).to_contain_text('Стас')"
           assert s.count(old)==1
           s=s.replace(old,"p.goto(BASE, wait_until='networkidle'); p.reload(wait_until='networkidle'); expect(p.locator('#access18Continue')).to_contain_text('Стас')")
+          old=".description='Saved before verified logout'"
+          assert s.count(old)==1
+          s=s.replace(old,".status='inprogress'")
+          old=".description\") == 'Saved before verified logout'"
+          assert s.count(old)==1
+          s=s.replace(old,".status\") == 'inprogress'")
           old="    finally:\n        Path('evidence/access18-results.json')"
           assert s.count(old)==1
           s=s.replace(old,"    finally:\n        try:\n            p.screenshot(path='evidence/last-screen.png',full_page=True)\n            Path('evidence/last-dom.txt').write_text(p.locator('body').inner_text())\n        except Exception: pass\n        Path('evidence/access18-results.json')")
