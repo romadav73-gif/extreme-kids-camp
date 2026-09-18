@@ -1,0 +1,34 @@
+name: Access18 preflight
+on:
+  push:
+    branches: [fix/logout-mobile-20260918]
+    paths: ['access18/**', '.github/workflows/access18-preflight.yml']
+permissions:
+  contents: read
+jobs:
+  preflight:
+    runs-on: ubuntu-latest
+    timeout-minutes: 4
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Validate JavaScript and complete authenticated bundle syntax
+        run: |
+          node --check access18/guard.js
+          node --check access18/cabinet.js
+          node --check access18/server.mjs
+          curl -fsSL --retry 2 'https://raw.githubusercontent.com/romadav73-gif/extreme-kids-camp/4bfae20bce0cd0bfd873a2db08734ece399457ff/secure-growth65/build/app.js' -o /tmp/base.js
+          node <<'JS'
+          const fs=require('node:fs'),assert=require('node:assert/strict');
+          const base=fs.readFileSync('/tmp/base.js','utf8'),cab=fs.readFileSync('access18/cabinet.js','utf8'),guard=fs.readFileSync('access18/guard.js','utf8');
+          const marker="document.addEventListener('click',handleClick);";
+          assert.equal(base.split(marker).length,2);new Function(base.replace(marker,cab+'\n'+marker));
+          assert(guard.includes('access18SavedAccount'));assert(guard.includes("base() + '#login'"));
+          assert(!guard.includes('localStorage.clear('));assert(!cab.includes('localStorage.clear('));
+          assert(cab.includes('ax18PreserveDraft'));assert(cab.includes('state?.ui?.roster65Pending'));
+          assert(!cab.includes('s65Actor.role ='));assert(!guard.includes('role: \'stas\''));
+          const css=fs.readFileSync('access18/mobile.css','utf8');assert.equal((css.match(/\{/g)||[]).length,(css.match(/\}/g)||[]).length);
+          console.log('PASS syntax, integration anchors, draft preservation, no hardcoded account, bounded CSS');
+          JS
