@@ -26,21 +26,19 @@ jobs:
           start=prepare.index("base='https://extreme-kids-growth");end=prepare.index('\nPY',start)
           Path('/tmp/prepare.sh').write_text(prepare[:start]+prepare[end:])
           p=Path('access18/verify.py');s=p.read_text()
-          old="marker = len(calls); p.goto(BASE + '#login', wait_until='networkidle')"
-          assert s.count(old)==1
-          s=s.replace(old,old+"; expect(p.locator('#login')).to_be_visible(timeout=20000)")
-          old="p.goto(BASE, wait_until='networkidle'); expect(p.locator('#access18Continue')).to_contain_text('Стас')"
-          assert s.count(old)==1
-          s=s.replace(old,"p.goto(BASE, wait_until='networkidle'); p.reload(wait_until='networkidle'); expect(p.locator('#access18Continue')).to_contain_text('Стас')")
-          old=".description='Saved before verified logout'"
-          assert s.count(old)==1
-          s=s.replace(old,".status='inprogress'")
-          old=".description\") == 'Saved before verified logout'"
-          assert s.count(old)==1
-          s=s.replace(old,".status\") == 'inprogress'")
+          replacements=[
+              ("marker = len(calls); p.goto(BASE + '#login', wait_until='networkidle')", "marker = len(calls); p.goto(BASE + '#login', wait_until='networkidle'); expect(p.locator('#login')).to_be_visible(timeout=20000)"),
+              ("p.goto(BASE, wait_until='networkidle'); expect(p.locator('#access18Continue')).to_contain_text('Стас')", "p.goto(BASE, wait_until='networkidle'); p.reload(wait_until='networkidle'); expect(p.locator('#access18Continue')).to_contain_text('Стас')"),
+              (".description='Saved before verified logout'", ".status='inprogress'"),
+              (".description\") == 'Saved before verified logout'", ".status\") == 'inprogress'"),
+              ("p.goto(BASE + '#login', wait_until='networkidle'); login(p, 'stas')", "login(p, 'stas')"),
+              ("p.goto(BASE + '#login', wait_until='networkidle', timeout=60000)", "p.goto(BASE + '#login', wait_until='networkidle', timeout=60000); expect(p.locator('#login')).to_be_visible(timeout=20000)")
+          ]
+          for old,new in replacements:
+              assert s.count(old)==1,(old,s.count(old));s=s.replace(old,new)
           old="    finally:\n        Path('evidence/access18-results.json')"
           assert s.count(old)==1
-          s=s.replace(old,"    finally:\n        try:\n            p.screenshot(path='evidence/last-screen.png',full_page=True)\n            Path('evidence/last-dom.txt').write_text(p.locator('body').inner_text())\n        except Exception: pass\n        Path('evidence/access18-results.json')")
+          s=s.replace(old,"    finally:\n        try:\n            p.screenshot(path='evidence/last-screen.png',full_page=True)\n            Path('evidence/last-dom.txt').write_text(p.url+'\\n'+p.locator('body').inner_text())\n        except Exception: pass\n        Path('evidence/access18-results.json')")
           p.write_text(s)
           PY
           bash -e /tmp/prepare.sh
