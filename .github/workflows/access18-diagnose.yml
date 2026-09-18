@@ -1,0 +1,91 @@
+name: Access18 diagnose live logout and mobile
+on:
+  push:
+    branches: [fix/logout-mobile-20260918]
+    paths: ['.github/workflows/access18-diagnose.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: pip install playwright==1.55.0
+      - name: Prepare only public pinned code and in-memory test data
+        run: |
+          mkdir -p qa/lib qa/tests evidence public-source/assets
+          python - <<'PY'
+          import urllib.request,re
+          from pathlib import Path
+          root='https://raw.githubusercontent.com/romadav73-gif/extreme-kids-camp/'
+          files={'qa/core.mjs':'4bfae20bce0cd0bfd873a2db08734ece399457ff/secure-growth65/edge/core.mjs','qa/lib/model.cjs':'4bfae20bce0cd0bfd873a2db08734ece399457ff/secure-growth65/lib/model.cjs','qa/tests/fixture.cjs':'4bfae20bce0cd0bfd873a2db08734ece399457ff/secure-growth65/tests/fixture.cjs','qa/device-server.mjs':'9573ebd5ed6f46dae4681f30c536fa75c9d33ef0/device-server.mjs','qa/smm-server.mjs':'63c0e93ccb671fce49aebad6f978ce7e2bc6e996/smm65/src/smm-server.mjs','qa/smm-core.mjs':'63c0e93ccb671fce49aebad6f978ce7e2bc6e996/smm65/src/smm-core.mjs','public-source/base-app.js':'4bfae20bce0cd0bfd873a2db08734ece399457ff/secure-growth65/build/app.js','public-source/app.css':'4bfae20bce0cd0bfd873a2db08734ece399457ff/secure-growth65/public/app.css','public-source/app.html':'4bfae20bce0cd0bfd873a2db08734ece399457ff/secure-growth65/public/app.html','public-source/trusted-device.js':'efc29194cd392c500796b832b321e1d4b9133801/trusted-device.js'}
+          for dst,src in files.items(): Path(dst).write_bytes(urllib.request.urlopen(root+src,timeout=30).read())
+          base='https://extreme-kids-growth-os-6-5-mi5pb3.v2.appdeploy.ai/'
+          html=urllib.request.urlopen(base,timeout=30).read().decode();Path('public-source/live.html').write_text(html)
+          queue=list(set(re.findall(r'(?:\./|/)?assets/[\w.-]+\.(?:js|css)',html)));seen=set()
+          while queue:
+              url=queue.pop().lstrip('./')
+              if url in seen:continue
+              seen.add(url)
+              text=urllib.request.urlopen(base+url,timeout=30).read().decode();Path('public-source',url).write_text(text)
+              if url.endswith('.js'):
+                  for name in re.findall(r'[\"\'](?:\./)?([\w-]+\.(?:js|css))[\"\']',text):
+                      if '-'+name.split('-')[-1] in text and name not in ['app.js','app.css']:queue.append('assets/'+name)
+          PY
+          node access18/server.mjs > evidence/service.log 2>&1 &
+          for i in $(seq 1 30); do curl -fsS http://127.0.0.1:8898/ready >/dev/null && break || sleep 1; done
+          curl -fsS http://127.0.0.1:8898/ready >/dev/null
+      - name: Actual frontend diagnosis without customer sign-in or writes
+        run: |
+          python - <<'PY'
+          import json,shutil,urllib.request,urllib.error
+          from urllib.parse import urlsplit
+          from pathlib import Path
+          from playwright.sync_api import sync_playwright
+          BASE='https://extreme-kids-growth-os-6-5-mi5pb3.v2.appdeploy.ai/'
+          password=json.loads(Path('qa/auth.json').read_text())['password']
+          results=[]
+          def intercept(route):
+              req=route.request;headers={'access-control-allow-origin':BASE.rstrip('/'),'access-control-allow-credentials':'true','access-control-allow-headers':'content-type,x-appdeploy-keys-prefix','content-type':'application/json'}
+              if req.method=='OPTIONS':route.fulfill(status=204,headers=headers,body='');return
+              action=urlsplit(req.url).path.split('/')[-1]
+              r=urllib.request.Request('http://127.0.0.1:8898/'+action,data=(req.post_data or '{}').encode(),headers={'Content-Type':'application/json'},method='POST')
+              try:
+                  with urllib.request.urlopen(r,timeout=25) as v:status=v.status;content=v.read()
+              except urllib.error.HTTPError as e:status=e.code;content=e.read()
+              route.fulfill(status=status,headers=headers,body=content)
+          with sync_playwright() as pw:
+              browser=pw.chromium.launch(executable_path=shutil.which('google-chrome'),args=['--no-sandbox'])
+              for width,user in [(375,'stas'),(375,'tasya'),(1280,'stas'),(320,'tasya'),(390,'sofa')]:
+                  c=browser.new_context(viewport={'width':width,'height':812});c.route('https://api-v2.appdeploy.ai/**',intercept);p=c.new_page();errs=[];p.on('pageerror',lambda e:errs.append(str(e)))
+                  p.goto(BASE,wait_until='networkidle',timeout=60000)
+                  anonymous=p.locator('#login').is_visible()
+                  p.locator('#login [name=username]').fill(user);p.locator('#login [name=password]').fill(password);p.locator('#login button[type=submit]').click();p.wait_for_selector('#appShell:not(.hidden)',timeout=30000)
+                  p.screenshot(path=f'evidence/before-{user}-{width}.png',full_page=True)
+                  geometry=p.evaluate('''()=>({width:innerWidth,scroll:document.documentElement.scrollWidth,buttons:[...document.querySelectorAll('[data-action=s65Logout]')].map(e=>({text:e.textContent,display:getComputedStyle(e).display,parent:getComputedStyle(e.parentElement).display,rect:e.getBoundingClientRect().toJSON()})),over:[...document.querySelectorAll('#appShell *')].filter(e=>{const r=e.getBoundingClientRect();return r.width>0&&(r.right>innerWidth+2||r.left< -2)&&getComputedStyle(e).position!=='fixed'}).slice(0,15).map(e=>({tag:e.tagName,id:e.id,cl:e.className,text:e.textContent.slice(0,90)}))})''')
+                  p.goto(BASE+'#login',wait_until='networkidle',timeout=60000)
+                  forcedLogin=p.locator('#login').is_visible()
+                  results.append({'user':user,'width':width,'anonymousLogin':anonymous,'hashLoginShowsForm':forcedLogin,'geometry':geometry,'errors':errs})
+                  c.close()
+              browser.close()
+          Path('evidence/diagnosis.json').write_text(json.dumps(results,ensure_ascii=False,indent=2));print(json.dumps(results,ensure_ascii=False))
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: access18-diagnosis
+          path: |
+            evidence/
+            public-source/
+            qa/core.mjs
+            qa/device-server.mjs
+            qa/smm-server.mjs
+            qa/smm-core.mjs
+            qa/lib/model.cjs
+            qa/tests/fixture.cjs
+          retention-days: 7
