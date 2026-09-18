@@ -1,0 +1,45 @@
+name: Access18 independent mobile and failure-path verification
+on:
+  push:
+    branches: [fix/logout-mobile-20260918]
+    paths: ['.github/workflows/access18-mobile-independent.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  mobile:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: pip install playwright==1.55.0 pyyaml
+      - name: Isolated synthetic service and independent visible workflows
+        run: |
+          python - <<'PY'
+          import yaml
+          from pathlib import Path
+          steps=yaml.safe_load(Path('.github/workflows/access18-diagnose.yml').read_text())['jobs']['inspect']['steps']
+          prepare=next(s['run'] for s in steps if s.get('name','').startswith('Prepare only'))
+          start=prepare.index("base='https://extreme-kids-growth");end=prepare.index('\nPY',start)
+          Path('/tmp/prepare.sh').write_text(prepare[:start]+prepare[end:])
+          source=Path('access18/verify.py').read_text()
+          pre=source[:source.index('with sync_playwright() as pw:')]
+          a=source.index('        for width, user in ')
+          b=source.index('    finally:',a)
+          body=source[a:b]
+          tail=source[b:]
+          tail=tail.replace("        Path('evidence/access18-results.json')", "        try:\n            p.screenshot(path='evidence/last-mobile-screen.png',full_page=True)\n            Path('evidence/last-mobile-dom.txt').write_text(p.url+'\\n'+p.locator('body').inner_text())\n        except Exception: pass\n        Path('evidence/access18-mobile-results.json')")
+          Path('access18/mobile-verify.py').write_text(pre+"with sync_playwright() as pw:\n    browser = pw.chromium.launch(executable_path=shutil.which('google-chrome'), args=['--no-sandbox'])\n    try:\n"+body+tail)
+          PY
+          bash -e /tmp/prepare.sh
+      - name: Exact published mobile forms, menu, visible exit and failure handling
+        run: python access18/mobile-verify.py
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: access18-mobile-evidence
+          path: evidence/
+          retention-days: 7
