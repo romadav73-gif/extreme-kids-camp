@@ -24,6 +24,8 @@ jobs:
           root='https://raw.githubusercontent.com/romadav73-gif/extreme-kids-camp/'
           files={
             'core.mjs': ('4bfae20bce0cd0bfd873a2db08734ece399457ff/secure-growth65/edge/core.mjs','15b90e80030da2b8e95a57372154b14f0f72ca57'),
+            'lib/model.cjs': ('4bfae20bce0cd0bfd873a2db08734ece399457ff/secure-growth65/lib/model.cjs','b6e6af5bb90e915534818a90dc94898e4df2a24a'),
+            'tests/fixture.cjs': ('4bfae20bce0cd0bfd873a2db08734ece399457ff/secure-growth65/tests/fixture.cjs','76525548e9eb0ad85ad35b94c0001e1d902537ef'),
             'smm-server.mjs': ('63c0e93ccb671fce49aebad6f978ce7e2bc6e996/smm65/src/smm-server.mjs','9599579b46f378e5b0e55b269757eefc6fd8e8bc'),
             'smm-core.mjs': ('63c0e93ccb671fce49aebad6f978ce7e2bc6e996/smm65/src/smm-core.mjs','cb4c13e7898ec297d4cfee3c02cf70d436d2590b')
           }
@@ -31,7 +33,9 @@ jobs:
               content=urllib.request.urlopen(root+path,timeout=30).read()
               actual=hashlib.sha1(('blob '+str(len(content))+'\0').encode()+content).hexdigest()
               assert actual==expected, name
-              Path('role-qa',name).write_bytes(content)
+              dest=Path('role-qa',name)
+              dest.parent.mkdir(parents=True,exist_ok=True)
+              dest.write_bytes(content)
           PY
       - name: Exact failure before fix, successful roster and unchanged permissions after fix
         run: |
@@ -43,7 +47,7 @@ jobs:
           import { installSmm } from './role-qa/smm-server.mjs';
           import { rosterApply } from './roster65/roster-service.mjs';
           const require=createRequire(import.meta.url);
-          const fixture=require('./secure-growth65/tests/fixture.cjs');
+          const fixture=require('./role-qa/tests/fixture.cjs');
           const { Policy:P, Model:M, Integrity:I }=Core;
           const mentor={id:'test-mentor',role:'mentor',personId:'tasya',scopes:[]};
           const initial=()=>{
