@@ -1,0 +1,89 @@
+name: Roster employee-role compatibility regression
+on:
+  push:
+    branches: [fix/roster-role-compat-20260922]
+    paths: ['.github/workflows/roster-role-compat-20260922.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Read pinned public source and verify checksums
+        run: |
+          mkdir -p role-qa
+          python - <<'PY'
+          from pathlib import Path
+          import hashlib, urllib.request
+          root='https://raw.githubusercontent.com/romadav73-gif/extreme-kids-camp/'
+          files={
+            'core.mjs': ('4bfae20bce0cd0bfd873a2db08734ece399457ff/secure-growth65/edge/core.mjs','15b90e80030da2b8e95a57372154b14f0f72ca57'),
+            'smm-server.mjs': ('63c0e93ccb671fce49aebad6f978ce7e2bc6e996/smm65/src/smm-server.mjs','9599579b46f378e5b0e55b269757eefc6fd8e8bc'),
+            'smm-core.mjs': ('63c0e93ccb671fce49aebad6f978ce7e2bc6e996/smm65/src/smm-core.mjs','cb4c13e7898ec297d4cfee3c02cf70d436d2590b')
+          }
+          for name,(path,expected) in files.items():
+              content=urllib.request.urlopen(root+path,timeout=30).read()
+              actual=hashlib.sha1(('blob '+str(len(content))+'\0').encode()+content).hexdigest()
+              assert actual==expected, name
+              Path('role-qa',name).write_bytes(content)
+          PY
+      - name: Exact failure before fix, successful roster and unchanged permissions after fix
+        run: |
+          node --input-type=module <<'JS'
+          import assert from 'node:assert/strict';
+          import { randomUUID } from 'node:crypto';
+          import { createRequire } from 'node:module';
+          import Core from './role-qa/core.mjs';
+          import { installSmm } from './role-qa/smm-server.mjs';
+          import { rosterApply } from './roster65/roster-service.mjs';
+          const require=createRequire(import.meta.url);
+          const fixture=require('./secure-growth65/tests/fixture.cjs');
+          const { Policy:P, Model:M, Integrity:I }=Core;
+          const mentor={id:'test-mentor',role:'mentor',personId:'tasya',scopes:[]};
+          const initial=()=>{
+            const data=M.clone(fixture);
+            data.people.push({id:'test-smm',name:'Тестовый SMM',role:'smm',active:true});
+            data.groups.push({...data.groups[0],id:'test-roster',students:0,rosterManaged:true});
+            return data;
+          };
+          const add=name=>({action:'add',requestId:randomUUID(),groupId:'test-roster',name,startDate:'2026-09-01'});
+          assert.throws(()=>rosterApply(initial(),mentor,add('Первый'),P),e=>e.message==='Некорректная карточка сотрудника');
+          console.log('EXACT_EMPLOYEE_CARD_ERROR_REPRODUCED');
+          installSmm(P,M,I);
+          let data=initial();
+          const people=M.clone(data.people);
+          for(const name of ['Первый','Второй','Третий']) data=rosterApply(data,mentor,add(name),P).data;
+          assert.equal(data.groups.find(g=>g.id==='test-roster').students,3);
+          assert.deepEqual(data.people,people);
+          const projected=P.projection(JSON.parse(JSON.stringify(data)),mentor);
+          assert.equal(projected.attendanceMemberships.filter(m=>m.groupId==='test-roster').length,3);
+          assert(!JSON.stringify(projected).includes('IVAN_CHILD_SECRET'));
+          assert.throws(()=>rosterApply(data,{...mentor,role:'smm',personId:'test-smm'},add('Запрещено'),P),e=>e.status===403);
+          const malformed=initial();malformed.people.at(-1).name=' ';
+          assert.throws(()=>rosterApply(malformed,mentor,add('Не должно сохраниться'),P),e=>e.status===422);
+          console.log('THREE_PUPILS_RETAINED_AND_VISIBLE_TO_MENTOR');
+          console.log('EMPLOYEE_RECORDS_UNCHANGED_AUTH_AND_VALIDATION_RETAINED');
+          JS
+      - name: Deployed endpoint health and anonymous write denial only
+        run: |
+          python - <<'PY'
+          import json,urllib.request,urllib.error
+          url='https://ljypjljlzfuarzsfuepn.supabase.co/functions/v1/growth65-roster'
+          def call(body):
+              request=urllib.request.Request(url,data=json.dumps(body).encode(),headers={'Content-Type':'application/json'},method='POST')
+              try:
+                  with urllib.request.urlopen(request,timeout=30) as response:return response.status,json.load(response)
+              except urllib.error.HTTPError as error:return error.code,json.load(error)
+          status,result=call({'action':'health'})
+          assert status==200 and result.get('ok') and result.get('version')=='6.5-roster.3-role-compat'
+          print('DEPLOYED_ROSTER_3_HEALTH_OK')
+          status,result=call({'action':'group-roster','session':'','csrf':'','body':{'action':'add'}})
+          assert status==401, (status,result.get('error'))
+          print('ANONYMOUS_WRITE_DENIED_NO_CUSTOMER_SESSION_USED')
+          PY
