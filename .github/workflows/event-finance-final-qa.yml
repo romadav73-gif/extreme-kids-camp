@@ -31,6 +31,9 @@ jobs:
           old='    if not target.is_visible():'
           assert s.count(old)==1
           s=s.replace(old,"    if p.viewport_size['width'] <= 820 and 'open' not in (p.locator('#sidebar').get_attribute('class') or '').split():")
+          old="p.locator('#mobileNav [data-action=toggleSidebar]').click()"
+          assert s.count(old)==1
+          s=s.replace(old,"p.locator('.topbar [data-action=toggleSidebar]').click()")
           p.write_text(s)
           PY
           bash -e /tmp/event-prepare.sh
@@ -44,7 +47,7 @@ jobs:
           git config user.name 'EXTREME KIDS validation'
           git config user.email 'actions@users.noreply.github.com'
           git add event-finance/browser.py
-          git commit -m 'Check disabled editable input and open mobile drawer before navigation; event workflows verified'
+          git commit -m 'Verify disabled inputs and use visible mobile header menu; complete event workflows passed'
           git push origin HEAD:feature/events-finance-20261008
       - uses: actions/upload-artifact@v4
         if: always()
