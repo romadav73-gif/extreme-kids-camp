@@ -1,0 +1,57 @@
+name: Event finance published workflows
+on:
+  push:
+    branches: [feature/events-finance-20261008]
+    paths: ['event-finance/browser.py', '.github/workflows/event-finance-published.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 9
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: pip install playwright==1.55.0
+      - name: Synthetic authenticated service using exact deployed event code
+        run: |
+          mkdir -p event-finance/qa-files evidence
+          python - <<'PY'
+          from pathlib import Path
+          import urllib.request
+          root='https://raw.githubusercontent.com/romadav73-gif/extreme-kids-camp/4bfae20bce0cd0bfd873a2db08734ece399457ff/secure-growth65/'
+          for dst,src in {'core.mjs':'edge/core.mjs','model.cjs':'lib/model.cjs','fixture.cjs':'tests/fixture.cjs'}.items():
+              text=urllib.request.urlopen(root+src,timeout=30).read().decode()
+              if dst=='fixture.cjs':text=text.replace("require('../lib/model.cjs')", "require('./model.cjs')")
+              Path('event-finance/qa-files',dst).write_text(text)
+          PY
+          EF_SERVE=1 node event-finance/qa.mjs > evidence/event-service.log 2>&1 &
+          for i in $(seq 1 40); do curl -fsS http://127.0.0.1:8898/ready >/dev/null && break || sleep 1; done
+          cat evidence/event-service.log
+          curl -fsS http://127.0.0.1:8898/ready >/dev/null
+      - name: Published frontend plus isolated data end-to-end
+        run: python event-finance/browser.py
+      - name: Deployed edge health and anonymous denial without writes
+        if: always()
+        run: |
+          python - <<'PY'
+          import json,urllib.request,urllib.error
+          url='https://ljypjljlzfuarzsfuepn.supabase.co/functions/v1/growth65-event-finance'
+          def call(q):
+              req=urllib.request.Request(url,data=json.dumps(q).encode(),headers={'Content-Type':'application/json'},method='POST')
+              try:
+                  with urllib.request.urlopen(req,timeout=30) as r:return r.status,json.load(r)
+              except urllib.error.HTTPError as e:return e.code,json.load(e)
+          status,result=call({'action':'health'});assert status==200 and result.get('ok') and result.get('version')=='2026.10.08-events.1';print('EVENT_FINANCE_EDGE_HEALTH_OK')
+          status,result=call({'action':'event-finance','session':'','csrf':'','body':{'action':'list'}});assert status==401;print('EVENT_FINANCE_ANONYMOUS_READ_DENIED')
+          status,result=call({'action':'event-finance','session':'','csrf':'','body':{'action':'save'}});assert status==401;print('EVENT_FINANCE_ANONYMOUS_WRITE_DENIED')
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: event-finance-published
+          path: evidence/
+          retention-days: 7
