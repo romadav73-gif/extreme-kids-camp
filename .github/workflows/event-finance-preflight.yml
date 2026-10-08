@@ -1,0 +1,82 @@
+name: Event finance preflight
+on:
+  push:
+    branches: [feature/events-finance-20261008]
+    paths: ['.github/workflows/event-finance-preflight.yml']
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 7
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Read pinned public auth code; no customer data
+        run: |
+          mkdir -p event-finance/qa-files evidence
+          python - <<'PY'
+          from pathlib import Path
+          import urllib.request
+          root='https://raw.githubusercontent.com/romadav73-gif/extreme-kids-camp/4bfae20bce0cd0bfd873a2db08734ece399457ff/secure-growth65/'
+          for dst,src in {'core.mjs':'edge/core.mjs','model.cjs':'lib/model.cjs','fixture.cjs':'tests/fixture.cjs','base-app.js':'build/app.js'}.items():
+              text=urllib.request.urlopen(root+src,timeout=30).read().decode()
+              if dst=='fixture.cjs':text=text.replace("require('../lib/model.cjs')", "require('./model.cjs')")
+              Path('event-finance/qa-files',dst).write_text(text)
+          PY
+      - name: Safeguard existing draft and keep archive download buttons usable
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          p=Path('event-finance/ui.js');s=p.read_text()
+          old="e.archived || efUi.busy || pending ? 'disabled' : ''"
+          assert s.count(old)==1;s=s.replace(old,"efUi.busy || pending ? 'disabled' : ''")
+          old='  renderNav(); efLiveUpdate();'
+          new="  renderNav(); efLiveUpdate();\n  if (efUi.current?.archived) for (const field of host.querySelectorAll('#efForm input, #efForm select, #efForm textarea')) field.disabled = true;"
+          assert s.count(old)==1;s=s.replace(old,new)
+          old='async function efOpen(id) {\n  if (efUi.busy) return;'
+          new="async function efOpen(id) {\n  if (efUi.busy) return;\n  const draft = state.ui.eventFinanceDraft;\n  if (draft?.dirty) {\n    if (draft.entry.id === id) return efResume();\n    efWriteError('Сначала сохраните, скачайте или удалите текущий черновик. Новая карточка не затрёт его.');\n    return;\n  }"
+          assert s.count(old)==1;s=s.replace(old,new);p.write_text(s)
+          p=Path('event-finance/core.mjs');s=p.read_text()
+          old="  const ids = new Set();"
+          new="  for (const section of ['income', 'expenses', 'gifts', 'closure', 'risks']) if (!Array.isArray(c[section])) bad('Некорректный список статей.');\n  const ids = new Set();"
+          assert s.count(old)==1;p.write_text(s.replace(old,new))
+          PY
+      - name: Check syntax and isolated accounting / permission regressions
+        run: |
+          node --check event-finance/core.mjs
+          node --check event-finance/server.mjs
+          node --check event-finance/ui.js
+          node event-finance/qa.mjs
+          node --input-type=module <<'JS'
+          import fs from 'node:fs';
+          const base=fs.readFileSync('event-finance/qa-files/base-app.js','utf8');
+          const marker="document.addEventListener('click',handleClick);";
+          if(base.split(marker).length!==2)throw Error('Legacy bootstrap changed');
+          const code=fs.readFileSync('event-finance/core.mjs','utf8').replace(/^export /gm,'')+'\n'+fs.readFileSync('event-finance/ui.js','utf8');
+          fs.writeFileSync('event-finance/qa-files/combined.js',base.replace(marker,code+'\n'+marker));
+          JS
+          node --check event-finance/qa-files/combined.js
+      - name: Commit tested source guards to feature branch only
+        run: |
+          git config user.name 'EXTREME KIDS validation'
+          git config user.email 'actions@users.noreply.github.com'
+          git add event-finance/ui.js event-finance/core.mjs
+          git commit -m 'Preserve unsaved event drafts and enable immutable snapshot exports in archive'
+          git push origin HEAD:feature/events-finance-20261008
+          echo EVENT_VALIDATED_COMMIT=$(git rev-parse HEAD)
+          git ls-tree HEAD event-finance/core.mjs event-finance/ui.js event-finance/ui.css event-finance/server.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: event-finance-preflight
+          path: |
+            evidence/
+            event-finance/core.mjs
+            event-finance/server.mjs
+            event-finance/ui.js
+            event-finance/ui.css
+          retention-days: 7
