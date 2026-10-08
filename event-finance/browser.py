@@ -58,8 +58,8 @@ def login(p, username):
 
 def events(p):
     target = p.locator('#mainNav [data-view=event_finance]')
-    if not target.is_visible():
-        p.locator('#mobileNav [data-action=toggleSidebar]').click()
+    if p.viewport_size['width'] <= 820 and 'open' not in (p.locator('#sidebar').get_attribute('class') or '').split():
+        p.locator('.topbar [data-action=toggleSidebar]').click()
     target.click()
     expect(p.locator('#efRoot')).to_be_visible()
 
@@ -178,7 +178,7 @@ with sync_playwright() as pw:
         expect(p.locator('#efMessage')).to_be_visible(timeout=20000)
         expect(p.locator('#efRoot .ef-notice')).to_contain_text('не подтверждено')
         expect(p.locator('[data-ef-action=retry]')).to_be_visible()
-        check('committed but lost response keeps explicit pending state', p.locator('#efForm fieldset').is_disabled())
+        check('committed but lost response keeps explicit pending state', p.locator('#efForm [data-ef-field=fact][data-section=expenses]').is_disabled())
         reload_owner(p)
         expect(p.locator('[data-ef-action=resume]')).to_be_visible(timeout=20000)
         p.locator('[data-ef-action=resume]').click()
