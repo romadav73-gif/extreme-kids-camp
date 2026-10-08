@@ -175,7 +175,8 @@ with sync_playwright() as pw:
         field(p, 'fact', 42000, 'expenses')
         fault['after_commit'] = True
         p.locator('.ef-editor-head [data-ef-action=save]').click()
-        expect(p.locator('#efMessage')).to_contain_text('не подтверждено', timeout=20000)
+        expect(p.locator('#efMessage')).to_be_visible(timeout=20000)
+        expect(p.locator('#efRoot .ef-notice')).to_contain_text('не подтверждено')
         expect(p.locator('[data-ef-action=retry]')).to_be_visible()
         check('committed but lost response keeps explicit pending state', p.locator('#efForm fieldset').is_disabled())
         reload_owner(p)
