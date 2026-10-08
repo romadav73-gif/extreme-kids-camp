@@ -12,7 +12,7 @@ export function eventFinanceController({ store, authenticate, getSecurityKey }) 
     if (!b || typeof b !== 'object' || Array.isArray(b) || !['list', 'get', 'save', 'archive', 'reopen', 'export'].includes(b.action)) fail(422, 'EVENT_ACTION', 'Некорректное действие с мероприятием.');
     const read = ['list', 'get', 'export'].includes(b.action);
     const key = read ? null : await getSecurityKey();
-    return (read ? store.read : store.tx)(d => {
+    return (read ? store.read : store.tx).call(store, d => {
       const { user, sess } = authenticate(d, sid);
       if (!same(sess.csrf, csrf)) fail(403, 'CSRF', 'Обновите страницу и повторите действие.');
       if (user.role !== 'owner') fail(403, 'FORBIDDEN', 'Финансы мероприятий пока доступны только Роману.');

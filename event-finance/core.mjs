@@ -61,6 +61,7 @@ export function efValidate(raw) {
   for (const k of ['start', 'end']) if (typeof c[k] !== 'string' || c[k] && !/^([01]\d|2[0-3]):[0-5]\d$/.test(c[k])) bad('Некорректное время.');
   if (Boolean(c.start) !== Boolean(c.end) || c.start && c.end <= c.start) bad('Начало и окончание задаются вместе. Окончание должно быть позже начала в тот же день.');
   number(c.participantsPlan, 10000, true); number(c.participantsFact, 10000, true);
+  for (const section of ['income', 'expenses', 'gifts', 'closure', 'risks']) if (!Array.isArray(c[section])) bad('Некорректный список статей.');
   const ids = new Set();
   for (const section of ['income', 'expenses', 'gifts', 'closure', 'risks']) {
     if (!Array.isArray(c[section]) || c[section].length > 150) bad('В каждом блоке допустимо до 150 статей.');

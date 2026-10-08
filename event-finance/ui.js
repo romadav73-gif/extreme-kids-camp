@@ -86,7 +86,7 @@ function efEditor() {
   return `<div class="ef-editor-head"><div>${efButton('← Все мероприятия', 'back')}<h2>${esc(c.title || 'Новое мероприятие')}</h2><span id="efSaveState">${e.archived ? 'Архив · редактирование закрыто' : efUi.dirty ? 'Есть несохранённые изменения' : e.version ? 'Сохранено на сервере · версия ' + e.version : 'Новый черновик'}</span></div><div class="ef-actions">${efButton('Скачать карточку', 'card-export')}${e.archived ? efButton('Открыть для исправления', 'reopen') : efButton('Сохранить', 'save', '', true)}${!e.archived && e.version ? efButton('Закрыть в архив', 'archive') : ''}</div></div>
     ${pending ? `<div class="ef-notice"><b>Предыдущее сохранение не подтверждено.</b><p>Не создавайте вторую карточку. Повтор использует тот же номер операции.</p>${efButton('Повторить сохранение', 'retry', '', true)}</div>` : ''}
     <nav class="ef-tabs" aria-label="Разделы мероприятия">${Object.entries(efTabs).map(([k, title]) => efButton(title, 'tab', `data-tab="${k}" aria-pressed="${efUi.tab === k}"`, efUi.tab === k)).join('')}</nav>
-    <form id="efForm" novalidate><fieldset ${e.archived || efUi.busy || pending ? 'disabled' : ''}><div class="ef-editor-columns"><section class="ef-form-main">${efUi.tab === 'event' ? efEventFields(c) : efUi.tab === 'result' ? efResultTab(c, e) : efRows(efUi.tab, c)}</section><aside class="ef-live"><h3>Результат</h3><div id="efLiveSummary"></div></aside></div></fieldset></form>
+    <form id="efForm" novalidate><fieldset ${efUi.busy || pending ? 'disabled' : ''}><div class="ef-editor-columns"><section class="ef-form-main">${efUi.tab === 'event' ? efEventFields(c) : efUi.tab === 'result' ? efResultTab(c, e) : efRows(efUi.tab, c)}</section><aside class="ef-live"><h3>Результат</h3><div id="efLiveSummary"></div></aside></div></fieldset></form>
     <div class="ef-bottom-actions">${efButton('← К списку', 'back')}${e.archived ? '' : efButton('Сохранить изменения', 'save', '', true)}</div>`;
 }
 function efLiveUpdate() {
@@ -110,10 +110,17 @@ function efDraw(force = false) {
   if (!force && efUi.current && host.querySelector('#efForm')) return;
   host.innerHTML = `<div id="efRoot"><div id="efMessage" role="alert" ${efUi.error ? '' : 'hidden'}>${esc(efUi.error)}</div>${efUi.current ? efEditor() : efCards()}</div>`;
   renderNav(); efLiveUpdate();
+  if (efUi.current?.archived) for (const field of host.querySelectorAll('#efForm input, #efForm select, #efForm textarea')) field.disabled = true;
   if (!efUi.current && efUi.entries === null && !efUi.loading && !efUi.error) void efLoad();
 }
 async function efOpen(id) {
   if (efUi.busy) return;
+  const draft = state.ui.eventFinanceDraft;
+  if (draft?.dirty) {
+    if (draft.entry.id === id) return efResume();
+    efWriteError('Сначала сохраните, скачайте или удалите текущий черновик. Новая карточка не затрёт его.');
+    return;
+  }
   try { const r = await efReq({ action: 'get', id }); efUi.current = r.entry; efUi.dirty = false; efUi.tab = r.entry.archived ? 'result' : 'event'; efUi.error = ''; efDraw(true); }
   catch (e) { efWriteError(e.message); }
 }
