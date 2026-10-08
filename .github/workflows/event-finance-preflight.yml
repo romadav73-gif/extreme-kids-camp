@@ -27,7 +27,7 @@ jobs:
               if dst=='fixture.cjs':text=text.replace("require('../lib/model.cjs')", "require('./model.cjs')")
               Path('event-finance/qa-files',dst).write_text(text)
           PY
-      - name: Safeguard existing draft and keep archive download buttons usable
+      - name: Safeguard drafts, archive controls and store method binding
         run: |
           python - <<'PY'
           from pathlib import Path
@@ -44,6 +44,9 @@ jobs:
           old="  const ids = new Set();"
           new="  for (const section of ['income', 'expenses', 'gifts', 'closure', 'risks']) if (!Array.isArray(c[section])) bad('Некорректный список статей.');\n  const ids = new Set();"
           assert s.count(old)==1;p.write_text(s.replace(old,new))
+          p=Path('event-finance/server.mjs');s=p.read_text()
+          old='return (read ? store.read : store.tx)(d => {'
+          assert s.count(old)==1;p.write_text(s.replace(old,'return (read ? store.read : store.tx).call(store, d => {'))
           PY
       - name: Check syntax and isolated accounting / permission regressions
         run: |
@@ -64,8 +67,8 @@ jobs:
         run: |
           git config user.name 'EXTREME KIDS validation'
           git config user.email 'actions@users.noreply.github.com'
-          git add event-finance/ui.js event-finance/core.mjs
-          git commit -m 'Preserve unsaved event drafts and enable immutable snapshot exports in archive'
+          git add event-finance/ui.js event-finance/core.mjs event-finance/server.mjs
+          git commit -m 'Preserve event drafts, archive export controls and bound transactional store methods'
           git push origin HEAD:feature/events-finance-20261008
           echo EVENT_VALIDATED_COMMIT=$(git rev-parse HEAD)
           git ls-tree HEAD event-finance/core.mjs event-finance/ui.js event-finance/ui.css event-finance/server.mjs
