@@ -16,7 +16,7 @@ jobs:
         with:
           node-version: '22'
       - run: pip install playwright==1.55.0 pyyaml
-      - name: Prepare synthetic service and native-input disabled assertion
+      - name: Prepare synthetic service and user-like mobile navigation
         run: |
           python - <<'PY'
           from pathlib import Path
@@ -28,6 +28,9 @@ jobs:
           old="p.locator('#efForm fieldset').is_disabled()"
           assert s.count(old)==1
           s=s.replace(old,"p.locator('#efForm [data-ef-field=fact][data-section=expenses]').is_disabled()")
+          old='    if not target.is_visible():'
+          assert s.count(old)==1
+          s=s.replace(old,"    if p.viewport_size['width'] <= 820 and 'open' not in (p.locator('#sidebar').get_attribute('class') or '').split():")
           p.write_text(s)
           PY
           bash -e /tmp/event-prepare.sh
@@ -36,12 +39,12 @@ jobs:
       - name: Real edge health and anonymous denial only
         if: always()
         run: bash -e /tmp/event-health.sh
-      - name: Commit corrected browser assertion after successful run
+      - name: Commit corrected browser helpers after successful run
         run: |
           git config user.name 'EXTREME KIDS validation'
           git config user.email 'actions@users.noreply.github.com'
           git add event-finance/browser.py
-          git commit -m 'Check effective disabled state on editable expense input; all event workflows verified'
+          git commit -m 'Check disabled editable input and open mobile drawer before navigation; event workflows verified'
           git push origin HEAD:feature/events-finance-20261008
       - uses: actions/upload-artifact@v4
         if: always()
